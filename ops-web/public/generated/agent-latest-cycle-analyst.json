@@ -1,0 +1,310 @@
+{
+  "generated_at": "2026-03-06T22:04:24.991460Z",
+  "version": "agent_latest_cycle_analyst.v1",
+  "agent_id": "analyst-agent",
+  "available": true,
+  "source": {
+    "summary_path": "artifacts/agent_telemetry_summary.json",
+    "cycle_report_path": "artifacts/agent_cycle_validation_report.json",
+    "log_dir": ".logs/agents"
+  },
+  "metrics": {
+    "verification_pass_rate": 100,
+    "lesson_capture_rate": 100,
+    "review_error_rate": 0,
+    "recommendation_action_rate": null,
+    "replan_rate": null,
+    "decision_time_avg_ms": null,
+    "time_to_solution_min": 69
+  },
+  "metric_meta": {
+    "verification_pass_rate": {
+      "label": "Успех верификации",
+      "description": "Какая доля verify-запусков завершилась успешно.",
+      "formula": "verify_passed / verify_started * 100",
+      "source": "artifacts/agent_telemetry_summary.json -> agents[].status_counts"
+    },
+    "lesson_capture_rate": {
+      "label": "Фиксация уроков",
+      "description": "Насколько стабильно после verify фиксируются уроки self-improvement.",
+      "formula": "lesson_captured / (verify_passed + verify_failed) * 100",
+      "source": "artifacts/agent_telemetry_summary.json -> agents[].status_counts"
+    },
+    "review_error_rate": {
+      "label": "Доля review-ошибок",
+      "description": "Сколько review-ошибок приходится на одну завершенную задачу.",
+      "formula": "review_errors_total / completed_tasks",
+      "source": "artifacts/agent_telemetry_summary.json -> agents[]"
+    },
+    "recommendation_action_rate": {
+      "label": "Реализация рекомендаций",
+      "description": "Какой процент предложенных рекомендаций дошел до применения.",
+      "formula": "recommendations_applied / recommendations_suggested * 100",
+      "source": "artifacts/agent_telemetry_summary.json -> agents[]"
+    },
+    "replan_rate": {
+      "label": "Частота перепланирования",
+      "description": "Как часто агент пересматривает план внутри одного цикла.",
+      "formula": "replanned / planned * 100",
+      "source": "artifacts/agent_telemetry_summary.json -> agents[].status_counts"
+    },
+    "decision_time_avg_ms": {
+      "label": "Среднее время решения",
+      "description": "Среднее время принятия решения о выборе улучшения (от формирования списка до приоритизации).",
+      "formula": "avg(decision_time_ms) по всем событиям с metrics.decision_time_ms",
+      "source": ".logs/agents/analyst-agent.jsonl -> events[].metrics.decision_time_ms"
+    },
+    "time_to_solution_min": {
+      "label": "Время цикла (мин)",
+      "description": "Длительность последнего завершённого цикла от started до completed.",
+      "formula": "completed_at - started_at (минуты)",
+      "source": ".logs/agents/analyst-agent.jsonl -> latest cycle events"
+    }
+  },
+  "latest_cycle": {
+    "task_id": "cycle-20260303-2",
+    "first_event_at": "2026-03-03T09:00:00Z",
+    "last_event_at": "2026-03-03T10:09:00Z",
+    "latest_final_status": "completed",
+    "final_scope": "latest",
+    "events_total": 9
+  },
+  "timeline": [
+    {
+      "timestamp": "2026-03-03T09:00:00Z",
+      "step": "plan",
+      "status": "started",
+      "run_id": "run-1772497559-2",
+      "trace_id": "f78e9c34bab6465d9d914d8f36a67e9c",
+      "recommendation_id": "",
+      "outcome": "Новый цикл: план сформирован на основе вчерашних данных",
+      "artifacts_read": [
+        "docs/subservices/oap/ANALYST_OPERATING_PLAN.md",
+        "docs/agents/registry.yaml"
+      ],
+      "artifacts_written": [],
+      "artifacts_source": "telemetry"
+    },
+    {
+      "timestamp": "2026-03-03T09:09:00Z",
+      "step": "health_check",
+      "status": "started",
+      "run_id": "run-1772497559-2",
+      "trace_id": "522331850cc64f4bba508ca548c6e066",
+      "recommendation_id": "",
+      "outcome": "Health-check: context7 MCP деградирует второй день, создана задача на подключение",
+      "artifacts_read": [
+        "docs/agents/registry.yaml"
+      ],
+      "artifacts_written": [],
+      "artifacts_source": "telemetry"
+    },
+    {
+      "timestamp": "2026-03-03T09:20:00Z",
+      "step": "knowledge_base_check",
+      "status": "started",
+      "run_id": "run-1772497559-2",
+      "trace_id": "326bd4e1444c4439a00cbe970d699889",
+      "recommendation_id": "",
+      "outcome": "Проверка правил: добавлен раздел про MCP lifecycle — актуально",
+      "artifacts_read": [
+        "docs/subservices/oap/ANALYST_OPERATING_PLAN.md"
+      ],
+      "artifacts_written": [],
+      "artifacts_source": "telemetry"
+    },
+    {
+      "timestamp": "2026-03-03T09:35:00Z",
+      "step": "improvements_list",
+      "status": "started",
+      "run_id": "run-1772497559-2",
+      "trace_id": "555b9cead526423eb892746254c9739f",
+      "recommendation_id": "imp-analyst-recommendation-outcome",
+      "outcome": "Рекомендация про recommendation_action_rate — приоритет Средний, отложена до следующего окна",
+      "artifacts_read": [
+        "docs/agents/registry.yaml"
+      ],
+      "artifacts_written": [],
+      "artifacts_source": "telemetry"
+    },
+    {
+      "timestamp": "2026-03-03T09:48:00Z",
+      "step": "execute",
+      "status": "started",
+      "run_id": "run-1772497559-2",
+      "trace_id": "2482d62899fe4fcbbe60fac712068e7b",
+      "recommendation_id": "",
+      "outcome": "Обновлены usedSkills: добавлен практический пример для qmd-memory-retrieval",
+      "artifacts_read": [],
+      "artifacts_written": [
+        "docs/agents/registry.yaml"
+      ],
+      "artifacts_source": "telemetry"
+    },
+    {
+      "timestamp": "2026-03-03T09:58:00Z",
+      "step": "verify",
+      "status": "verify_started",
+      "run_id": "run-1772497559-2",
+      "trace_id": "55d188f5ade346ab981b4acc85dd7798",
+      "recommendation_id": "",
+      "outcome": "Верификация внедрённых изменений",
+      "artifacts_read": [
+        ".logs/agents/analyst-agent.jsonl",
+        "artifacts/agent_telemetry_summary.json"
+      ],
+      "artifacts_written": [
+        "artifacts/agent_cycle_validation_report.json"
+      ],
+      "artifacts_source": "fallback"
+    },
+    {
+      "timestamp": "2026-03-03T10:01:00Z",
+      "step": "verify",
+      "status": "verify_passed",
+      "run_id": "run-1772497559-2",
+      "trace_id": "1cd4d88848724bac8f833aa770261ffa",
+      "recommendation_id": "",
+      "outcome": "Изменения корректны, регрессий нет, usedSkills прошёл schema check",
+      "artifacts_read": [
+        ".logs/agents/analyst-agent.jsonl",
+        "artifacts/agent_telemetry_summary.json"
+      ],
+      "artifacts_written": [
+        "artifacts/agent_cycle_validation_report.json"
+      ],
+      "artifacts_source": "fallback"
+    },
+    {
+      "timestamp": "2026-03-03T10:04:00Z",
+      "step": "learn",
+      "status": "lesson_captured",
+      "run_id": "run-1772497559-2",
+      "trace_id": "eb6f2c641d0e40e5b863552c1b9780c6",
+      "recommendation_id": "",
+      "outcome": "Урок: MCP деградация требует создания задачи в первый же день обнаружения",
+      "artifacts_read": [],
+      "artifacts_written": [
+        "docs/subservices/oap/tasks/lessons/analyst-agent.md"
+      ],
+      "artifacts_source": "telemetry"
+    },
+    {
+      "timestamp": "2026-03-03T10:09:00Z",
+      "step": "finalize",
+      "status": "completed",
+      "run_id": "run-1772497559-2",
+      "trace_id": "2894015918cf4a13bf969e7d8c21bd09",
+      "recommendation_id": "",
+      "outcome": "Цикл завершён. Здоровье агентов: стабильно. MCP context7: задача создана",
+      "artifacts_read": [],
+      "artifacts_written": [
+        "artifacts/agent_telemetry_summary.json",
+        "artifacts/agent_telemetry_summary.md",
+        "artifacts/agent_latest_cycle_analyst.json"
+      ],
+      "artifacts_source": "telemetry"
+    }
+  ],
+  "file_trace": {
+    "edges": [
+      {
+        "step": "plan",
+        "kind": "read",
+        "path": "docs/subservices/oap/ANALYST_OPERATING_PLAN.md",
+        "source": "telemetry"
+      },
+      {
+        "step": "plan",
+        "kind": "read",
+        "path": "docs/agents/registry.yaml",
+        "source": "telemetry"
+      },
+      {
+        "step": "health_check",
+        "kind": "read",
+        "path": "docs/agents/registry.yaml",
+        "source": "telemetry"
+      },
+      {
+        "step": "knowledge_base_check",
+        "kind": "read",
+        "path": "docs/subservices/oap/ANALYST_OPERATING_PLAN.md",
+        "source": "telemetry"
+      },
+      {
+        "step": "improvements_list",
+        "kind": "read",
+        "path": "docs/agents/registry.yaml",
+        "source": "telemetry"
+      },
+      {
+        "step": "execute",
+        "kind": "write",
+        "path": "docs/agents/registry.yaml",
+        "source": "telemetry"
+      },
+      {
+        "step": "verify",
+        "kind": "read",
+        "path": ".logs/agents/analyst-agent.jsonl",
+        "source": "fallback"
+      },
+      {
+        "step": "verify",
+        "kind": "read",
+        "path": "artifacts/agent_telemetry_summary.json",
+        "source": "fallback"
+      },
+      {
+        "step": "verify",
+        "kind": "write",
+        "path": "artifacts/agent_cycle_validation_report.json",
+        "source": "fallback"
+      },
+      {
+        "step": "verify",
+        "kind": "read",
+        "path": ".logs/agents/analyst-agent.jsonl",
+        "source": "fallback"
+      },
+      {
+        "step": "verify",
+        "kind": "read",
+        "path": "artifacts/agent_telemetry_summary.json",
+        "source": "fallback"
+      },
+      {
+        "step": "verify",
+        "kind": "write",
+        "path": "artifacts/agent_cycle_validation_report.json",
+        "source": "fallback"
+      },
+      {
+        "step": "learn",
+        "kind": "write",
+        "path": "docs/subservices/oap/tasks/lessons/analyst-agent.md",
+        "source": "telemetry"
+      },
+      {
+        "step": "finalize",
+        "kind": "write",
+        "path": "artifacts/agent_telemetry_summary.json",
+        "source": "telemetry"
+      },
+      {
+        "step": "finalize",
+        "kind": "write",
+        "path": "artifacts/agent_telemetry_summary.md",
+        "source": "telemetry"
+      },
+      {
+        "step": "finalize",
+        "kind": "write",
+        "path": "artifacts/agent_latest_cycle_analyst.json",
+        "source": "telemetry"
+      }
+    ],
+    "fallback_used": true
+  }
+}

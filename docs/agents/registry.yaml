@@ -1,0 +1,1611 @@
+{
+  "updatedAt": "2026-02-24T18:40:00Z",
+  "source": "registry-manual",
+  "sourceVersion": "v3",
+  "agents": [
+    {
+      "id": "reader-agent",
+      "name": "Разработчик",
+      "role": "Фуллстек разработчик (фронтенд + бэкенд)",
+      "shortDescription": "Реализует UI и backend-интеграции, проверяет сценарии через E2E и поддерживает рабочие контракты данных.",
+      "status": "healthy",
+      "skills": [
+        "playwright",
+        "doc",
+        "gh-address-comments"
+      ],
+      "usedSkills": [
+        {
+          "name": "playwright",
+          "usage": "Проверка реального UI-поведения после изменений в интерфейсе.",
+          "fullText": "Проверка пользовательских сценариев в реальном браузере после UI-изменений: навигация, открытие drawer, фильтры, smoke.",
+          "practicalTasks": [
+            "Обновление Reader UI",
+            "Проверка hash-routing",
+            "Smoke тест deploy flow"
+          ]
+        },
+        {
+          "name": "doc",
+          "usage": "Работа со спецификациями и структурированными требованиями.",
+          "fullText": "Работа со спецификациями и контрактами: извлечение требований, фиксация ограничений и согласование изменений.",
+          "practicalTasks": [
+            "Рефакторинг карточки персонажа",
+            "Обновление Reader UI"
+          ]
+        },
+        {
+          "name": "gh-address-comments",
+          "usage": "Разбор ревью-комментариев и контроль исправлений.",
+          "fullText": "Системный разбор комментариев ревью и закрытие замечаний с проверкой регрессий.",
+          "practicalTasks": [
+            "Обновление Reader UI",
+            "Правки структуры модалки"
+          ]
+        }
+      ],
+      "availableSkills": [
+        {
+          "name": "figma-implement-design",
+          "benefit": "Быстрое и точное внедрение дизайн-макетов в production UI.",
+          "fullText": "Точный перенос дизайна в production-код на основе Figma контекста, переменных и ассетов.",
+          "recommendationBasis": "Нужен для ускорения дизайн-to-code при задачах по UI/UX и снижении визуальных расхождений.",
+          "expectedEffect": "-15% времени на внедрение новых интерфейсов и меньше правок после ревью.",
+          "practicalTasks": [
+            "Улучшение карточки агента",
+            "Обновления Reader UI"
+          ],
+          "link": "https://github.com/GLips/Figma-Context-MCP"
+        },
+        {
+          "name": "security-best-practices",
+          "benefit": "Раннее обнаружение рисков XSS/инъекций/проблем доступа.",
+          "fullText": "Проверка угроз на уровне фронтенда и API: XSS, инъекции, утечки, ошибки авторизации.",
+          "recommendationBasis": "Полезен для снижения security-регрессий в задачах с формами, ссылками и пользовательским вводом.",
+          "expectedEffect": "Снижение критических замечаний ревью по безопасности до 0 в релизном цикле.",
+          "practicalTasks": [
+            "Публичные формы и профили",
+            "Интеграции с внешними ссылками"
+          ],
+          "link": "https://owasp.org/www-project-top-ten/"
+        }
+      ],
+      "usedTools": [
+        {
+          "name": "QMD retrieval",
+          "usage": "Собирает evidence-first контекст по длинной документации до формулировки решения.",
+          "fullText": "Ищет top-k релевантных фрагментов по spec/contracts/runbook и возвращает только подтверждающие выдержки.",
+          "source": "AGENTS.md#qmd-retrieval-policy",
+          "practicalTasks": [
+            "Рефакторинг карточки персонажа",
+            "Проверка архитектурных решений перед merge"
+          ]
+        }
+      ],
+      "availableTools": [],
+      "repositories": [
+        {
+          "name": "bible-web",
+          "url": "https://github.com/example/bible-web",
+          "branch": "main"
+        }
+      ],
+      "mcpServers": [
+        {
+          "name": "supabase",
+          "status": "online"
+        },
+        {
+          "name": "netlify",
+          "status": "online"
+        },
+        {
+          "name": "qmd",
+          "status": "online"
+        }
+      ],
+      "usedMcp": [
+        {
+          "name": "Context7",
+          "status": "reauth_required",
+          "note": "Требуется повторная авторизация для получения актуальной документации.",
+          "practicalTasks": [
+            "Подбор библиотеки React/MUI",
+            "Проверка API-паттернов перед внедрением"
+          ],
+          "impactInNumbers": "Ускоряет подготовку решения по библиотекам в среднем на 10-15 минут на задачу."
+        },
+        {
+          "name": "Supabase",
+          "status": "active",
+          "note": "Используется для проверки контрактов RPC и данных профиля.",
+          "practicalTasks": [
+            "Проверка контрактов RPC",
+            "Проверка структуры данных профиля персонажа"
+          ],
+          "impactInNumbers": "Снижает риск несовпадения UI и данных в интеграционных задачах."
+        },
+        {
+          "name": "QMD",
+          "status": "active",
+          "note": "Используется для retrieval по markdown-контексту (spec/contracts/runbook) с минимальным расходом токенов.",
+          "practicalTasks": [
+            "Поиск релевантных фрагментов в AGENTS/spec/contracts",
+            "Быстрый старт сложных задач"
+          ],
+          "impactInNumbers": "Экономия контекстных токенов: ~20-35% на задачах с длинной документацией."
+        }
+      ],
+      "availableMcp": [
+        {
+          "name": "Netlify",
+          "whyUseful": "Подходит для деплоя и быстрой проверки production-публикации.",
+          "description": "Автоматизирует деплой и проверку доступности production/preview окружений без ручной рутины.",
+          "whenToUse": "Когда в задаче есть публикация изменений и нужен быстрый публичный доступ для проверки.",
+          "expectedEffect": "-25% времени на выпуск и проверку релизов.",
+          "basis": "Повторяющиеся задачи по deploy и smoke после изменений интерфейса.",
+          "practicalTasks": [
+            "Smoke тест deploy flow",
+            "Проверка production URL после релиза"
+          ],
+          "link": "https://docs.netlify.com/",
+          "installComplexity": "Низкая"
+        },
+        {
+          "name": "Figma MCP",
+          "whyUseful": "Полезен для точного переноса дизайн-системы в код.",
+          "description": "Дает доступ к дизайн-контексту и параметрам макета, чтобы реализовывать интерфейс без визуальных потерь.",
+          "whenToUse": "Когда задача связана с новым экраном или доработкой существующего UI по дизайну.",
+          "expectedEffect": "-20% числа правок после дизайн-ревью.",
+          "basis": "UI-задачи требуют точной синхронизации с макетами и единых визуальных правил.",
+          "practicalTasks": [
+            "Улучшение карточки агента",
+            "Редизайн страниц Reader/Profiles"
+          ],
+          "link": "https://help.figma.com/hc/en-us/articles/27468498590999-Use-Model-Context-Protocol-MCP-in-Figma",
+          "installComplexity": "Средняя"
+        }
+      ],
+      "contextRefs": [
+        {
+          "title": "Source of truth: спецификация проекта",
+          "filePath": ".specify/specs/001-oap/spec.md",
+          "pathHint": "Раздел: 7) Operational runbook"
+        },
+        {
+          "title": "Frontend API контракт",
+          "filePath": ".specify/specs/001-oap/contracts/frontend-api.md",
+          "pathHint": "RPC payload и публичные поля"
+        },
+        {
+          "title": "Операционные правила агента",
+          "filePath": "AGENTS.md",
+          "pathHint": "Source Of Truth + правила запуска"
+        },
+        {
+          "title": "Политика QMD retrieval",
+          "filePath": "AGENTS.md",
+          "pathHint": "Раздел: QMD Retrieval Policy (Mandatory for large text context)"
+        }
+      ],
+      "rulesApplied": [
+        {
+          "title": "QMD Retrieval Policy",
+          "location": "AGENTS.md",
+          "description": "Правила evidence-first retrieval: когда использовать QMD и какой budget top-k применять.",
+          "fullText": "",
+          "sourceUrl": null
+        }
+      ],
+      "memoryContext": {
+        "currentTask": {
+          "task_id": "task-1",
+          "goal": "Обновление Reader UI",
+          "task_type": "ui",
+          "context_sla_seconds": 120
+        },
+        "contextAnchors": [
+          {
+            "anchor_id": "anchor-spec",
+            "category": "spec",
+            "title": "Source of truth: спецификация проекта",
+            "filePath": ".specify/specs/001-oap/spec.md",
+            "pathHint": "Раздел: 7) Operational runbook",
+            "whySelected": "Бизнес-границы и правила реализации",
+            "tokens_est": 360,
+            "sourceUrl": null,
+            "freshness": "fresh"
+          },
+          {
+            "anchor_id": "anchor-contract",
+            "category": "contract",
+            "title": "Frontend API контракт",
+            "filePath": ".specify/specs/001-oap/contracts/frontend-api.md",
+            "pathHint": "RPC payload и публичные поля",
+            "whySelected": "Проверка контрактов и полей UI",
+            "tokens_est": 280,
+            "sourceUrl": null,
+            "freshness": "fresh"
+          },
+          {
+            "anchor_id": "anchor-governance",
+            "category": "governance",
+            "title": "Операционные правила агента",
+            "filePath": "AGENTS.md",
+            "pathHint": "Source Of Truth + правила запуска",
+            "whySelected": "Обязательные инженерные правила исполнения",
+            "tokens_est": 320,
+            "sourceUrl": null,
+            "freshness": "fresh"
+          }
+        ],
+        "persistentRules": [
+          {
+            "mandatory": true,
+            "title": "Source of truth: спецификация проекта",
+            "location": ".specify/specs/001-oap/spec.md",
+            "description": "Базовые ограничения проекта",
+            "sourceUrl": null
+          },
+          {
+            "mandatory": true,
+            "title": "Операционные правила агента",
+            "location": "AGENTS.md",
+            "description": "Правила выполнения задач в репозитории",
+            "sourceUrl": null
+          }
+        ],
+        "retrieval": {
+          "mode": "hybrid",
+          "tool": "qmd",
+          "top_k": 8,
+          "latency_ms": null,
+          "qualitySignals": [
+            {
+              "score": null,
+              "line_refs": [
+                ".specify/specs/001-oap/spec.md:1"
+              ],
+              "coverage": 0.67
+            }
+          ]
+        },
+        "decisionUsage": {
+          "decisionLinks": [
+            {
+              "anchor_id": "anchor-spec",
+              "usedInDecision": true,
+              "taskEventIds": [
+                "task-1"
+              ],
+              "reviewErrorIds": [
+                "task-1"
+              ],
+              "improvementIds": [
+                "Авто-проверка локализации статусов"
+              ]
+            },
+            {
+              "anchor_id": "anchor-governance",
+              "usedInDecision": true,
+              "taskEventIds": [
+                "task-1",
+                "task-3"
+              ],
+              "reviewErrorIds": [
+                "task-3"
+              ],
+              "improvementIds": [
+                "Шаблон контекста задачи"
+              ]
+            }
+          ]
+        },
+        "economics": {
+          "total_context_tokens": 960,
+          "useful_context_tokens": 640,
+          "context_efficiency": 0.6667,
+          "tokens_per_task": 192,
+          "cached_tokens": null,
+          "cache_hit_rate": null
+        },
+        "riskControl": {
+          "riskFlags": [],
+          "toolPolicy": {
+            "profile": "balanced",
+            "allow": [
+              "read",
+              "search"
+            ],
+            "deny": [
+              "destructive ops"
+            ],
+            "approval_mode": "required_for_risky"
+          }
+        },
+        "nextActions": [
+          {
+            "title": "Связать рекомендации с исходами задач",
+            "owner": "analyst-agent",
+            "due_date": "2026-03-03",
+            "expected_effect": "Понимание эффективности рекомендаций по task outcomes."
+          }
+        ]
+      },
+      "processLink": {
+        "title": "Схема работы агента (BPMN)",
+        "url": "#/bpmn"
+      },
+      "tasks": {
+        "queued": 2,
+        "running": 1,
+        "retrying": 0,
+        "waiting_review": 1,
+        "blocked": 0,
+        "waiting_external": 1,
+        "overdue": 0
+      },
+      "taskEvents": [
+        {
+          "id": "task-1",
+          "title": "Обновление Reader UI",
+          "completedAt": "2026-02-24T14:00:00Z",
+          "reviewErrors": 1
+        },
+        {
+          "id": "task-2",
+          "title": "Рефакторинг карточки персонажа",
+          "completedAt": "2026-02-24T11:20:00Z",
+          "reviewErrors": 0
+        },
+        {
+          "id": "task-3",
+          "title": "Проверка hash-routing",
+          "completedAt": "2026-02-23T17:40:00Z",
+          "reviewErrors": 1
+        },
+        {
+          "id": "task-4",
+          "title": "Smoke тест deploy flow",
+          "completedAt": "2026-02-22T13:10:00Z",
+          "reviewErrors": 0
+        },
+        {
+          "id": "task-5",
+          "title": "Правки структуры модалки",
+          "completedAt": "2026-02-21T09:15:00Z",
+          "reviewErrors": 0
+        }
+      ],
+      "analystRecommendations": [
+        "Усилить навык playwright: добавить стабильные сценарии для drawer/tab переключений и фильтров.",
+        "Улучшить навык архитектурной верификации: перед merge проверять изменения контрактов и generated manifests.",
+        "Снизить количество review-ошибок по локализации: ввести чек-лист русификации статусов перед PR.",
+        "Для длинных текстовых контекстов использовать QMD (top-k snippets) перед генерацией ответа, чтобы сократить токены без потери качества."
+      ],
+      "improvements": [
+        {
+          "id": "imp-reader-status-locale",
+          "title": "Авто-проверка локализации статусов",
+          "problem": "Часть статусов периодически остается на английском в RU-интерфейсе.",
+          "solution": "Добавить линт-правило на ключевые статусные чипы и e2e ассерты по русским текстам.",
+          "effect": "Снижение регрессий в UX и быстреее принятие изменений ревьюером.",
+          "priority": "Высокий"
+        },
+        {
+          "id": "imp-reader-task-context-template",
+          "title": "Шаблон контекста задачи",
+          "problem": "На старте задач агент тратит время на ручной сбор контекста по файлам.",
+          "solution": "Добавить единый стартовый шаблон: spec -> contracts -> целевая страница -> тесты.",
+          "effect": "Стабильное время старта и меньше пропущенных зависимостей.",
+          "priority": "Средний"
+        },
+        {
+          "id": "imp-reader-review-analytics",
+          "title": "Сервис аналитики review-ошибок",
+          "problem": "Рекомендации формируются вручную после накопления ошибок.",
+          "solution": "Построить автоматический отчет по review findings и сопоставление с навыками.",
+          "effect": "Быстрая персональная прокачка агента по фактическим ошибкам.",
+          "priority": "Средний"
+        }
+      ],
+      "workflowPolicy": {
+        "planDefault": true,
+        "replanOnDeviation": true,
+        "verifyBeforeDone": true,
+        "selfImprovementLoop": true,
+        "autonomousBugfix": true
+      },
+      "learningArtifacts": {
+        "todoPath": "docs/subservices/oap/tasks/todo.md",
+        "lessonsPath": "docs/subservices/oap/tasks/lessons/reader-agent.md",
+        "lastLessonAt": null
+      },
+      "workflowMetricsCatalog": [
+        "plan_coverage_rate",
+        "verification_pass_rate",
+        "lesson_capture_rate",
+        "replan_rate",
+        "autonomous_bugfix_rate",
+        "elegance_gate_rate"
+      ],
+      "doneGatePolicy": {
+        "mode": "soft_warning",
+        "requiredChecks": ["plan", "verify", "lesson"],
+        "fallbackStatus": "in_review"
+      },
+      "source": "registry+tasks-sync",
+      "updatedAt": "2026-02-24T18:35:00Z",
+      "runbook": "Проверить ошибки deploy и состояние MCP-интеграций.",
+      "trackerUrl": "https://github.com/example/bible-web/issues"
+    },
+    {
+      "id": "data-agent",
+      "name": "Data Agent",
+      "role": "ETL и качество данных",
+      "shortDescription": "Поддерживает ETL-пайплайн, качество данных и стабильность derived-таблиц.",
+      "status": "degraded",
+      "skills": [
+        "security-best-practices",
+        "doc",
+        "spreadsheet"
+      ],
+      "usedSkills": [
+        {
+          "name": "spreadsheet",
+          "usage": "Анализ QA-отчетов по синонимам и life facts.",
+          "fullText": "Анализ и сравнение табличных отчетов качества данных, поиск аномалий и drift между релизами.",
+          "practicalTasks": [
+            "Пересборка синонимов"
+          ]
+        }
+      ],
+      "availableSkills": [
+        {
+          "name": "playwright",
+          "benefit": "Проверка отображения ETL-результатов в UI.",
+          "fullText": "Проверка визуального результата ETL в интерфейсе после пересборки индексов и справочников.",
+          "recommendationBasis": "Позволяет поймать регрессии отображения данных после ETL, которые не видны по SQL-логам.",
+          "expectedEffect": "Снижение инцидентов \"данные есть в БД, но отображение сломано\".",
+          "practicalTasks": [
+            "Проверка карточек после ETL",
+            "Проверка фильтров и таблиц после пересчета данных"
+          ],
+          "link": "https://playwright.dev/docs/intro"
+        }
+      ],
+      "usedTools": [
+        {
+          "name": "QMD retrieval",
+          "usage": "Находит релевантные runbook/ADR/contracts фрагменты перед root-cause анализом ETL.",
+          "fullText": "Evidence-first retrieval по текстовым артефактам с фильтрацией top-k сигналов для инцидент-анализа.",
+          "source": "AGENTS.md#qmd-retrieval-policy",
+          "practicalTasks": [
+            "Разбор деградации Supabase",
+            "Диагностика проблем quality-check"
+          ]
+        }
+      ],
+      "availableTools": [],
+      "repositories": [
+        {
+          "name": "bible-etl",
+          "url": "https://github.com/example/bible-etl",
+          "branch": "main"
+        }
+      ],
+      "mcpServers": [
+        {
+          "name": "supabase",
+          "status": "degraded"
+        },
+        {
+          "name": "qmd",
+          "status": "online"
+        }
+      ],
+      "usedMcp": [
+        {
+          "name": "Supabase",
+          "status": "degraded",
+          "note": "Нестабильный ответ на части запросов.",
+          "practicalTasks": [
+            "Проверка health SQL",
+            "Проверка ETL-таблиц после пересборки"
+          ],
+          "impactInNumbers": "Позволяет сократить время диагностики сбоев ETL на 15-20%."
+        },
+        {
+          "name": "QMD",
+          "status": "active",
+          "note": "Используется для evidence-first поиска по текстовым артефактам ETL и runbook.",
+          "practicalTasks": [
+            "Поиск runbook шагов по восстановлению",
+            "Сбор контекста для root-cause"
+          ],
+          "impactInNumbers": "Экономия токенов при аналитике инцидента: ~18-30%."
+        }
+      ],
+      "availableMcp": [
+        {
+          "name": "Context7",
+          "whyUseful": "Актуальные примеры по SQL и tooling.",
+          "description": "Дает актуальные примеры по SQL/tooling и помогает быстро находить корректные паттерны.",
+          "whenToUse": "Когда нужно принять решение по библиотеке, SQL-инструменту или формату данных.",
+          "expectedEffect": "-10% времени на поиск рабочих решений по инструментам.",
+          "basis": "Часть ETL-задач требует быстрых проверок по актуальной документации.",
+          "practicalTasks": [
+            "Пересборка синонимов",
+            "Оптимизация ETL-пайплайна"
+          ],
+          "link": "https://context7.com/",
+          "installComplexity": "Низкая"
+        }
+      ],
+      "contextRefs": [
+        {
+          "title": "Контракт datasets",
+          "filePath": ".specify/specs/001-oap/contracts/datasets.md",
+          "pathHint": "Форматы входных датасетов"
+        },
+        {
+          "title": "QMD policy для текстового retrieval",
+          "filePath": "AGENTS.md",
+          "pathHint": "Раздел: QMD Retrieval Policy (Mandatory for large text context)"
+        }
+      ],
+      "rulesApplied": [
+        {
+          "title": "QMD Retrieval Policy",
+          "location": "AGENTS.md",
+          "description": "Правила evidence-first retrieval для длинного markdown-контекста.",
+          "fullText": "",
+          "sourceUrl": null
+        }
+      ],
+      "processLink": {
+        "title": "Схема работы ETL (BPMN)",
+        "url": "#/bpmn"
+      },
+      "tasks": {
+        "queued": 1,
+        "running": 1,
+        "retrying": 1,
+        "waiting_review": 2,
+        "blocked": 1,
+        "waiting_external": 0,
+        "overdue": 1
+      },
+      "taskEvents": [
+        {
+          "id": "data-task-1",
+          "title": "Пересборка синонимов",
+          "completedAt": "2026-02-24T10:20:00Z",
+          "reviewErrors": 1
+        }
+      ],
+      "analystRecommendations": [
+        "Добавить автоматическую проверку integrity после ETL шагов.",
+        "Использовать QMD перед разбором инцидентов ETL, чтобы извлекать только релевантные фрагменты из runbook и спецификаций."
+      ],
+      "improvements": [
+        {
+          "id": "imp-data-etl-checkpoints",
+          "title": "Разбивка длинных ETL-джоб",
+          "problem": "Сложно локализовать ошибку в большом пайплайне.",
+          "solution": "Разделить на этапы с явными checkpoints и retry policy.",
+          "effect": "Быстрее root-cause и меньше времени простоя.",
+          "priority": "Высокий"
+        }
+      ],
+      "workflowPolicy": {
+        "planDefault": true,
+        "replanOnDeviation": true,
+        "verifyBeforeDone": true,
+        "selfImprovementLoop": true,
+        "autonomousBugfix": true
+      },
+      "learningArtifacts": {
+        "todoPath": "docs/subservices/oap/tasks/todo.md",
+        "lessonsPath": "docs/subservices/oap/tasks/lessons/data-agent.md",
+        "lastLessonAt": null
+      },
+      "workflowMetricsCatalog": [
+        "plan_coverage_rate",
+        "verification_pass_rate",
+        "lesson_capture_rate",
+        "replan_rate",
+        "autonomous_bugfix_rate",
+        "elegance_gate_rate"
+      ],
+      "doneGatePolicy": {
+        "mode": "soft_warning",
+        "requiredChecks": ["plan", "verify", "lesson"],
+        "fallbackStatus": "in_review"
+      },
+      "source": "registry+manual-ops",
+      "updatedAt": "2026-02-24T18:32:00Z",
+      "runbook": "Проверить latest ETL run, затем пересчитать FTS и QC.",
+      "trackerUrl": "https://github.com/example/bible-etl/issues"
+    },
+    {
+      "id": "ops-agent",
+      "name": "Ops Agent",
+      "role": "Деплой, мониторинг и инфраструктура",
+      "shortDescription": "Контролирует доставку релизов, доступность сервисов и инциденты.",
+      "status": "healthy",
+      "skills": [
+        "gh-address-comments",
+        "playwright",
+        "sentry"
+      ],
+      "usedSkills": [
+        {
+          "name": "sentry",
+          "usage": "Разбор production-инцидентов и ошибок.",
+          "fullText": "Чтение и анализ production-инцидентов, приоритизация исправлений и контроль регрессий.",
+          "practicalTasks": [
+            "Проверка Netlify deploy",
+            "Анализ инцидентов после релиза"
+          ]
+        }
+      ],
+      "availableSkills": [
+        {
+          "name": "security-best-practices",
+          "benefit": "Профилактика уязвимостей инфраструктуры.",
+          "fullText": "Проверка инфраструктурных рисков: управление токенами, доступами и безопасной конфигурацией окружений.",
+          "recommendationBasis": "Полезен для снижения риска инцидентов на уровне deploy и интеграций.",
+          "expectedEffect": "Снижение вероятности инцидентов из-за конфигурации окружений.",
+          "practicalTasks": [
+            "Настройка публичных сервисов",
+            "Ревью инфраструктурных изменений"
+          ],
+          "link": "https://owasp.org/"
+        }
+      ],
+      "usedTools": [],
+      "availableTools": [],
+      "repositories": [
+        {
+          "name": "bible-ops",
+          "url": "https://github.com/example/bible-ops",
+          "branch": "main"
+        }
+      ],
+      "mcpServers": [
+        {
+          "name": "netlify",
+          "status": "online"
+        },
+        {
+          "name": "github",
+          "status": "online"
+        }
+      ],
+      "usedMcp": [
+        {
+          "name": "Netlify",
+          "status": "active",
+          "note": "Деплой production и preview окружений.",
+          "practicalTasks": [
+            "Проверка production deploy",
+            "Проверка preview окружений"
+          ],
+          "impactInNumbers": "Ускоряет цикл публикации и проверки релиза до 20%."
+        }
+      ],
+      "availableMcp": [
+        {
+          "name": "Supabase",
+          "whyUseful": "Проверка health DB и RLS-политик.",
+          "description": "Проверка состояния БД и политик доступа для быстрого root-cause инцидентов данных.",
+          "whenToUse": "Когда инцидент связан с данными, правами доступа или деградацией RPC.",
+          "expectedEffect": "Снижение времени локализации инцидента на 15-25%.",
+          "basis": "Ops-задачи регулярно пересекаются с проверкой БД и правил доступа.",
+          "practicalTasks": [
+            "Разбор инцидентов после релиза",
+            "Проверка деградации API"
+          ],
+          "link": "https://supabase.com/docs",
+          "installComplexity": "Низкая"
+        },
+        {
+          "name": "QMD",
+          "whyUseful": "Быстрый поиск по runbook/документации инцидентов без ручного перебора файлов.",
+          "description": "Быстрый поиск по runbook и postmortem-документам без ручного перебора файлов.",
+          "whenToUse": "При инцидентах и на этапе подготовки чек-листа релиза.",
+          "expectedEffect": "-15% времени на сбор операционного контекста.",
+          "basis": "Часто требуется быстро найти точный шаг восстановления и связанные ограничения.",
+          "practicalTasks": [
+            "Реакция на инцидент",
+            "Подготовка release-checklist"
+          ],
+          "link": "https://github.com/tobi/qmd",
+          "installComplexity": "Низкая"
+        }
+      ],
+      "contextRefs": [
+        {
+          "title": "How to run",
+          "filePath": "docs/how-to-run.md",
+          "pathHint": "Ops Hub + деплой"
+        }
+      ],
+      "processLink": {
+        "title": "Схема release-процесса (BPMN)",
+        "url": "#/bpmn"
+      },
+      "tasks": {
+        "queued": 0,
+        "running": 1,
+        "retrying": 0,
+        "waiting_review": 1,
+        "blocked": 0,
+        "waiting_external": 0,
+        "overdue": 0
+      },
+      "taskEvents": [
+        {
+          "id": "ops-task-1",
+          "title": "Проверка Netlify deploy",
+          "completedAt": "2026-02-24T09:45:00Z",
+          "reviewErrors": 0
+        }
+      ],
+      "analystRecommendations": [
+        "Добавить ежедневный health-report по MCP серверу Netlify и Supabase."
+      ],
+      "improvements": [
+        {
+          "id": "imp-ops-deploy-smoke",
+          "title": "Автоматизация smoke после деплоя",
+          "problem": "Регрессии обнаруживаются после ручной проверки.",
+          "solution": "Запускать автоматический UI smoke сразу после production deploy.",
+          "effect": "Быстрее откат и меньше инцидентов для пользователей.",
+          "priority": "Средний"
+        }
+      ],
+      "workflowPolicy": {
+        "planDefault": true,
+        "replanOnDeviation": true,
+        "verifyBeforeDone": true,
+        "selfImprovementLoop": true,
+        "autonomousBugfix": true
+      },
+      "learningArtifacts": {
+        "todoPath": "docs/subservices/oap/tasks/todo.md",
+        "lessonsPath": "docs/subservices/oap/tasks/lessons/ops-agent.md",
+        "lastLessonAt": null
+      },
+      "workflowMetricsCatalog": [
+        "plan_coverage_rate",
+        "verification_pass_rate",
+        "lesson_capture_rate",
+        "replan_rate",
+        "autonomous_bugfix_rate",
+        "elegance_gate_rate"
+      ],
+      "doneGatePolicy": {
+        "mode": "soft_warning",
+        "requiredChecks": ["plan", "verify", "lesson"],
+        "fallbackStatus": "in_review"
+      },
+      "source": "registry+manual-ops",
+      "updatedAt": "2026-02-24T18:31:00Z",
+      "runbook": "При деградации MCP: проверка токена и перезапуск сервера.",
+      "trackerUrl": "https://github.com/example/bible-ops/issues"
+    },
+    {
+      "id": "designer-agent",
+      "name": "Продакт дизайнер",
+      "role": "Дизайн-система, UX понятность и визуальная консистентность",
+      "shortDescription": "Следит за соответствием UI киту, понятностью интерфейса и информационной чистотой экранов во всех UI-изменениях.",
+      "status": "healthy",
+      "skills": [
+        "figma-implement-design",
+        "playwright",
+        "doc"
+      ],
+      "usedSkills": [
+        {
+          "name": "figma-implement-design",
+          "usage": "Переносит решения из дизайн-контекста в UI без потери структуры и состояний компонентов.",
+          "fullText": "Проверка и внедрение design-to-code с фокусом на component reuse, states и token consistency.",
+          "practicalTasks": [
+            "Обновление карточки агента в ОАП",
+            "Проверка консистентности табов и статусов"
+          ]
+        },
+        {
+          "name": "playwright",
+          "usage": "Проверяет в браузере понятность ключевых сценариев и доступность UI-состояний.",
+          "fullText": "E2E-валидация интерфейса после изменений: навигация, фильтры, модалки, подсказки и статусные состояния.",
+          "practicalTasks": [
+            "Smoke проверка #/agents",
+            "Проверка читаемости карточки в мобильном и desktop режимах"
+          ]
+        }
+      ],
+      "availableSkills": [
+        {
+          "name": "figma",
+          "benefit": "Ускоряет получение контекста по макету и переменным дизайн-системы.",
+          "recommendationBasis": "Нужен для точной проверки соответствия UI kit перед релизом UI-изменений.",
+          "expectedEffect": "Снижение количества визуальных регрессий и правок после ревью.",
+          "fullText": "Доступ к контексту Figma (узлы, переменные, ассеты) для верификации UI-реализации.",
+          "practicalTasks": [
+            "Проверка токенов компонентов",
+            "Сверка финальной верстки с макетом"
+          ],
+          "link": "https://help.figma.com/hc/en-us/articles/27468498590999-Use-Model-Context-Protocol-MCP-in-Figma"
+        },
+        {
+          "name": "security-best-practices",
+          "benefit": "Снижает риск небезопасных UI-паттернов в формах и отображении пользовательского ввода.",
+          "recommendationBasis": "Полезно для UX-паттернов, где есть ввод данных, ссылки и динамический контент.",
+          "expectedEffect": "Меньше критичных замечаний по безопасности на этапе review.",
+          "fullText": "Проверка best-practice на стороне интерфейса: XSS, небезопасные ссылки, небезопасный copy/paste UX.",
+          "practicalTasks": [
+            "Проверка внешних ссылок в UI",
+            "Ревью форм и tooltip-контента"
+          ],
+          "link": "https://owasp.org/www-project-top-ten/"
+        }
+      ],
+      "usedTools": [],
+      "availableTools": [
+        {
+          "name": "QMD retrieval",
+          "benefit": "Ускоряет сбор требований из DESIGN_RULES/README/operating plan перед UX-ревью.",
+          "recommendationBasis": "Полезен для evidence-first проверки правил интерфейса по нескольким документам.",
+          "expectedEffect": "Снижение времени на сбор контекста и меньше пропущенных ограничений перед релизом.",
+          "fullText": "Инструмент для семантического поиска top-k релевантных фрагментов в markdown-документах.",
+          "source": "AGENTS.md#qmd-retrieval-policy",
+          "practicalTasks": [
+            "Поиск требований в DESIGN_RULES/README",
+            "Проверка договоренностей по UX copy"
+          ]
+        }
+      ],
+      "repositories": [
+        {
+          "name": "bible-ops",
+          "url": "https://github.com/example/bible-ops",
+          "branch": "main"
+        }
+      ],
+      "mcpServers": [
+        {
+          "name": "figma",
+          "status": "online"
+        },
+        {
+          "name": "qmd",
+          "status": "online"
+        },
+        {
+          "name": "playwright",
+          "status": "online"
+        }
+      ],
+      "usedMcp": [
+        {
+          "name": "Figma MCP",
+          "status": "active",
+          "note": "Используется для сверки реализации с дизайн-системой и компонентными состояниями.",
+          "practicalTasks": [
+            "Проверка карточки агента",
+            "Сверка типографики и отступов"
+          ],
+          "impactInNumbers": "Снижает число пост-ревью UI-правок на 20-30%."
+        },
+        {
+          "name": "QMD",
+          "status": "active",
+          "note": "Используется для evidence-first проверки правил UI и операционных ограничений.",
+          "practicalTasks": [
+            "Поиск требований в DESIGN_RULES/README",
+            "Проверка договоренностей по UX copy"
+          ],
+          "impactInNumbers": "Экономия времени на сбор контекста по докам: ~15-25%."
+        }
+      ],
+      "availableMcp": [
+        {
+          "name": "Context7",
+          "whyUseful": "Актуальные best-practice по UI-библиотекам и компонентам.",
+          "description": "Позволяет быстро проверять обновленные рекомендации по MUI/Material и смежным инструментам.",
+          "whenToUse": "При изменениях в компонентах, состояниях, accessibility и UI-паттернах.",
+          "expectedEffect": "Снижение устаревших решений и ускорение проектирования UI-правок.",
+          "basis": "UI-изменения требуют подтверждения актуальных практик перед внедрением.",
+          "practicalTasks": [
+            "Проверка рекомендаций по MUI компонентам",
+            "Валидация UX-паттернов"
+          ],
+          "link": "https://context7.com/",
+          "installComplexity": "Низкая"
+        }
+      ],
+      "contextRefs": [
+        {
+          "title": "ОАП: описание подпроекта",
+          "filePath": "docs/subservices/oap/README.md",
+          "pathHint": "Каноническая структура карточки агента и правила отображения"
+        },
+        {
+          "title": "ОАП: правила дизайна",
+          "filePath": "docs/subservices/oap/DESIGN_RULES.md",
+          "pathHint": "Reuse-first, traceability и правила UX copy"
+        },
+        {
+          "title": "ОАП: операционный стандарт продакт дизайнера",
+          "filePath": "docs/subservices/oap/DESIGNER_OPERATING_PLAN.md",
+          "pathHint": "Процесс по которому работает ИИ агент, UI gate и критерии понятности интерфейса"
+        }
+      ],
+      "rulesApplied": [
+        {
+          "title": "Операционный стандарт designer-agent",
+          "location": "docs/subservices/oap/DESIGNER_OPERATING_PLAN.md",
+          "description": "Канонический процесс дизайн-ревью, UI gate и правила понятности интерфейсов.",
+          "fullText": "",
+          "sourceUrl": null
+        },
+        {
+          "title": "QMD Retrieval Policy",
+          "location": "AGENTS.md",
+          "description": "Регламент evidence-first retrieval при поиске правил по нескольким документам.",
+          "fullText": "",
+          "sourceUrl": null
+        }
+      ],
+      "processLink": {
+        "title": "Схема процесса улучшения интерфейсов (BPMN)",
+        "url": "#/bpmn"
+      },
+      "tasks": {
+        "queued": 1,
+        "running": 1,
+        "retrying": 0,
+        "waiting_review": 1,
+        "blocked": 0,
+        "waiting_external": 0,
+        "overdue": 0
+      },
+      "taskEvents": [
+        {
+          "id": "designer-task-1",
+          "title": "Проверка modern-шаблона карточки агента",
+          "completedAt": "2026-02-26T10:20:00Z",
+          "reviewErrors": 0
+        },
+        {
+          "id": "designer-task-2",
+          "title": "Упрощение текста и подсказок в UI карточки",
+          "completedAt": "2026-02-26T12:10:00Z",
+          "reviewErrors": 0
+        }
+      ],
+      "analystRecommendations": [
+        "Фиксировать tooltip/inline-help для терминов и метрик, которые могут быть неочевидны пользователю.",
+        "Контролировать информационную плотность карточки: только критично важные блоки в первом экране.",
+        "Проверять every UI change на соответствие UI kit и единым state-паттернам."
+      ],
+      "operatingPlan": {
+        "mission": "Обеспечивать понятный, единообразный и проверяемый UX во всех UI-изменениях ОАП.",
+        "dailyLoop": [
+          "started: запуск дизайн-цикла с telemetry run",
+          "Проверка входящих UI-изменений и их соответствия UI kit",
+          "Проверка информационной иерархии: важное видно сразу, детали через progressive disclosure",
+          "Проверка терминов, метрик и действий на понятность для пользователя",
+          "Добавление tooltip/inline-help там, где есть риск неоднозначной трактовки",
+          "Проверка доступности и консистентности состояний компонентов",
+          "Передача обязательных рекомендаций в задачи и контроль внедрения",
+          "Проверка эффекта по UX-метрикам и review feedback",
+          "completed: закрытие цикла с фиксацией результатов"
+        ],
+        "sourcePolicy": {
+          "mode": "whitelist + verification",
+          "whitelist": [
+            "Material 3 official sources",
+            "Официальные docs MUI",
+            "Внутренние правила ОАП (README + DESIGN_RULES + operating plans)"
+          ],
+          "updateRule": "Новые UX-паттерны принимаются только после проверки совместимости с UI kit и usability.",
+          "validationCriteria": [
+            "соответствие UI kit",
+            "понятность интерфейса",
+            "измеримый UX-эффект"
+          ]
+        },
+        "notificationPolicy": {
+          "mode": "critical + daily_digest",
+          "criticalCases": [
+            "UI-изменение нарушает UI kit",
+            "Ключевой сценарий пользователя стал менее понятным",
+            "Отсутствуют обязательные подсказки в неоднозначных местах"
+          ],
+          "digestFields": [
+            "что проверено",
+            "что исправлено",
+            "что отложено",
+            "где требуются продуктовые решения"
+          ]
+        },
+        "improvementLifecycle": [
+          "suggested",
+          "validated",
+          "scheduled",
+          "applied",
+          "verified",
+          "deferred",
+          "rejected",
+          "archived"
+        ],
+        "metricsCatalog": {
+          "agents": [
+            "review_error_rate",
+            "tasks_in_work",
+            "tasks_on_control",
+            "overdue",
+            "recommendation_action_rate",
+            "regression_rate"
+          ],
+          "analyst": [
+            "ui_kit_compliance_rate",
+            "ux_clarity_score",
+            "tooltip_coverage_rate",
+            "interaction_consistency_rate",
+            "design_review_reopen_rate"
+          ]
+        },
+        "decisionRules": [
+          "UI-изменение без проверки на UI kit не переводится в done.",
+          "Если термин/метрика может трактоваться неоднозначно, нужен tooltip или inline-help.",
+          "На первый экран карточки выносится только приоритетная и понятная информация.",
+          "Решения принимаются только при наличии проверяемого UX-эффекта."
+        ]
+      },
+      "workflowPolicy": {
+        "planDefault": true,
+        "replanOnDeviation": true,
+        "verifyBeforeDone": true,
+        "selfImprovementLoop": true,
+        "autonomousBugfix": true
+      },
+      "learningArtifacts": {
+        "todoPath": "docs/subservices/oap/tasks/todo.md",
+        "lessonsPath": "docs/subservices/oap/tasks/lessons/designer-agent.md",
+        "lastLessonAt": null
+      },
+      "workflowMetricsCatalog": [
+        "plan_coverage_rate",
+        "verification_pass_rate",
+        "lesson_capture_rate",
+        "replan_rate",
+        "autonomous_bugfix_rate",
+        "elegance_gate_rate"
+      ],
+      "doneGatePolicy": {
+        "mode": "soft_warning",
+        "requiredChecks": ["plan", "verify", "lesson"],
+        "fallbackStatus": "in_review"
+      },
+      "improvements": [
+        {
+          "id": "imp-designer-tooltip-standard",
+          "title": "Единый стандарт tooltip и inline-help",
+          "problem": "Пользователи не всегда однозначно понимают термины и метрики интерфейса.",
+          "solution": "Ввести обязательный UX-гейт: для неоднозначных терминов добавлять tooltip/inline-help с кратким объяснением.",
+          "effect": "Снижение количества уточняющих вопросов и ошибок интерпретации UI.",
+          "priority": "Высокий",
+          "ownerSection": "Навыки и правила",
+          "detectionBasis": "Повторяющиеся замечания в ревью о непонятных label/метриках и действиях.",
+          "targetMetric": "ux_clarity_score",
+          "baselineWindow": "last_14_days",
+          "expectedDelta": ">= 20% роста понятности ключевых интерфейсных блоков.",
+          "validationDate": "2026-03-20",
+          "promptTitle": "Внедрение обязательного стандарта tooltip/inline-help",
+          "promptPath": "docs/subservices/oap/DESIGN_RULES.md",
+          "promptSourceUrl": null,
+          "promptMarkdown": "# Внедрение стандарта tooltip/inline-help\n\nЦель:\n- устранить неоднозначное понимание терминов и метрик в интерфейсе.\n\nЗадача:\n1. Выявить блоки UI с риском неоднозначной трактовки.\n2. Добавить tooltip или inline-help с коротким объяснением пользы и смысла.\n3. Проверить, что подсказки не перегружают интерфейс и доступны в ключевых сценариях.\n4. Зафиксировать изменения в документации ОАП.\n\nКритерии приемки:\n- ключевые неоднозначные термины закрыты подсказками;\n- интерфейс остался компактным и читаемым;\n- изменения подтверждены на UI-ревью.",
+          "ice": { "impact": 9, "confidence": 8, "ease": 7 }
+        },
+        {
+          "id": "imp-designer-card-density",
+          "title": "Контроль информационной плотности карточки",
+          "problem": "На карточке агента может появляться второстепенная информация, ухудшающая читаемость.",
+          "solution": "Утвердить правило: приоритетные данные показываются сразу, детали — через progressive disclosure.",
+          "effect": "Более быстрый обзор состояния агента и меньше когнитивной нагрузки.",
+          "priority": "Средний",
+          "ownerSection": "Логика работы всех карточек (общая рекомендация)",
+          "detectionBasis": "Часть карточек перегружена деталями в первом экране без явного приоритета.",
+          "targetMetric": "ui_kit_compliance_rate",
+          "baselineWindow": "last_14_days",
+          "expectedDelta": ">= 15% улучшения скорости ориентирования по карточке.",
+          "validationDate": "2026-03-20",
+          "promptTitle": "Оптимизация информационной плотности карточки агента",
+          "promptPath": "docs/subservices/oap/README.md",
+          "promptSourceUrl": null,
+          "promptMarkdown": "# Оптимизация информационной плотности карточки\n\nЦель:\n- сделать карточку агента проще для восприятия без потери полезной информации.\n\nЗадача:\n1. Разделить контент на первичный (сразу видимый) и вторичный (по раскрытию).\n2. Сократить повторяющиеся блоки и неоперационный текст.\n3. Проверить, что важные показатели и действия видны без прокрутки.\n4. Зафиксировать структуру в документации.\n\nКритерии приемки:\n- ключевые KPI и статусы читаются сразу;\n- вторичные детали доступны через раскрытие;\n- карточка соответствует правилам OAP design.",
+          "ice": { "impact": 8, "confidence": 8, "ease": 6 }
+        }
+      ],
+      "source": "registry+manual-design",
+      "updatedAt": "2026-02-26T21:00:00Z",
+      "runbook": "Проверить соответствие UI kit, затем подтвердить понятность интерфейса и полноту подсказок.",
+      "trackerUrl": "https://github.com/example/bible-ops/issues",
+      "notes": "Карточка должна рендериться в modern-режиме как у analyst-agent."
+    },
+    {
+      "id": "analyst-agent",
+      "name": "Аналитик",
+      "role": "Аналитик качества агентной системы",
+      "shortDescription": "Анализирует задачи, review-ошибки и контекст проекта, чтобы выдавать проверяемые рекомендации по улучшению.",
+      "status": "healthy",
+      "skills": [
+        "doc",
+        "spreadsheet",
+        "security-best-practices"
+      ],
+      "usedSkills": [
+        {
+          "name": "doc",
+          "usage": "Фиксирует структуру рекомендаций и архитектурные изменения в формате, удобном для команды.",
+          "fullText": "Стандартизация описаний: проблема, основание, действие, ожидаемый эффект, метрики проверки.",
+          "practicalTasks": [
+            "Подготовка архитектуры карточки агента",
+            "Подготовка roadmap улучшений"
+          ]
+        }
+      ],
+      "availableSkills": [
+        {
+          "name": "playwright",
+          "benefit": "Позволяет автоматически проверять гипотезы аналитики в UI после внедрения изменений.",
+          "recommendationBasis": "Нужен для замыкания цикла “рекомендация -> внедрение -> проверка результата”.",
+          "expectedEffect": "Сокращение времени проверки гипотез на 20-30%.",
+          "fullText": "E2E-проверка пользовательских сценариев и регрессий интерфейса в реальном браузере.",
+          "practicalTasks": [
+            "Проверка новой карточки агента",
+            "Проверка фильтров и KPI-блоков"
+          ],
+          "link": "https://playwright.dev/docs/intro"
+        },
+        {
+          "name": "sentry",
+          "benefit": "Дает данные о production-инцидентах для приоритизации улучшений.",
+          "recommendationBasis": "Полезно для ранжирования рекомендаций по реальному impact в продакшене.",
+          "expectedEffect": "Более точный приоритет улучшений и снижение инцидентов.",
+          "fullText": "Сбор и анализ событий ошибок для поиска системных причин деградации.",
+          "practicalTasks": [
+            "Приоритизация критичных улучшений",
+            "Подготовка anti-regression рекомендаций"
+          ],
+          "link": "https://docs.sentry.io/"
+        }
+      ],
+      "usedTools": [
+        {
+          "name": "QMD retrieval",
+          "usage": "Собирает evidence-first контекст по документам и runbook перед формированием рекомендации.",
+          "fullText": "Поиск релевантных фрагментов в документации и спецификациях с фокусом на доказуемость вывода.",
+          "source": "AGENTS.md#qmd-retrieval-policy",
+          "practicalTasks": [
+            "Анализ причин review-ошибок",
+            "Подготовка рекомендаций по MCP и навыкам"
+          ]
+        }
+      ],
+      "availableTools": [],
+      "repositories": [
+        {
+          "name": "bible-ops",
+          "url": "https://github.com/example/bible-ops",
+          "branch": "main"
+        }
+      ],
+      "mcpServers": [
+        {
+          "name": "qmd",
+          "status": "online"
+        },
+        {
+          "name": "supabase",
+          "status": "online"
+        },
+        {
+          "name": "context7",
+          "status": "degraded"
+        }
+      ],
+      "usedMcp": [
+        {
+          "name": "QMD",
+          "status": "active",
+          "note": "Ускоряет сбор доказательной базы по документам и снижает ручной перебор контекста.",
+          "practicalTasks": [
+            "Сбор оснований для MCP-рекомендаций",
+            "Анализ архитектурных ограничений"
+          ],
+          "impactInNumbers": "Экономия токенов на аналитических задачах: ~25-40%."
+        },
+        {
+          "name": "Supabase",
+          "status": "active",
+          "note": "Дает фактологию по данным и контрактам, чтобы рекомендации не были абстрактными.",
+          "practicalTasks": [
+            "Проверка целостности метрик",
+            "Валидация выводов по данным"
+          ],
+          "impactInNumbers": "Снижение ложных рекомендаций за счет проверки фактов в данных."
+        }
+      ],
+      "availableMcp": [
+        {
+          "name": "Context7",
+          "whyUseful": "Актуальные практики по библиотекам и инструментам.",
+          "description": "Дает свежие примеры и рекомендации по библиотекам, чтобы аналитика опиралась на актуальные паттерны.",
+          "whenToUse": "Когда рекомендация зависит от текущих best-practice конкретной библиотеки.",
+          "expectedEffect": "Снижение устаревших рекомендаций и ускорение подготовки решений.",
+          "basis": "Часть рекомендаций требует сверки с официальной документацией и актуальными примерами.",
+          "practicalTasks": [
+            "Анализ best-practice для UI и data-tooling",
+            "Подготовка рекомендаций по стеку"
+          ],
+          "link": "https://context7.com/",
+          "installComplexity": "Низкая"
+        },
+        {
+          "name": "Netlify",
+          "whyUseful": "Проверка влияния улучшений на deploy-процесс.",
+          "description": "Позволяет быстро проверять как изменения в карточке и метриках влияют на release-процесс.",
+          "whenToUse": "Когда рекомендация затрагивает публикацию, стабильность или мониторинг после релиза.",
+          "expectedEffect": "Снижение рисков релизных регрессий.",
+          "basis": "Операционные рекомендации должны проверяться на реальном deploy-контуре.",
+          "practicalTasks": [
+            "Проверка release smoke после изменений панели",
+            "Контроль доступности после релиза"
+          ],
+          "link": "https://docs.netlify.com/",
+          "installComplexity": "Низкая"
+        }
+      ],
+      "contextRefs": [
+        {
+          "title": "ОАП: описание подпроекта",
+          "filePath": "docs/subservices/oap/README.md",
+          "pathHint": "Каноническая структура карточки агента",
+          "sourceUrl": "https://github.com/PavelAntipov39/pervoe-slovo/blob/codex/universal-entity-modal/docs/subservices/oap/README.md"
+        },
+        {
+          "title": "ОАП: правила дизайна",
+          "filePath": "docs/subservices/oap/DESIGN_RULES.md",
+          "pathHint": "Обязательные правила re-use и traceability",
+          "sourceUrl": "https://github.com/PavelAntipov39/pervoe-slovo/blob/codex/universal-entity-modal/docs/subservices/oap/DESIGN_RULES.md"
+        },
+        {
+          "title": "ОАП: операционный стандарт аналитика",
+          "filePath": "docs/subservices/oap/ANALYST_OPERATING_PLAN.md",
+          "pathHint": "Процесс по которому работает ИИ агент, политика источников, whitelist, lifecycle улучшений, уведомления и критичные случаи",
+          "sourceUrl": "https://github.com/PavelAntipov39/pervoe-slovo/blob/codex/universal-entity-modal/docs/subservices/oap/ANALYST_OPERATING_PLAN.md"
+        }
+      ],
+      "rulesApplied": [
+        {
+          "title": "Операционный стандарт analyst-agent",
+          "location": "docs/subservices/oap/ANALYST_OPERATING_PLAN.md",
+          "description": "Канонический ежедневный цикл и правила принятия решений для аналитика.",
+          "fullText": "",
+          "sourceUrl": "https://github.com/PavelAntipov39/pervoe-slovo/blob/codex/universal-entity-modal/docs/subservices/oap/ANALYST_OPERATING_PLAN.md"
+        },
+        {
+          "title": "QMD Retrieval Policy",
+          "location": "AGENTS.md",
+          "description": "Регламент использования QMD при сборе доказательной базы из больших текстовых контекстов.",
+          "fullText": "",
+          "sourceUrl": null
+        }
+      ],
+      "processLink": {
+        "title": "Схема работы аналитики (BPMN)",
+        "url": "#/bpmn"
+      },
+      "tasks": {
+        "queued": 1,
+        "running": 1,
+        "retrying": 0,
+        "waiting_review": 1,
+        "blocked": 0,
+        "waiting_external": 1,
+        "overdue": 0
+      },
+      "taskEvents": [
+        {
+          "id": "analyst-task-1",
+          "title": "Рефакторинг архитектуры карточки агента",
+          "completedAt": "2026-02-25T13:20:00Z",
+          "reviewErrors": 0
+        },
+        {
+          "id": "analyst-task-2",
+          "title": "Подготовка KPI модели после рефакторинга",
+          "completedAt": "2026-02-25T11:10:00Z",
+          "reviewErrors": 1
+        }
+      ],
+      "analystRecommendations": [
+        "Добавить обязательную валидацию контракта карточки через schema check в CI.",
+        "Снизить долю задач на контроле за счет подключения Context7 для быстрых проверок best-practice.",
+        "Делать telemetry-first отчеты по MCP и навыкам, чтобы сократить ручные рекомендации."
+      ],
+      "operatingPlan": {
+        "mission": "Повышать эффективность всей агентной системы через проверяемые evidence-based улучшения.",
+        "dailyLoop": [
+          "started: запуск ежедневного цикла с telemetry run",
+          "Health-check каждого агента: статус, задачи, review-ошибки, MCP-деградации",
+          "Проверка актуальности базы знаний ОАП (spec/contracts/rules/runbook)",
+          "Мониторинг внешних источников из whitelist",
+          "Сверка новых практик с текущей базой знаний",
+          "Формирование списка улучшений по каждому агенту",
+          "Приоритизация и выбор top-priority для внедрения",
+          "Внедрение выбранных улучшений",
+          "Проверка эффекта и регрессий",
+          "Обновление раздела Задачи и качество + telemetry",
+          "Уведомления: критичные сразу, остальное в daily digest"
+        ],
+        "sourcePolicy": {
+          "mode": "whitelist + verification",
+          "whitelist": [
+            "Официальные источники вендоров (OpenAI, Anthropic, официальные docs/changelog)",
+            "Проверенные крупные open-source практики (включая OpenClaw-подобные)"
+          ],
+          "updateRule": "Новые источники добавляются только после проверки качества, воспроизводимости и эффекта.",
+          "validationCriteria": [
+            "качество сигнала",
+            "воспроизводимость",
+            "подтвержденный практический эффект"
+          ]
+        },
+        "notificationPolicy": {
+          "mode": "critical + daily_digest",
+          "criticalCases": [
+            "P0/P1 инциденты",
+            "блокеры внедрения",
+            "риски деградации production-процессов"
+          ],
+          "digestFields": [
+            "что проверено",
+            "что внедрено",
+            "что отложено",
+            "что требует решения владельца"
+          ]
+        },
+        "improvementLifecycle": [
+          "suggested",
+          "validated",
+          "scheduled",
+          "applied",
+          "verified",
+          "deferred",
+          "rejected",
+          "archived"
+        ],
+        "metricsCatalog": {
+          "agents": [
+            "review_error_rate",
+            "TQS_avg",
+            "tasks_in_work",
+            "tasks_on_control",
+            "overdue",
+            "recommendation_action_rate",
+            "regression_rate",
+            "p95_time_to_context"
+          ],
+          "analyst": [
+            "agents_reviewed_daily",
+            "recommendation_precision",
+            "recommendation_action_rate",
+            "validated_impact_rate",
+            "stale_recommendations"
+          ]
+        },
+        "decisionRules": [
+          "Улучшение без evidence и target metric не переводится в applied.",
+          "Сначала формируется полный список улучшений, затем внедряется top-priority.",
+          "Остальные улучшения остаются в backlog с датой пересмотра.",
+          "Приоритет определяется PriorityScore = ICE + evidence_strength + section_risk."
+        ]
+      },
+      "workflowPolicy": {
+        "planDefault": true,
+        "replanOnDeviation": true,
+        "verifyBeforeDone": true,
+        "selfImprovementLoop": true,
+        "autonomousBugfix": true
+      },
+      "learningArtifacts": {
+        "todoPath": "docs/subservices/oap/tasks/todo.md",
+        "lessonsPath": "docs/subservices/oap/tasks/lessons/analyst-agent.md",
+        "lastLessonAt": null
+      },
+      "workflowMetricsCatalog": [
+        "plan_coverage_rate",
+        "verification_pass_rate",
+        "lesson_capture_rate",
+        "replan_rate",
+        "autonomous_bugfix_rate",
+        "elegance_gate_rate"
+      ],
+      "doneGatePolicy": {
+        "mode": "soft_warning",
+        "requiredChecks": ["plan", "verify", "lesson"],
+        "fallbackStatus": "in_review"
+      },
+      "improvements": [
+        {
+          "id": "imp-analyst-recommendation-schema",
+          "title": "Контрактная валидация рекомендаций",
+          "problem": "Рекомендации часто формируются без единых обязательных полей.",
+          "solution": "Добавить JSON Schema и блокирующую проверку в CI для карточки агента.",
+          "effect": "Повышение прозрачности и снижение неоднозначных рекомендаций.",
+          "priority": "Высокий",
+          "ownerSection": "Логика работы всех карточек (общая рекомендация)",
+          "detectionBasis": "Наблюдение по review-ошибкам и ручным доработкам карточек: отсутствуют обязательные поля у рекомендаций.",
+          "targetMetric": "recommendation_action_rate",
+          "baselineWindow": "last_14_days",
+          "expectedDelta": ">= 15% качества карточек за счет обязательных полей рекомендаций.",
+          "validationDate": "2026-03-15",
+          "promptTitle": "Внедрение контрактной валидации рекомендаций",
+          "promptPath": "docs/subservices/oap/agents-card.schema.json",
+          "promptSourceUrl": "https://github.com/PavelAntipov39/pervoe-slovo/blob/codex/universal-entity-modal/docs/subservices/oap/agents-card.schema.json",
+          "promptMarkdown": "# Внедрение контрактной валидации рекомендаций\n\nЦель:\n- обеспечить единый обязательный формат рекомендаций в карточке агента.\n\nЗадача:\n1. Расширить JSON schema карточки агента обязательными полями раздела рекомендаций.\n2. Обновить генератор `ops-web/scripts/build_content_index.mjs`, чтобы он сохранял поля `detectionBasis`, `promptTitle`, `promptMarkdown`, `promptPath`, `promptSourceUrl`, `ice`.\n3. Убедиться, что `npm --prefix ops-web run check-agents` блокирует невалидный manifest.\n4. Проверить UI вкладки `Навыки и Правила` у `analyst-agent`.\n\nКритерии приемки:\n- schema check проходит;\n- карточка показывает ICE и промт по каждой рекомендации;\n- в manifest нет пустых обязательных полей.",
+          "ice": { "impact": 9, "confidence": 8, "ease": 7 }
+        },
+        {
+          "id": "imp-analyst-recommendation-outcome",
+          "title": "Автоматический рейтинг эффекта рекомендаций",
+          "problem": "Сложно понять, какие рекомендации реально дают результат.",
+          "solution": "Связать рекомендации с task outcomes и считать recommendation_action_rate.",
+          "effect": "Фокус на улучшениях с максимальной практической отдачей.",
+          "priority": "Средний",
+          "ownerSection": "Навыки и правила",
+          "detectionBasis": "Нет стабильной метрики, показывающей, какие рекомендации действительно внедрены и дали эффект.",
+          "targetMetric": "recommendation_action_rate",
+          "baselineWindow": "last_14_days",
+          "expectedDelta": ">= 20% recommendation_action_rate по итогам цикла.",
+          "validationDate": "2026-03-15",
+          "promptTitle": "Метрика recommendation_action_rate для ОАП",
+          "promptPath": "docs/subservices/oap/README.md",
+          "promptSourceUrl": "https://github.com/PavelAntipov39/pervoe-slovo/blob/codex/universal-entity-modal/docs/subservices/oap/README.md",
+          "promptMarkdown": "# Метрика recommendation_action_rate для ОАП\n\nЦель:\n- сделать рекомендации измеримыми и сравнимыми.\n\nЗадача:\n1. Зафиксировать статусы жизненного цикла рекомендации (`suggested`, `applied`) в telemetry.\n2. Считать `recommendation_action_rate` как долю примененных рекомендаций к предложенным за период.\n3. Добавить отображение метрики в аналитическом отчете и в карточке аналитика.\n4. Проверить, что формула и источник данных задокументированы в OAP docs.\n\nКритерии приемки:\n- метрика считается автоматически;\n- формула прозрачна и воспроизводима;\n- аналитик видит влияние рекомендаций на практике.",
+          "ice": { "impact": 8, "confidence": 8, "ease": 6 }
+        }
+      ],
+      "memoryContext": {
+        "currentTask": {
+          "task_id": "analyst-cycle-daily",
+          "goal": "Провести ежедневный цикл: health-check агентов, формирование и приоритизация улучшений",
+          "task_type": "analytics_cycle",
+          "context_sla_seconds": 120
+        },
+        "contextAnchors": [
+          {
+            "anchor_id": "anchor-oap-plan",
+            "category": "governance",
+            "title": "Операционный стандарт аналитика",
+            "filePath": "docs/subservices/oap/ANALYST_OPERATING_PLAN.md",
+            "pathHint": "Канонический процесс и правила принятия решений",
+            "whySelected": "Задаёт обязательный цикл работы и правила переходов улучшений",
+            "tokens_est": 2800,
+            "sourceUrl": null,
+            "freshness": "fresh"
+          },
+          {
+            "anchor_id": "anchor-registry",
+            "category": "spec",
+            "title": "Реестр агентов",
+            "filePath": "docs/agents/registry.yaml",
+            "pathHint": "Данные по всем агентам: статусы, улучшения, MCP",
+            "whySelected": "Основной источник данных для health-check и формирования рекомендаций",
+            "tokens_est": 12000,
+            "sourceUrl": null,
+            "freshness": "fresh"
+          },
+          {
+            "anchor_id": "anchor-design-rules",
+            "category": "governance",
+            "title": "Правила дизайна ОАП",
+            "filePath": "docs/subservices/oap/DESIGN_RULES.md",
+            "pathHint": "Re-use и traceability правила для карточек агентов",
+            "whySelected": "Проверка соответствия карточек установленным стандартам",
+            "tokens_est": 1400,
+            "sourceUrl": null,
+            "freshness": "fresh"
+          }
+        ],
+        "persistentRules": [
+          {
+            "mandatory": true,
+            "title": "Evidence-first: улучшение без доказательства не внедряется",
+            "location": "docs/subservices/oap/ANALYST_OPERATING_PLAN.md",
+            "description": "Любая рекомендация требует targetMetric, baselineWindow и expectedDelta до перевода в applied.",
+            "sourceUrl": null
+          },
+          {
+            "mandatory": true,
+            "title": "Whitelist источников",
+            "location": "docs/subservices/oap/ANALYST_OPERATING_PLAN.md",
+            "description": "Принимаются только источники из whitelist: официальные docs вендоров и проверенные open-source практики.",
+            "sourceUrl": null
+          },
+          {
+            "mandatory": false,
+            "title": "Сначала полный список, потом top-priority",
+            "location": "docs/subservices/oap/ANALYST_OPERATING_PLAN.md",
+            "description": "Нельзя внедрять первое попавшееся улучшение — сначала формируется полный кандидатный список и затем выбирается top-priority.",
+            "sourceUrl": null
+          }
+        ],
+        "retrieval": {
+          "mode": "rag+semantic",
+          "tool": "QMD retrieval",
+          "top_k": 5,
+          "latency_ms": 340,
+          "qualitySignals": [
+            { "score": 0.91, "line_refs": ["ANALYST_OPERATING_PLAN.md:L12"], "coverage": 0.88 }
+          ]
+        },
+        "decisionUsage": {
+          "decisionLinks": [
+            {
+              "anchor_id": "anchor-oap-plan",
+              "usedInDecision": true,
+              "taskEventIds": ["analyst-task-1"],
+              "reviewErrorIds": [],
+              "improvementIds": ["imp-analyst-recommendation-schema"]
+            },
+            {
+              "anchor_id": "anchor-registry",
+              "usedInDecision": true,
+              "taskEventIds": ["analyst-task-1", "analyst-task-2"],
+              "reviewErrorIds": [],
+              "improvementIds": ["imp-analyst-recommendation-schema", "imp-analyst-recommendation-outcome"]
+            }
+          ]
+        },
+        "economics": {
+          "total_context_tokens": 42000,
+          "useful_context_tokens": 38500,
+          "context_efficiency": 0.917,
+          "tokens_per_task": 21000,
+          "cached_tokens": 30000,
+          "cache_hit_rate": 0.71
+        },
+        "riskControl": {
+          "riskFlags": [],
+          "toolPolicy": {
+            "profile": "analyst",
+            "allow": ["read_docs", "read_registry", "write_registry", "write_telemetry"],
+            "deny": ["delete_files", "run_shell", "modify_env"],
+            "approval_mode": "auto"
+          }
+        },
+        "nextActions": [
+          {
+            "title": "Внедрить контрактную валидацию рекомендаций",
+            "owner": "analyst-agent",
+            "due_date": "2026-03-15",
+            "expected_effect": "Снижение неоднозначных рекомендаций на 15%+"
+          }
+        ]
+      },
+      "source": "registry+analytics-sync",
+      "updatedAt": "2026-03-02T10:00:00Z",
+      "runbook": "Проверить данные задач, затем сформировать рекомендации с основанием и ожидаемым эффектом.",
+      "trackerUrl": "https://github.com/example/bible-ops/issues",
+      "notes": null
+    }
+  ]
+}

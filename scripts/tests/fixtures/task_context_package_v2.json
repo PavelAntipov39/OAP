@@ -1,0 +1,32 @@
+{
+  "operational_memory": [
+    {
+      "key": "goal",
+      "title": "Цель задачи",
+      "value": "Проверить эффект candidate-практики в A/B",
+      "source_ref": "docs/agents/registry.yaml"
+    },
+    {
+      "key": "target_metric",
+      "title": "Целевая метрика",
+      "value": "recommendation_action_rate",
+      "source_ref": "artifacts/agent_telemetry_summary.json"
+    }
+  ],
+  "collaboration_plan": {
+    "analysis_required": true,
+    "suggested_agents": ["designer-agent", "ops-agent"],
+    "selected_agents": [],
+    "rationale": "Нужны UI и release проверки для candidate-практики.",
+    "reviewed_at": null
+  },
+  "ab_test_plan": {
+    "enabled": true,
+    "sessions_required": 5,
+    "pass_rule": "target_plus_guardrails",
+    "target_metric": "recommendation_action_rate",
+    "expected_delta_pct": 8.0,
+    "guardrails": ["review_error_rate", "verification_pass_rate"],
+    "rollback_on_fail": true
+  }
+}

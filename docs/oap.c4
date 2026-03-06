@@ -1,0 +1,189 @@
+specification {
+  color c4blue #1f5fa8
+  color c4ext #7a7f96
+
+  element actor {
+    notation "Пользователь"
+    style {
+      shape person
+      color c4blue
+    }
+  }
+
+  element external_system {
+    notation "Внешняя система"
+    style {
+      color c4ext
+      opacity 20%
+    }
+  }
+
+  element software_system {
+    notation "Программная система"
+    style {
+      color c4blue
+      opacity 12%
+    }
+  }
+
+  element container {
+    notation "Контейнер"
+    style {
+      color c4blue
+    }
+  }
+
+  element database {
+    notation "База данных"
+    style {
+      shape storage
+      color c4blue
+    }
+  }
+
+  element component {
+    notation "Компонент"
+    style {
+      color c4blue
+      opacity 75%
+    }
+  }
+}
+
+model {
+  ops_manager = actor "Операционный менеджер" {
+    description "Следит за качеством задач, рекомендациями и метриками агентов."
+  }
+
+  agent_owner = actor "Владелец агента" {
+    description "Утверждает улучшения и контролирует внедрение."
+  }
+
+  doc_sources = external_system "Документы и правила (Git repo)" {
+    description "AGENTS, registry, OAP docs, lessons и runbook."
+  }
+
+  notification_channel = external_system "Канал уведомлений" {
+    description "Дайджесты и критические уведомления."
+  }
+
+  telegram_candidate_bot = external_system "Telegram Bot (@Assistant_antipov_bot)" {
+    description "Внешний intake-канал для candidate-сообщений и обратной связи по решениям."
+  }
+
+  n8n_automation = external_system "n8n Automation" {
+    description "Workflow-оркестрация intake: Telegram trigger, normalize, upsert, ack."
+  }
+
+  oap = software_system "OAP" {
+    description "Operations & Agents Platform для управления агентами, задачами и telemetry."
+
+    ops_web = container "Ops Web (React + Vite + MUI)" {
+      description "Интерфейс карточек агентов, задач, docs, telemetry и process-views."
+    }
+
+    task_sync = container "Task Sync (Python)" {
+      description "Синхронизация задач из registry и telemetry в task board."
+    }
+
+    telemetry_pipeline = container "Telemetry Pipeline (Python)" {
+      description "Логирование событий, агрегация отчетов и построение cycle artifacts."
+    }
+
+    candidate_processor = container "Candidate Processor (Python)" {
+      description "Нормализует inbound candidate, рассчитывает guarded-auto оценку и подготавливает A/B контекст."
+    }
+
+    postgres = database "Postgres (Supabase)" {
+      description "Хранилище задач, контекста и telemetry для OAP."
+
+      public_contract = component "Public Contract (RPC + tables)" {
+        description "Единая точка доступа к данным для UI и синхронизации."
+      }
+
+      rls_gate = component "RLS Gate" {
+        description "Контроль доступа на уровне политик БД."
+      }
+
+      task_data = component "Task Data" {
+        description "Задачи, статусы, контекст и связанные элементы."
+      }
+
+      telemetry_data = component "Telemetry Data" {
+        description "События agent-log, агрегаты и workflow-метрики."
+      }
+
+      candidate_data = component "Candidate Data" {
+        description "Candidate intake/assessment (source_key, links, decisions, cycles)."
+      }
+    }
+
+    ops_web -> postgres.public_contract "чтение карточек/задач/метрик [HTTPS]"
+    task_sync -> postgres.public_contract "upsert задач и статусов [SQL/RPC]"
+    telemetry_pipeline -> postgres.public_contract "запись telemetry и чтение агрегатов [SQL/RPC]"
+    candidate_processor -> postgres.public_contract "upsert candidate intake/assessment [SQL/RPC]"
+
+    postgres.public_contract -> postgres.rls_gate "access check [RLS]"
+    postgres.rls_gate -> postgres.task_data "policy-guarded access"
+    postgres.rls_gate -> postgres.telemetry_data "policy-guarded access"
+    postgres.rls_gate -> postgres.candidate_data "policy-guarded access"
+
+    task_sync -> doc_sources "read registry/spec/contracts [git files]"
+    telemetry_pipeline -> notification_channel "send digests/alerts [optional]"
+    n8n_automation -> candidate_processor "candidate payload + source_key [HTTPS]"
+    telegram_candidate_bot -> n8n_automation "send inbound candidate content"
+    n8n_automation -> telegram_candidate_bot "candidate accepted ACK"
+    candidate_processor -> notification_channel "candidate decision notifications [optional]"
+  }
+
+  ops_manager -> oap "операционный контроль [HTTPS]"
+  agent_owner -> oap "управление улучшениями [HTTPS]"
+  ops_manager -> oap.ops_web "дашборд и workflow [HTTPS]"
+  agent_owner -> oap.ops_web "подтверждение действий [HTTPS]"
+}
+
+views {
+  view index {
+    title "OAP - C1 Context"
+    include ops_manager, agent_owner, doc_sources, notification_channel, telegram_candidate_bot, n8n_automation, oap
+    exclude oap.*
+    autoLayout LeftRight
+  }
+
+  view oap_context {
+    title "OAP - C1 Context (Detailed)"
+    include ops_manager, agent_owner, doc_sources, notification_channel, telegram_candidate_bot, n8n_automation, oap
+    exclude oap.*
+    autoLayout LeftRight
+  }
+
+  view oap_containers of oap {
+    title "OAP - C2 Containers"
+    include *, ops_manager, agent_owner, doc_sources, notification_channel
+    exclude postgres.*
+    autoLayout LeftRight
+  }
+
+  view db_rpc_boundary of oap.postgres {
+    title "OAP - C3 DB/RPC Boundary"
+    include *, oap.ops_web, oap.task_sync, oap.telemetry_pipeline, oap.candidate_processor
+    autoLayout TopBottom
+  }
+
+  view security_access {
+    title "OAP - Security / Access Boundary"
+    include
+      ops_manager,
+      agent_owner,
+      oap.ops_web,
+      oap.task_sync,
+      oap.telemetry_pipeline,
+      oap.candidate_processor,
+      oap.postgres.public_contract,
+      oap.postgres.rls_gate,
+      oap.postgres.task_data,
+      oap.postgres.telemetry_data,
+      oap.postgres.candidate_data
+    autoLayout LeftRight
+  }
+}

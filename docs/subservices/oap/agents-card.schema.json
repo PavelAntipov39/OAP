@@ -1,0 +1,814 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pervoe-slovo.local/schemas/oap/agents-card.schema.json",
+  "title": "OAP Agents Manifest",
+  "description": "Contract for Operational Agent Panel (ОАП) card data.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["updatedAt", "source", "sourceVersion", "agents"],
+  "properties": {
+    "updatedAt": { "$ref": "#/$defs/nonEmptyString" },
+    "source": { "$ref": "#/$defs/nonEmptyString" },
+    "sourceVersion": { "$ref": "#/$defs/nonEmptyString" },
+    "agents": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/agent" }
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "stringArray": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/nonEmptyString" }
+    },
+    "urlString": {
+      "type": "string",
+      "format": "uri",
+      "minLength": 1
+    },
+    "taskCounters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "queued",
+        "running",
+        "retrying",
+        "waiting_review",
+        "blocked",
+        "waiting_external",
+        "overdue",
+        "in_work",
+        "on_control"
+      ],
+      "properties": {
+        "queued": { "type": "number" },
+        "running": { "type": "number" },
+        "retrying": { "type": "number" },
+        "waiting_review": { "type": "number" },
+        "blocked": { "type": "number" },
+        "waiting_external": { "type": "number" },
+        "overdue": { "type": "number" },
+        "in_work": { "type": "number" },
+        "on_control": { "type": "number" }
+      }
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "url", "branch"],
+      "properties": {
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "url": { "$ref": "#/$defs/urlString" },
+        "branch": { "type": ["string", "null"] }
+      }
+    },
+    "mcpServer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "status"],
+      "properties": {
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "status": {
+          "type": "string",
+          "enum": ["online", "degraded", "offline"]
+        }
+      }
+    },
+    "usedMcp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "status", "note", "impactInNumbers", "practicalTasks"],
+      "properties": {
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "status": {
+          "type": "string",
+          "enum": ["active", "reauth_required", "degraded", "offline"]
+        },
+        "note": { "$ref": "#/$defs/nonEmptyString" },
+        "impactInNumbers": { "$ref": "#/$defs/nonEmptyString" },
+        "practicalTasks": { "$ref": "#/$defs/stringArray" },
+        "lastUsedAt": { "type": ["string", "null"] }
+      }
+    },
+    "availableMcp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "description",
+        "whenToUse",
+        "expectedEffect",
+        "basis",
+        "practicalTasks",
+        "link",
+        "installComplexity"
+      ],
+      "properties": {
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "whyUseful": { "type": ["string", "null"] },
+        "description": { "$ref": "#/$defs/nonEmptyString" },
+        "whenToUse": { "$ref": "#/$defs/nonEmptyString" },
+        "expectedEffect": { "$ref": "#/$defs/nonEmptyString" },
+        "basis": { "$ref": "#/$defs/nonEmptyString" },
+        "practicalTasks": { "$ref": "#/$defs/stringArray" },
+        "link": { "$ref": "#/$defs/urlString" },
+        "installComplexity": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "usedSkill": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "usage", "fullText", "practicalTasks"],
+      "properties": {
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "usage": { "$ref": "#/$defs/nonEmptyString" },
+        "fullText": { "$ref": "#/$defs/nonEmptyString" },
+        "practicalTasks": { "$ref": "#/$defs/stringArray" },
+        "lastUsedAt": { "type": ["string", "null"] },
+        "skillFilePath": { "type": ["string", "null"] },
+        "skillFileText": { "type": ["string", "null"] },
+        "skillFileLoaded": { "type": ["boolean", "null"] }
+      }
+    },
+    "availableSkill": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "benefit",
+        "recommendationBasis",
+        "expectedEffect",
+        "fullText",
+        "practicalTasks",
+        "link"
+      ],
+      "properties": {
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "benefit": { "$ref": "#/$defs/nonEmptyString" },
+        "recommendationBasis": { "$ref": "#/$defs/nonEmptyString" },
+        "expectedEffect": { "$ref": "#/$defs/nonEmptyString" },
+        "fullText": { "$ref": "#/$defs/nonEmptyString" },
+        "practicalTasks": { "$ref": "#/$defs/stringArray" },
+        "link": { "$ref": "#/$defs/urlString" }
+      }
+    },
+    "usedTool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "usage", "fullText", "source", "practicalTasks"],
+      "properties": {
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "usage": { "$ref": "#/$defs/nonEmptyString" },
+        "fullText": { "$ref": "#/$defs/nonEmptyString" },
+        "source": { "$ref": "#/$defs/nonEmptyString" },
+        "practicalTasks": { "$ref": "#/$defs/stringArray" },
+        "lastUsedAt": { "type": ["string", "null"] }
+      }
+    },
+    "availableTool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "benefit",
+        "recommendationBasis",
+        "expectedEffect",
+        "fullText",
+        "source",
+        "practicalTasks"
+      ],
+      "properties": {
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "benefit": { "$ref": "#/$defs/nonEmptyString" },
+        "recommendationBasis": { "$ref": "#/$defs/nonEmptyString" },
+        "expectedEffect": { "$ref": "#/$defs/nonEmptyString" },
+        "fullText": { "$ref": "#/$defs/nonEmptyString" },
+        "source": { "$ref": "#/$defs/nonEmptyString" },
+        "practicalTasks": { "$ref": "#/$defs/stringArray" }
+      }
+    },
+    "contextRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "filePath"],
+      "properties": {
+        "title": { "$ref": "#/$defs/nonEmptyString" },
+        "filePath": { "$ref": "#/$defs/nonEmptyString" },
+        "pathHint": { "type": ["string", "null"] },
+        "sourceUrl": { "type": ["string", "null"] }
+      }
+    },
+    "taskEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "completedAt", "reviewErrors"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "title": { "$ref": "#/$defs/nonEmptyString" },
+        "completedAt": { "$ref": "#/$defs/nonEmptyString" },
+        "reviewErrors": { "type": "number" }
+      }
+    },
+    "taskContextToTask": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary"],
+      "properties": {
+        "summary": { "$ref": "#/$defs/nonEmptyString" },
+        "why_now": { "type": ["string", "null"] },
+        "execution_notes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "source_snapshot": { "type": ["object", "null"] }
+      }
+    },
+    "analystRecommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "text": { "$ref": "#/$defs/nonEmptyString" },
+        "linkedImprovementId": { "type": ["string", "null"] },
+        "contextToTask": {
+          "anyOf": [
+            { "$ref": "#/$defs/taskContextToTask" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "improvement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "problem",
+        "solution",
+        "effect",
+        "priority",
+        "ownerSection",
+        "detectionBasis",
+        "promptPath",
+        "promptTitle",
+        "promptMarkdown",
+        "promptSourceUrl",
+        "targetMetric",
+        "baselineWindow",
+        "expectedDelta",
+        "validationDate",
+        "ice"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "title": { "$ref": "#/$defs/nonEmptyString" },
+        "problem": { "$ref": "#/$defs/nonEmptyString" },
+        "solution": { "$ref": "#/$defs/nonEmptyString" },
+        "effect": { "$ref": "#/$defs/nonEmptyString" },
+        "priority": { "$ref": "#/$defs/nonEmptyString" },
+        "section": { "type": ["string", "null"] },
+        "ownerSection": { "$ref": "#/$defs/nonEmptyString" },
+        "detectionBasis": { "$ref": "#/$defs/nonEmptyString" },
+        "promptPath": { "$ref": "#/$defs/nonEmptyString" },
+        "promptTitle": { "$ref": "#/$defs/nonEmptyString" },
+        "promptMarkdown": { "$ref": "#/$defs/nonEmptyString" },
+        "promptSourceUrl": { "$ref": "#/$defs/nonEmptyString" },
+        "targetMetric": { "$ref": "#/$defs/nonEmptyString" },
+        "baselineWindow": { "$ref": "#/$defs/nonEmptyString" },
+        "expectedDelta": { "$ref": "#/$defs/nonEmptyString" },
+        "validationDate": { "$ref": "#/$defs/nonEmptyString" },
+        "ice": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["impact", "confidence", "ease"],
+          "properties": {
+            "impact": { "type": "number" },
+            "confidence": { "type": "number" },
+            "ease": { "type": "number" }
+          }
+        }
+      }
+    },
+    "operatingPlanSourcePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "whitelist", "updateRule", "validationCriteria"],
+      "properties": {
+        "mode": { "$ref": "#/$defs/nonEmptyString" },
+        "whitelist": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "updateRule": { "$ref": "#/$defs/nonEmptyString" },
+        "validationCriteria": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        }
+      }
+    },
+    "operatingPlanNotificationPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "criticalCases", "digestFields"],
+      "properties": {
+        "mode": { "$ref": "#/$defs/nonEmptyString" },
+        "criticalCases": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "digestFields": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        }
+      }
+    },
+    "operatingPlanMetricsCatalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agents", "analyst"],
+      "properties": {
+        "agents": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "analyst": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        }
+      }
+    },
+    "operatingPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mission",
+        "dailyLoop",
+        "sourcePolicy",
+        "notificationPolicy",
+        "improvementLifecycle",
+        "metricsCatalog",
+        "decisionRules"
+      ],
+      "properties": {
+        "mission": { "$ref": "#/$defs/nonEmptyString" },
+        "dailyLoop": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "sourcePolicy": { "$ref": "#/$defs/operatingPlanSourcePolicy" },
+        "notificationPolicy": { "$ref": "#/$defs/operatingPlanNotificationPolicy" },
+        "improvementLifecycle": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "metricsCatalog": { "$ref": "#/$defs/operatingPlanMetricsCatalog" },
+        "decisionRules": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        }
+      }
+    },
+    "workflowPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "planDefault",
+        "replanOnDeviation",
+        "verifyBeforeDone",
+        "selfImprovementLoop",
+        "autonomousBugfix"
+      ],
+      "properties": {
+        "planDefault": { "type": "boolean" },
+        "replanOnDeviation": { "type": "boolean" },
+        "verifyBeforeDone": { "type": "boolean" },
+        "selfImprovementLoop": { "type": "boolean" },
+        "autonomousBugfix": { "type": "boolean" }
+      }
+    },
+    "learningArtifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["todoPath", "lessonsPath", "lastLessonAt"],
+      "properties": {
+        "todoPath": { "$ref": "#/$defs/nonEmptyString" },
+        "lessonsPath": { "$ref": "#/$defs/nonEmptyString" },
+        "lastLessonAt": { "type": ["string", "null"] }
+      }
+    },
+    "doneGatePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "requiredChecks", "fallbackStatus"],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["soft_warning", "strict"]
+        },
+        "requiredChecks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "fallbackStatus": {
+          "type": "string",
+          "enum": ["backlog", "ready", "in_progress", "ab_test", "in_review", "done"]
+        }
+      }
+    },
+    "ruleApplied": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "location", "description", "fullText", "sourceUrl"],
+      "properties": {
+        "title": { "$ref": "#/$defs/nonEmptyString" },
+        "location": { "type": ["string", "null"] },
+        "description": { "type": ["string", "null"] },
+        "fullText": { "type": ["string", "null"] },
+        "sourceUrl": { "type": ["string", "null"] }
+      }
+    },
+    "memoryCurrentTask": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_id", "goal", "task_type", "context_sla_seconds"],
+      "properties": {
+        "task_id": { "$ref": "#/$defs/nonEmptyString" },
+        "goal": { "$ref": "#/$defs/nonEmptyString" },
+        "task_type": { "$ref": "#/$defs/nonEmptyString" },
+        "context_sla_seconds": { "type": "number" }
+      }
+    },
+    "memoryContextAnchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "anchor_id",
+        "category",
+        "title",
+        "filePath",
+        "pathHint",
+        "whySelected",
+        "tokens_est",
+        "sourceUrl",
+        "freshness"
+      ],
+      "properties": {
+        "anchor_id": { "$ref": "#/$defs/nonEmptyString" },
+        "category": {
+          "type": "string",
+          "enum": ["spec", "contract", "governance", "runbook", "unknown"]
+        },
+        "title": { "$ref": "#/$defs/nonEmptyString" },
+        "filePath": { "$ref": "#/$defs/nonEmptyString" },
+        "pathHint": { "type": ["string", "null"] },
+        "whySelected": { "$ref": "#/$defs/nonEmptyString" },
+        "tokens_est": { "type": "number" },
+        "sourceUrl": { "type": ["string", "null"] },
+        "freshness": {
+          "type": "string",
+          "enum": ["fresh", "stale", "unknown"]
+        }
+      }
+    },
+    "memoryPersistentRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "location", "description", "sourceUrl", "mandatory"],
+      "properties": {
+        "title": { "$ref": "#/$defs/nonEmptyString" },
+        "location": { "$ref": "#/$defs/nonEmptyString" },
+        "description": { "$ref": "#/$defs/nonEmptyString" },
+        "sourceUrl": { "type": ["string", "null"] },
+        "mandatory": { "type": "boolean" }
+      }
+    },
+    "memoryQualitySignal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["score", "line_refs", "coverage"],
+      "properties": {
+        "score": { "type": ["number", "null"] },
+        "line_refs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "coverage": { "type": ["number", "null"] }
+      }
+    },
+    "memoryRetrieval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "tool", "top_k", "latency_ms", "qualitySignals"],
+      "properties": {
+        "mode": { "$ref": "#/$defs/nonEmptyString" },
+        "tool": { "$ref": "#/$defs/nonEmptyString" },
+        "top_k": { "type": "number" },
+        "latency_ms": { "type": ["number", "null"] },
+        "qualitySignals": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/memoryQualitySignal" }
+        }
+      }
+    },
+    "memoryDecisionLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["anchor_id", "usedInDecision", "taskEventIds", "reviewErrorIds", "improvementIds"],
+      "properties": {
+        "anchor_id": { "$ref": "#/$defs/nonEmptyString" },
+        "usedInDecision": { "type": "boolean" },
+        "taskEventIds": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "reviewErrorIds": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "improvementIds": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        }
+      }
+    },
+    "memoryDecisionUsage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decisionLinks"],
+      "properties": {
+        "decisionLinks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/memoryDecisionLink" }
+        }
+      }
+    },
+    "memoryEconomics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total_context_tokens",
+        "useful_context_tokens",
+        "context_efficiency",
+        "tokens_per_task",
+        "cached_tokens",
+        "cache_hit_rate"
+      ],
+      "properties": {
+        "total_context_tokens": { "type": "number" },
+        "useful_context_tokens": { "type": "number" },
+        "context_efficiency": { "type": ["number", "null"] },
+        "tokens_per_task": { "type": ["number", "null"] },
+        "cached_tokens": { "type": ["number", "null"] },
+        "cache_hit_rate": { "type": ["number", "null"] }
+      }
+    },
+    "memoryToolPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile", "allow", "deny", "approval_mode"],
+      "properties": {
+        "profile": { "$ref": "#/$defs/nonEmptyString" },
+        "allow": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "deny": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "approval_mode": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "memoryRiskControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["riskFlags", "toolPolicy"],
+      "properties": {
+        "riskFlags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["injection_risk", "missing_evidence", "stale_anchor", "tool_overreach"]
+          }
+        },
+        "toolPolicy": { "$ref": "#/$defs/memoryToolPolicy" }
+      }
+    },
+    "memoryNextAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "owner", "due_date", "expected_effect"],
+      "properties": {
+        "title": { "$ref": "#/$defs/nonEmptyString" },
+        "owner": { "$ref": "#/$defs/nonEmptyString" },
+        "due_date": { "$ref": "#/$defs/nonEmptyString" },
+        "expected_effect": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "memoryContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "currentTask",
+        "contextAnchors",
+        "persistentRules",
+        "retrieval",
+        "decisionUsage",
+        "economics",
+        "riskControl",
+        "nextActions"
+      ],
+      "properties": {
+        "currentTask": { "$ref": "#/$defs/memoryCurrentTask" },
+        "contextAnchors": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/memoryContextAnchor" }
+        },
+        "persistentRules": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/memoryPersistentRule" }
+        },
+        "retrieval": { "$ref": "#/$defs/memoryRetrieval" },
+        "decisionUsage": { "$ref": "#/$defs/memoryDecisionUsage" },
+        "economics": { "$ref": "#/$defs/memoryEconomics" },
+        "riskControl": { "$ref": "#/$defs/memoryRiskControl" },
+        "nextActions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/memoryNextAction" }
+        }
+      }
+    },
+    "taskBoardConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "statusFlow", "fields", "filters"],
+      "properties": {
+        "source": { "$ref": "#/$defs/nonEmptyString" },
+        "statusFlow": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["backlog", "ready", "in_progress", "ab_test", "in_review", "done"]
+          }
+        },
+        "fields": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "filters": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "notes": { "type": ["string", "null"] }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "role",
+        "status",
+        "skills",
+        "usedSkills",
+        "availableSkills",
+        "usedTools",
+        "availableTools",
+        "repositories",
+        "mcpServers",
+        "usedMcp",
+        "availableMcp",
+        "contextRefs",
+        "tasks",
+        "taskEvents",
+        "analystRecommendations",
+        "improvements",
+        "workflowPolicy",
+        "learningArtifacts",
+        "workflowMetricsCatalog",
+        "doneGatePolicy",
+        "updatedAt",
+        "source"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "role": { "$ref": "#/$defs/nonEmptyString" },
+        "shortDescription": { "type": ["string", "null"] },
+        "status": {
+          "type": "string",
+          "enum": ["healthy", "degraded", "offline"]
+        },
+        "skills": { "$ref": "#/$defs/stringArray" },
+        "usedSkills": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/usedSkill" }
+        },
+        "availableSkills": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/availableSkill" }
+        },
+        "usedTools": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/usedTool" }
+        },
+        "availableTools": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/availableTool" }
+        },
+        "repositories": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/repository" }
+        },
+        "mcpServers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/mcpServer" }
+        },
+        "usedMcp": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/usedMcp" }
+        },
+        "availableMcp": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/availableMcp" }
+        },
+        "contextRefs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/contextRef" }
+        },
+        "memoryContext": {
+          "anyOf": [
+            { "$ref": "#/$defs/memoryContext" },
+            { "type": "null" }
+          ]
+        },
+        "taskBoard": {
+          "anyOf": [
+            { "$ref": "#/$defs/taskBoardConfig" },
+            { "type": "null" }
+          ]
+        },
+        "rulesApplied": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ruleApplied" }
+        },
+        "processLink": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["title", "url"],
+          "properties": {
+            "title": { "$ref": "#/$defs/nonEmptyString" },
+            "url": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        "tasks": { "$ref": "#/$defs/taskCounters" },
+        "taskEvents": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/taskEvent" }
+        },
+        "analystRecommendations": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              { "$ref": "#/$defs/nonEmptyString" },
+              { "$ref": "#/$defs/analystRecommendation" }
+            ]
+          }
+        },
+        "improvements": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/improvement" }
+        },
+        "operatingPlan": {
+          "anyOf": [
+            { "$ref": "#/$defs/operatingPlan" },
+            { "type": "null" }
+          ]
+        },
+        "workflowPolicy": {
+          "$ref": "#/$defs/workflowPolicy"
+        },
+        "learningArtifacts": {
+          "$ref": "#/$defs/learningArtifacts"
+        },
+        "workflowMetricsCatalog": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "doneGatePolicy": {
+          "$ref": "#/$defs/doneGatePolicy"
+        },
+        "updatedAt": { "$ref": "#/$defs/nonEmptyString" },
+        "source": { "$ref": "#/$defs/nonEmptyString" },
+        "trackerUrl": { "type": ["string", "null"] },
+        "runbook": { "type": ["string", "null"] },
+        "notes": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

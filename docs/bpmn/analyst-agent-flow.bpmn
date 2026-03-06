@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+  id="Definitions_AnalystAgentFlow"
+  targetNamespace="https://oap.local/bpmn">
+  <bpmn:process id="Process_AnalystAgentFlow" name="Candidate intake + A/B цикл analyst-agent" isExecutable="false">
+    <bpmn:startEvent id="StartEvent_TelegramMessage" name="Входящее сообщение в Telegram">
+      <bpmn:outgoing>Flow_01</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="Task_N8nIntake" name="n8n intake: normalize + upsert + ack">
+      <bpmn:incoming>Flow_01</bpmn:incoming>
+      <bpmn:outgoing>Flow_02</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_CandidateAssessment" name="Candidate processor: applicability/risk assessment">
+      <bpmn:incoming>Flow_02</bpmn:incoming>
+      <bpmn:outgoing>Flow_03</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="Gateway_GuardedAuto" name="Guarded auto pass?">
+      <bpmn:incoming>Flow_03</bpmn:incoming>
+      <bpmn:outgoing>Flow_04</bpmn:outgoing>
+      <bpmn:outgoing>Flow_05</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="Task_RejectCandidate" name="Reject candidate + Telegram reason reply">
+      <bpmn:incoming>Flow_04</bpmn:incoming>
+      <bpmn:outgoing>Flow_06</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_CreateAbTask" name="Create task in board with status ab_test">
+      <bpmn:incoming>Flow_05</bpmn:incoming>
+      <bpmn:outgoing>Flow_07</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_RunAbCycles" name="Analyst-agent runs A/B checkpoints (3..8 cycles)">
+      <bpmn:incoming>Flow_07</bpmn:incoming>
+      <bpmn:outgoing>Flow_08</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="Gateway_AbDecision" name="A/B effect is significant?">
+      <bpmn:incoming>Flow_08</bpmn:incoming>
+      <bpmn:outgoing>Flow_09</bpmn:outgoing>
+      <bpmn:outgoing>Flow_10</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="Task_Promote" name="Promote practice + Telegram deployed reply">
+      <bpmn:incoming>Flow_09</bpmn:incoming>
+      <bpmn:outgoing>Flow_11</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_Rollback" name="Rollback changes + Telegram rollback reply">
+      <bpmn:incoming>Flow_10</bpmn:incoming>
+      <bpmn:outgoing>Flow_12</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="EndEvent_Rejected" name="Candidate rejected">
+      <bpmn:incoming>Flow_06</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="EndEvent_Promoted" name="Practice promoted">
+      <bpmn:incoming>Flow_11</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="EndEvent_RolledBack" name="Rollback applied">
+      <bpmn:incoming>Flow_12</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_01" sourceRef="StartEvent_TelegramMessage" targetRef="Task_N8nIntake" />
+    <bpmn:sequenceFlow id="Flow_02" sourceRef="Task_N8nIntake" targetRef="Task_CandidateAssessment" />
+    <bpmn:sequenceFlow id="Flow_03" sourceRef="Task_CandidateAssessment" targetRef="Gateway_GuardedAuto" />
+    <bpmn:sequenceFlow id="Flow_04" name="no" sourceRef="Gateway_GuardedAuto" targetRef="Task_RejectCandidate" />
+    <bpmn:sequenceFlow id="Flow_05" name="yes" sourceRef="Gateway_GuardedAuto" targetRef="Task_CreateAbTask" />
+    <bpmn:sequenceFlow id="Flow_06" sourceRef="Task_RejectCandidate" targetRef="EndEvent_Rejected" />
+    <bpmn:sequenceFlow id="Flow_07" sourceRef="Task_CreateAbTask" targetRef="Task_RunAbCycles" />
+    <bpmn:sequenceFlow id="Flow_08" sourceRef="Task_RunAbCycles" targetRef="Gateway_AbDecision" />
+    <bpmn:sequenceFlow id="Flow_09" name="yes" sourceRef="Gateway_AbDecision" targetRef="Task_Promote" />
+    <bpmn:sequenceFlow id="Flow_10" name="no" sourceRef="Gateway_AbDecision" targetRef="Task_Rollback" />
+    <bpmn:sequenceFlow id="Flow_11" sourceRef="Task_Promote" targetRef="EndEvent_Promoted" />
+    <bpmn:sequenceFlow id="Flow_12" sourceRef="Task_Rollback" targetRef="EndEvent_RolledBack" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_AnalystAgentFlow">
+    <bpmndi:BPMNPlane id="BPMNPlane_AnalystAgentFlow" bpmnElement="Process_AnalystAgentFlow">
+      <bpmndi:BPMNShape id="Shape_StartEvent_Telegram" bpmnElement="StartEvent_TelegramMessage">
+        <dc:Bounds x="80" y="270" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Task_N8nIntake" bpmnElement="Task_N8nIntake">
+        <dc:Bounds x="170" y="248" width="200" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Task_CandidateAssessment" bpmnElement="Task_CandidateAssessment">
+        <dc:Bounds x="420" y="248" width="240" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Gateway_GuardedAuto" bpmnElement="Gateway_GuardedAuto" isMarkerVisible="true">
+        <dc:Bounds x="720" y="262" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Task_RejectCandidate" bpmnElement="Task_RejectCandidate">
+        <dc:Bounds x="820" y="130" width="240" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Task_CreateAbTask" bpmnElement="Task_CreateAbTask">
+        <dc:Bounds x="820" y="360" width="260" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Task_RunAbCycles" bpmnElement="Task_RunAbCycles">
+        <dc:Bounds x="1130" y="360" width="280" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Gateway_AbDecision" bpmnElement="Gateway_AbDecision" isMarkerVisible="true">
+        <dc:Bounds x="1470" y="375" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Task_Promote" bpmnElement="Task_Promote">
+        <dc:Bounds x="1570" y="250" width="250" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Task_Rollback" bpmnElement="Task_Rollback">
+        <dc:Bounds x="1570" y="470" width="250" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_EndEvent_Rejected" bpmnElement="EndEvent_Rejected">
+        <dc:Bounds x="1120" y="152" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_EndEvent_Promoted" bpmnElement="EndEvent_Promoted">
+        <dc:Bounds x="1880" y="272" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_EndEvent_RolledBack" bpmnElement="EndEvent_RolledBack">
+        <dc:Bounds x="1880" y="492" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Edge_Flow_01" bpmnElement="Flow_01">
+        <di:waypoint x="116" y="288" />
+        <di:waypoint x="170" y="288" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_02" bpmnElement="Flow_02">
+        <di:waypoint x="370" y="288" />
+        <di:waypoint x="420" y="288" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_03" bpmnElement="Flow_03">
+        <di:waypoint x="660" y="288" />
+        <di:waypoint x="720" y="287" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_04" bpmnElement="Flow_04">
+        <di:waypoint x="745" y="262" />
+        <di:waypoint x="745" y="170" />
+        <di:waypoint x="820" y="170" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_05" bpmnElement="Flow_05">
+        <di:waypoint x="745" y="312" />
+        <di:waypoint x="745" y="400" />
+        <di:waypoint x="820" y="400" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_06" bpmnElement="Flow_06">
+        <di:waypoint x="1060" y="170" />
+        <di:waypoint x="1120" y="170" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_07" bpmnElement="Flow_07">
+        <di:waypoint x="1080" y="400" />
+        <di:waypoint x="1130" y="400" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_08" bpmnElement="Flow_08">
+        <di:waypoint x="1410" y="400" />
+        <di:waypoint x="1470" y="400" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_09" bpmnElement="Flow_09">
+        <di:waypoint x="1495" y="375" />
+        <di:waypoint x="1495" y="290" />
+        <di:waypoint x="1570" y="290" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_10" bpmnElement="Flow_10">
+        <di:waypoint x="1495" y="425" />
+        <di:waypoint x="1495" y="510" />
+        <di:waypoint x="1570" y="510" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_11" bpmnElement="Flow_11">
+        <di:waypoint x="1820" y="290" />
+        <di:waypoint x="1880" y="290" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_12" bpmnElement="Flow_12">
+        <di:waypoint x="1820" y="510" />
+        <di:waypoint x="1880" y="510" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
