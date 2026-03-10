@@ -143,7 +143,7 @@ const STEPS: StepDef[] = [
     label: "Мониторинг внешних источников",
     description: "Опрос whitelist-источников: официальные docs/changelog Anthropic/OpenAI, OSS-практики. При обнаружении новой практики — фиксация candidate со статусом candidate_received.",
     files: [
-      { path: "docs/subservices/oap/ANALYST_OPERATING_PLAN.md", crud: "Чтение (sourcePolicy)" },
+      { path: "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md", crud: "Чтение (sourcePolicy)" },
       { path: ".logs/agents/analyst-agent.jsonl", crud: "Запись (candidate_received)" },
     ],
   },
@@ -314,10 +314,10 @@ export function VisualExplainerPage() {
             type="button"
             variant="body2"
             underline="hover"
-            onClick={() => handleOpenFile("docs/subservices/oap/ANALYST_OPERATING_PLAN.md")}
+            onClick={() => handleOpenFile("docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md")}
             sx={{ verticalAlign: "baseline" }}
           >
-            ANALYST_OPERATING_PLAN.md
+            OPERATING_PLAN.md
           </Link>
           .
         </Typography>
@@ -329,10 +329,10 @@ export function VisualExplainerPage() {
               Путь агента:&nbsp;
             </Typography>
             <Box component="span" sx={{ fontFamily: "monospace", fontSize: "0.78rem", color: "text.primary" }}>
-              docs/subservices/oap/
+              docs/subservices/oap/agents/analyst-agent/
             </Box>
             <Tooltip
-              title="Все файлы агента — в его папке. Правило: один агент = одна папка. Подробнее в ANALYST_OPERATING_PLAN.md."
+              title="Все файлы агента лежат в папке docs/subservices/oap/agents/analyst-agent/. Правило: один агент = одна папка. Подробнее в OPERATING_PLAN.md."
               arrow
             >
               <InfoOutlinedIcon sx={{ fontSize: 14, color: "text.secondary", cursor: "help", ml: 0.25 }} />
@@ -486,9 +486,9 @@ export function VisualExplainerPage() {
             type="button"
             variant="caption"
             underline="hover"
-            onClick={() => handleOpenFile("docs/subservices/oap/ANALYST_OPERATING_PLAN.md")}
+            onClick={() => handleOpenFile("docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md")}
           >
-            ANALYST_OPERATING_PLAN.md
+            OPERATING_PLAN.md
           </Link>
           {" · "}
           <Link
@@ -496,9 +496,9 @@ export function VisualExplainerPage() {
             type="button"
             variant="caption"
             underline="hover"
-            onClick={() => handleOpenFile("docs/subservices/oap/ANALYST_AGENT_FLOW.md")}
+            onClick={() => handleOpenFile("docs/subservices/oap/agents/analyst-agent/FLOW.md")}
           >
-            ANALYST_AGENT_FLOW.md
+            FLOW.md
           </Link>
         </Typography>
       </Box>
