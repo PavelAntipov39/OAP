@@ -134,7 +134,7 @@ export function AgentFlowPage() {
     [],
   );
   const analystFlowDoc = React.useMemo(
-    () => docs.find((item) => item.path === "docs/subservices/oap/ANALYST_AGENT_FLOW.md") || null,
+    () => docs.find((item) => item.path === "docs/subservices/oap/agents/analyst-agent/FLOW.md") || null,
     [docs],
   );
   const analystBpmn = React.useMemo(
@@ -298,7 +298,7 @@ export function AgentFlowPage() {
             Как устроен агент (C4 process views)
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Источник: <Link href="#/docs">docs/subservices/oap/ANALYST_AGENT_FLOW.md</Link>
+            Источник: <Link href="#/docs">docs/subservices/oap/agents/analyst-agent/FLOW.md</Link>
           </Typography>
           {analystFlowDoc ? (
             <Box
@@ -320,7 +320,7 @@ export function AgentFlowPage() {
             </Box>
           ) : (
             <Alert severity="info" sx={{ mt: 0.8 }}>
-              Документ `ANALYST_AGENT_FLOW.md` не найден в индексах.
+              Документ docs/subservices/oap/agents/analyst-agent/FLOW.md не найден в индексах.
             </Alert>
           )}
           <Stack direction="row" spacing={0.7} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
