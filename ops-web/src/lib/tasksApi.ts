@@ -11,15 +11,36 @@ import type {
   AgentTaskOriginContext,
   AgentTaskRow as BaseAgentTaskRow,
   AgentTaskStatus,
-  AgentTaskTimelineEvent,
+  AgentTaskTimelineEvent as BaseAgentTaskTimelineEvent,
 } from "./generatedData";
 
-export type { AgentTaskAbTestPlan, AgentTaskCollaborationPlan, AgentTaskOriginType, AgentTaskOperationalMemoryItem, AgentTaskPriority, AgentTaskReadinessManualState, AgentTaskReadinessState, AgentTaskStatus, AgentTaskTimelineEvent };
+export type { AgentTaskAbTestPlan, AgentTaskCollaborationPlan, AgentTaskOriginType, AgentTaskOperationalMemoryItem, AgentTaskPriority, AgentTaskReadinessManualState, AgentTaskReadinessState, AgentTaskStatus };
 
 export type AgentTaskUiStage = "incoming" | "ready_to_work" | "in_work" | "review" | "closed";
 export type AgentTaskServiceMode = "none" | "waiting_human" | "ab_test";
 export type AgentTaskCloseResolution = "implemented" | "cancelled" | "ab_rejected" | "duplicate" | "not_actual";
 export type AgentTaskHumanDecisionType = "done" | "cancel" | "retry_ai";
+export type AgentTaskRunStepKey =
+  | "step_0_intake"
+  | "step_1_start"
+  | "step_2_health_check"
+  | "step_3_orchestration"
+  | "step_4_evidence_sync"
+  | "step_5_candidate_scoring"
+  | "step_6_priority_decision"
+  | "step_7_apply"
+  | "step_7_contract_gate"
+  | "step_8_verify"
+  | "step_8_error_channel"
+  | "step_9_finalize"
+  | "step_9_publish_snapshots"
+  | "cycle_repair";
+
+export type AgentTaskTimelineEvent = BaseAgentTaskTimelineEvent & {
+  step_key: AgentTaskRunStepKey | null;
+  step_label: string | null;
+  step_raw: string | null;
+};
 
 export type AgentTaskHumanGate = {
   instruction: string;
@@ -108,6 +129,63 @@ export const HUMAN_DECISION_LABEL: Record<AgentTaskHumanDecisionType, string> = 
   retry_ai: "Ошибка, действия человека не требуется",
 };
 
+const TASK_RUN_STEP_LABELS: Record<AgentTaskRunStepKey, string> = {
+  step_0_intake: "0) task-intake/sync",
+  step_1_start: "1) started",
+  step_2_health_check: "2) preflight health-check",
+  step_3_orchestration: "3) orchestration (reuse-first)",
+  step_4_evidence_sync: "4) evidence retrieval",
+  step_5_candidate_scoring: "5) candidate-list + scoring",
+  step_6_priority_decision: "6) priority decision",
+  step_7_apply: "7) execute",
+  step_7_contract_gate: "7.1) contract gate",
+  step_8_verify: "8) verify",
+  step_8_error_channel: "8.1) error channel",
+  step_9_finalize: "9) learn + finalize",
+  step_9_publish_snapshots: "9.1) publish snapshots",
+  cycle_repair: "cycle_repair",
+};
+
+const TASK_RUN_STEP_ALIASES: Record<string, AgentTaskRunStepKey> = {
+  step_0_intake: "step_0_intake",
+  task_intake: "step_0_intake",
+  intake: "step_0_intake",
+  sync: "step_0_intake",
+  step_1_start: "step_1_start",
+  started: "step_1_start",
+  start: "step_1_start",
+  step_2_health_check: "step_2_health_check",
+  health_check: "step_2_health_check",
+  healthcheck: "step_2_health_check",
+  step_3_orchestration: "step_3_orchestration",
+  orchestration: "step_3_orchestration",
+  plan: "step_3_orchestration",
+  step_4_evidence_sync: "step_4_evidence_sync",
+  evidence: "step_4_evidence_sync",
+  kb_sync: "step_4_evidence_sync",
+  source_monitor: "step_4_evidence_sync",
+  step_5_candidate_scoring: "step_5_candidate_scoring",
+  candidate_scoring: "step_5_candidate_scoring",
+  improvement_planning: "step_5_candidate_scoring",
+  step_6_priority_decision: "step_6_priority_decision",
+  priority_decision: "step_6_priority_decision",
+  step_7_apply: "step_7_apply",
+  apply: "step_7_apply",
+  execute: "step_7_apply",
+  step_7_contract_gate: "step_7_contract_gate",
+  contract_gate: "step_7_contract_gate",
+  step_8_verify: "step_8_verify",
+  verify: "step_8_verify",
+  step_8_error_channel: "step_8_error_channel",
+  error_channel: "step_8_error_channel",
+  step_9_finalize: "step_9_finalize",
+  learn: "step_9_finalize",
+  finalize: "step_9_finalize",
+  step_9_publish_snapshots: "step_9_publish_snapshots",
+  publish_snapshots: "step_9_publish_snapshots",
+  cycle_repair: "cycle_repair",
+};
+
 export type AgentTaskBrief = Omit<BaseAgentTaskBrief, "context_package"> & {
   context_package: BaseAgentTaskBrief["context_package"] & {
     human_gate?: AgentTaskHumanGate;
@@ -135,11 +213,13 @@ export type AgentTaskRow = Omit<BaseAgentTaskRow, "task_brief"> &
     task_brief: AgentTaskBrief;
   };
 
-export type AgentTaskDetails = Omit<BaseAgentTaskDetails, "context_and_evidence"> &
+export type AgentTaskDetails = Omit<BaseAgentTaskDetails, "context_and_evidence" | "timeline"> &
   AgentTaskWorkflowFields & {
-    context_and_evidence: Omit<BaseAgentTaskDetails["context_and_evidence"], "context_package"> & {
+    context_and_evidence: Omit<BaseAgentTaskDetails["context_and_evidence"], "context_package" | "related_logs"> & {
       context_package: AgentTaskBrief["context_package"];
+      related_logs: AgentTaskTimelineEvent[];
     };
+    timeline: AgentTaskTimelineEvent[];
   };
 
 export type AgentTaskStatusCount = {
@@ -215,11 +295,11 @@ const DEMO_HUMAN_TASK_SEEDS: DemoHumanTaskSeed[] = [
     completion_criteria: "Есть комментарий человека со словами: можно запускать / какие guardrails обязательны.",
     codex_prompt: "Проверь задачу DEMO-HUMAN-001, подтверди запуск A/B окна на 5 сессий и перечисли обязательные guardrails в одном комментарии.",
     evidence_refs: [
-      "docs/subservices/oap/ANALYST_OPERATING_PLAN.md",
+      "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
       "artifacts/agent_benchmark_summary.json",
     ],
     target_artifacts: [
-      "docs/subservices/oap/ANALYST_OPERATING_PLAN.md",
+      "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
       "artifacts/agent_benchmark_summary.json",
     ],
     rationale: "Для analyst-agent правило запуска A/B окна должно быть явно согласовано человеком, иначе эксперимент стартует без явных ограничений.",
@@ -388,6 +468,25 @@ function toRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
+function normalizeTaskStepKey(value: unknown): AgentTaskRunStepKey | null {
+  const raw = toText(value).trim().toLowerCase();
+  if (!raw) return null;
+  const normalized = raw
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  if (!normalized) return null;
+  if (normalized in TASK_RUN_STEP_LABELS) {
+    return normalized as AgentTaskRunStepKey;
+  }
+  return TASK_RUN_STEP_ALIASES[normalized] || null;
+}
+
+function resolveTaskStepLabel(stepKey: AgentTaskRunStepKey | null, rawFallback: string | null): string | null {
+  if (stepKey) return TASK_RUN_STEP_LABELS[stepKey];
+  const raw = (rawFallback || "").trim();
+  return raw || null;
+}
+
 function clampAbSessions(value: unknown): number {
   const numeric = Math.round(toNumeric(value, 3));
   if (numeric < 3) return 3;
@@ -416,15 +515,115 @@ function normalizeOperationalMemory(value: unknown): AgentTaskOperationalMemoryI
     .filter((item): item is AgentTaskOperationalMemoryItem => Boolean(item));
 }
 
+function normalizeCollaborationReuseCandidate(value: unknown) {
+  const payload = toRecord(value);
+  const profileId = toText(payload.profile_id).trim();
+  const name = toText(payload.name).trim();
+  if (!profileId || !name) return null;
+  const scoreRaw = Number(payload.score);
+  const score = Number.isFinite(scoreRaw) ? scoreRaw : 0;
+  return {
+    profile_id: profileId,
+    name,
+    score,
+    decision: toText(payload.decision).trim() || "considered",
+    rationale: toText(payload.rationale).trim(),
+  };
+}
+
+function normalizeCollaborationCreatedProfile(value: unknown) {
+  const payload = toRecord(value);
+  const id = toText(payload.id).trim();
+  const name = toText(payload.name).trim();
+  if (!id || !name) return null;
+  const capabilityContract = payload.capability_contract && typeof payload.capability_contract === "object" && !Array.isArray(payload.capability_contract)
+    ? (payload.capability_contract as Record<string, unknown>)
+    : null;
+  return {
+    id,
+    name,
+    created_by_agent_id: toNullableText(payload.created_by_agent_id),
+    parent_template_id: toNullableText(payload.parent_template_id),
+    derived_from_agent_id: toNullableText(payload.derived_from_agent_id),
+    specialization_scope: toText(payload.specialization_scope).trim() || "general",
+    lifecycle: toText(payload.lifecycle).trim() || "active",
+    creation_reason: toNullableText(payload.creation_reason),
+    capability_contract: capabilityContract,
+  };
+}
+
+function normalizeCollaborationSpawnedInstance(value: unknown) {
+  const payload = toRecord(value);
+  const instanceId = toText(payload.instance_id).trim();
+  const profileId = toText(payload.profile_id).trim();
+  const rootAgentId = toText(payload.root_agent_id).trim();
+  const taskId = toText(payload.task_id).trim();
+  if (!instanceId || !profileId || !rootAgentId || !taskId) return null;
+  const depthRaw = Number(payload.depth);
+  const depth = Number.isFinite(depthRaw) ? Math.max(0, Math.round(depthRaw)) : 0;
+  return {
+    instance_id: instanceId,
+    profile_id: profileId,
+    parent_instance_id: toNullableText(payload.parent_instance_id),
+    root_agent_id: rootAgentId,
+    task_id: taskId,
+    purpose: toText(payload.purpose).trim() || "Task-local specialist execution",
+    depth,
+    allowed_skills: toStringArray(payload.allowed_skills),
+    allowed_tools: toStringArray(payload.allowed_tools),
+    allowed_mcp: toStringArray(payload.allowed_mcp),
+    applied_rules: toStringArray(payload.applied_rules),
+    input_refs: toStringArray(payload.input_refs),
+    output_refs: toStringArray(payload.output_refs),
+    status: toText(payload.status).trim() || "planned",
+    verify_status: toText(payload.verify_status).trim() || "pending",
+  };
+}
+
+function normalizeCollaborationBudget(value: unknown) {
+  const payload = toRecord(value);
+  const maxInstances = Math.max(1, Math.round(toNumeric(payload.max_instances, 7)));
+  const maxTokens = Math.max(1, Math.round(toNumeric(payload.max_tokens, 120000)));
+  const maxWallClock = Math.max(1, Math.round(toNumeric(payload.max_wall_clock_minutes, 45)));
+  const maxNoProgress = Math.max(1, Math.round(toNumeric(payload.max_no_progress_hops, 2)));
+  return {
+    max_instances: maxInstances,
+    max_tokens: maxTokens,
+    max_wall_clock_minutes: maxWallClock,
+    max_no_progress_hops: maxNoProgress,
+  };
+}
+
 function normalizeCollaborationPlan(value: unknown): AgentTaskCollaborationPlan | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
   const payload = toRecord(value);
+  const strategyRaw = toText(payload.strategy).trim().toLowerCase();
+  const strategy = strategyRaw === "reuse_existing" || strategyRaw === "create_new" || strategyRaw === "mixed"
+    ? strategyRaw
+    : undefined;
+  const reuseCandidates = toUnknownArray(payload.reuse_candidates)
+    .map(normalizeCollaborationReuseCandidate)
+    .filter((item): item is NonNullable<ReturnType<typeof normalizeCollaborationReuseCandidate>> => Boolean(item));
+  const createdProfiles = toUnknownArray(payload.created_profiles)
+    .map(normalizeCollaborationCreatedProfile)
+    .filter((item): item is NonNullable<ReturnType<typeof normalizeCollaborationCreatedProfile>> => Boolean(item));
+  const spawnedInstances = toUnknownArray(payload.spawned_instances)
+    .map(normalizeCollaborationSpawnedInstance)
+    .filter((item): item is NonNullable<ReturnType<typeof normalizeCollaborationSpawnedInstance>> => Boolean(item));
+  const delegationDepthRaw = Number(payload.delegation_depth);
+  const delegationDepth = Number.isFinite(delegationDepthRaw) ? Math.max(0, Math.round(delegationDepthRaw)) : undefined;
   return {
     analysis_required: toBoolean(payload.analysis_required, false),
     suggested_agents: toStringArray(payload.suggested_agents),
     selected_agents: toStringArray(payload.selected_agents),
     rationale: toText(payload.rationale),
     reviewed_at: toNullableText(payload.reviewed_at),
+    strategy,
+    reuse_candidates: reuseCandidates,
+    created_profiles: createdProfiles,
+    spawned_instances: spawnedInstances,
+    orchestration_budget: normalizeCollaborationBudget(payload.orchestration_budget),
+    delegation_depth: delegationDepth,
   };
 }
 
@@ -482,7 +681,7 @@ function buildDemoTaskBrief(seed: DemoHumanTaskSeed): Record<string, unknown> {
       relevant_anchors: seed.target_artifacts.map((path) => ({ path })),
       mandatory_rules: [
         { path: "docs/tasks/task_rules.md" },
-        { path: "docs/subservices/oap/ANALYST_OPERATING_PLAN.md" },
+        { path: "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md" },
       ],
       operational_memory: [
         {
@@ -554,7 +753,7 @@ function buildDemoTaskRowRaw(seed: DemoHumanTaskSeed): Record<string, unknown> {
     priority: seed.priority,
     origin_type: "recommendation",
     origin_type_label_ru: "Рекомендация",
-    origin_ref: "docs/subservices/oap/ANALYST_OPERATING_PLAN.md",
+    origin_ref: "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
     evidence_refs: seed.evidence_refs,
     task_brief: buildDemoTaskBrief(seed),
     readiness_auto_score: 4,
@@ -605,7 +804,7 @@ function buildDemoTaskDetailsRaw(seed: DemoHumanTaskSeed): Record<string, unknow
     origin: {
       origin_type: "recommendation",
       origin_type_label_ru: "Рекомендация",
-      origin_ref: "docs/subservices/oap/ANALYST_OPERATING_PLAN.md",
+      origin_ref: "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
       source_agent_id: "analyst-agent",
       linked_improvement: null,
     },
@@ -832,6 +1031,9 @@ function taskEventBlob(event: AgentTaskTimelineEvent): string {
   const payload = toRecord(event.payload);
   return [
     event.event_type,
+    event.step_key,
+    event.step_raw,
+    event.step_label,
     event.status_from,
     event.status_to,
     toText(payload.outcome),
@@ -963,17 +1165,31 @@ function buildTaskWorkflowFields(
 }
 
 function normalizeTaskTimelineEvent(value: unknown): AgentTaskTimelineEvent | null {
-  const payload = toRecord(value);
-  const id = toText(payload.id);
+  const root = toRecord(value);
+  const id = toText(root.id);
   if (!id) return null;
+  const payload = toRecord(root.payload);
+  const stepRawCandidate =
+    toText(payload.step_raw).trim()
+    || toText(payload.step).trim()
+    || toText(root.event_type).trim();
+  const stepKey = normalizeTaskStepKey(stepRawCandidate);
+  const stepLabel = resolveTaskStepLabel(stepKey, stepRawCandidate || null);
+  const normalizedPayload: Record<string, unknown> = { ...payload };
+  if (stepRawCandidate) normalizedPayload.step_raw = stepRawCandidate;
+  if (stepKey) normalizedPayload.step = stepKey;
+  if (stepLabel) normalizedPayload.step_label = stepLabel;
   return {
     id,
-    actor_agent_id: toText(payload.actor_agent_id),
-    event_time: toNullableText(payload.event_time),
-    event_type: toText(payload.event_type),
-    status_from: toNullableText(payload.status_from),
-    status_to: toNullableText(payload.status_to),
-    payload: toRecord(payload.payload),
+    actor_agent_id: toText(root.actor_agent_id),
+    event_time: toNullableText(root.event_time),
+    event_type: toText(root.event_type) || stepLabel || "не зафиксировано",
+    status_from: toNullableText(root.status_from),
+    status_to: toNullableText(root.status_to),
+    payload: normalizedPayload,
+    step_key: stepKey,
+    step_label: stepLabel,
+    step_raw: stepRawCandidate || null,
   };
 }
 

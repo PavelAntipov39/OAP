@@ -26,3 +26,6 @@ test-results/
 # OS
 .DS_Store
 Thumbs.db
+
+# MCP config (содержит API-ключи)
+.vscode/mcp.json

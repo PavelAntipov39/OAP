@@ -33,12 +33,51 @@ npm --prefix ops-web install
 # 3. Сгенерируй контент-индекс
 npm --prefix ops-web run prepare-content
 
-# 4. Проверь манифест агентов
+# 4. Проверь canonical routing contract
+npm --prefix ops-web run validate-router
+
+# 5. Проверь per-agent operating plans
+npm --prefix ops-web run validate-agent-docs
+
+# 6. Проверь манифест агентов
 npm --prefix ops-web run check-agents
 
-# 5. Собери и запусти
+# 7. Собери и запусти
 npm --prefix ops-web run build
 npm --prefix ops-web run preview
+```
+
+Для полного локального verification pipeline используй одну команду:
+
+```bash
+npm --prefix ops-web run check
+```
+
+Для браузерной smoke-проверки ключевого capability-routing сценария:
+
+```bash
+npm --prefix ops-web run test:e2e:smoke
+```
+
+Эта команда покрывает минимальный обязательный browser-path для capability comparison и deeplink canonicalization.
+
+Для Python-части этого репозитория стандартная команда проверки:
+
+```bash
+python3 -m unittest discover -s scripts/tests -p 'test_*.py'
+python3 -m py_compile scripts/agent_telemetry.py scripts/sync_agent_tasks.py scripts/agent_orchestration.py scripts/validate_request_router.py scripts/validate_agent_operating_plans.py scripts/validate_verification_contract.py
+```
+
+Канонический список verification-команд хранится в:
+
+```bash
+.specify/specs/001-oap/contracts/verification.yaml
+```
+
+В PR те же проверки запускаются автоматически через GitHub Actions workflow:
+
+```bash
+.github/workflows/ci.yml
 ```
 
 ## Shared DB contract (Phase 1)

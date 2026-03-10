@@ -5,8 +5,6 @@ test.describe("Agents deep-link routing", () => {
 
   const drawerCloseButton = (page: Page) => page.locator('button[aria-label="Закрыть"]').first();
 
-  const drawerTab = (page: Page, name: string, exact = false) => page.getByRole("tab", { name, exact, includeHidden: true });
-
   const drawerSurface = (page: Page) => page.locator(".MuiDrawer-paper").last();
 
   test("opens target agent and MCP tab from URL", async ({ page }) => {
@@ -29,7 +27,7 @@ test.describe("Agents deep-link routing", () => {
     await page.goto("/#/agents?agent=reader-agent&tab=mcp");
 
     await expect(drawerCloseButton(page)).toBeVisible();
-    await expect(drawerTab(page, "Обзор")).toHaveAttribute("aria-selected", "true");
+    await expect(drawerSurface(page).getByText("Разработчик", { exact: true })).toBeVisible();
     await expect(page).toHaveURL(/#\/agents\?agent=reader-agent&tab=overview$/);
   });
 
@@ -50,26 +48,25 @@ test.describe("Agents deep-link routing", () => {
     await expect(drawerCloseButton(page)).toHaveCount(0);
   });
 
-  test("tab switches do not pollute browser history", async ({ page }) => {
+  test("route canonicalization does not pollute browser history", async ({ page }) => {
     await page.goto("/#/overview");
-    await page.goto("/#/agents?agent=designer-agent&tab=overview");
+    await page.goto("/#/agents?agent=designer-agent&tab=unknown");
 
-    await expect(drawerTab(page, "Обзор", true)).toHaveAttribute("aria-selected", "true");
-    await drawerTab(page, "MCP", true).click();
-    await expect(page).toHaveURL(/#\/agents\?agent=designer-agent&tab=mcp$/);
+    await expect(drawerCloseButton(page)).toBeVisible();
+    await expect(page).toHaveURL(/#\/agents\?agent=designer-agent&tab=overview$/);
 
     await page.goBack();
     await expect(page).toHaveURL(/#\/overview$/);
   });
 
-  test("shows benchmark stability block and metric tooltip for analyst", async ({ page }) => {
+  test("keeps analyst metrics visible for deep-link with tasks_quality tab", async ({ page }) => {
     await page.goto("/#/agents?agent=analyst-agent&tab=tasks_quality");
 
     await expect(drawerCloseButton(page)).toBeVisible();
-    await expect(page.getByText("Benchmark стабильность")).toBeVisible();
-    await expect(page.getByText("Стабильность и качество ответа")).toBeVisible();
+    await expect(page.getByText("Эффективность агента", { exact: true })).toBeVisible();
+    await expect(page.getByText("Ключевые метрики агента", { exact: true })).toBeVisible();
 
-    const metricInfo = page.getByLabel("Как считается метрика pass_at_5");
+    const metricInfo = page.getByLabel("Как считается метрика tasks_from_agent");
     await metricInfo.hover();
     await expect(page.getByText("Как считается")).toBeVisible();
   });

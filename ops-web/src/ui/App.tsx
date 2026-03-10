@@ -1,36 +1,33 @@
-import React from "react";
+import React, { Suspense } from "react";
 import {
   AppBar,
   Box,
+  CircularProgress,
   Container,
   Link,
-  Tab,
-  Tabs,
+  Paper,
   Toolbar,
   Typography,
 } from "@mui/material";
-import HomeOutlinedIcon from "@mui/icons-material/HomeOutlined";
-import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
-import SchemaOutlinedIcon from "@mui/icons-material/SchemaOutlined";
-import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
-import AssignmentTurnedInOutlinedIcon from "@mui/icons-material/AssignmentTurnedInOutlined";
 
-import { OverviewPage } from "../pages/OverviewPage";
-import { ArchitecturePage } from "../pages/ArchitecturePage";
-import { BpmnPage } from "../pages/BpmnPage";
-import { DocsPage } from "../pages/DocsPage";
-import { AgentsPage } from "../pages/AgentsPage";
-import { TasksPage } from "../pages/TasksPage";
-import { AgentFlowPage } from "../pages/AgentFlowPage";
-import { VisualExplainerPage } from "../pages/VisualExplainerPage";
+const OverviewPage = React.lazy(() => import("../pages/OverviewPage").then((module) => ({ default: module.OverviewPage })));
+const ArchitecturePage = React.lazy(() => import("../pages/ArchitecturePage").then((module) => ({ default: module.ArchitecturePage })));
+const BpmnPage = React.lazy(() => import("../pages/BpmnPage").then((module) => ({ default: module.BpmnPage })));
+const DocsPage = React.lazy(() => import("../pages/DocsPage").then((module) => ({ default: module.DocsPage })));
+const GlossaryPage = React.lazy(() => import("../pages/GlossaryPage").then((module) => ({ default: module.GlossaryPage })));
+const AgentsPage = React.lazy(() => import("../pages/AgentsPage").then((module) => ({ default: module.AgentsPage })));
+const TasksPage = React.lazy(() => import("../pages/TasksPage").then((module) => ({ default: module.TasksPage })));
+const AgentFlowPage = React.lazy(() => import("../pages/AgentFlowPage").then((module) => ({ default: module.AgentFlowPage })));
+const VisualExplainerPage = React.lazy(() => import("../pages/VisualExplainerPage").then((module) => ({ default: module.VisualExplainerPage })));
 
-type OpsRoute = "overview" | "architecture" | "bpmn" | "docs" | "tasks" | "agents" | "agent-flow" | "visual-explainer";
+type OpsRoute = "overview" | "architecture" | "bpmn" | "docs" | "glossary" | "tasks" | "agents" | "agent-flow" | "visual-explainer";
 
 function readRoute(): OpsRoute {
   const hash = (location.hash || "").replace(/^#\/?/, "");
   if (hash.startsWith("architecture")) return "architecture";
   if (hash.startsWith("bpmn")) return "bpmn";
   if (hash.startsWith("docs")) return "docs";
+  if (hash.startsWith("glossary")) return "glossary";
   if (hash.startsWith("tasks")) return "tasks";
   if (hash.startsWith("agents")) return "agents";
   if (hash.startsWith("agent-flow")) return "agent-flow";
@@ -38,8 +35,25 @@ function readRoute(): OpsRoute {
   return "overview";
 }
 
-function setRoute(route: OpsRoute) {
-  location.hash = `#/${route}`;
+function RouteFallback() {
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        minHeight: 240,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 2,
+        bgcolor: "transparent",
+      }}
+    >
+      <CircularProgress size={24} />
+      <Typography variant="body2" color="text.secondary">
+        Loading page...
+      </Typography>
+    </Paper>
+  );
 }
 
 export function App() {
@@ -51,9 +65,6 @@ export function App() {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
-  const tab =
-    route === "overview" ? 0 : route === "architecture" ? 1 : route === "bpmn" ? 2 : route === "docs" ? 3 : 4;
-
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
       <AppBar position="sticky" color="transparent">
@@ -61,59 +72,37 @@ export function App() {
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
             OAP Ops Hub
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Architecture + BPMN + OAP Knowledge Base
-          </Typography>
           <Box sx={{ flex: 1 }} />
-          <Link href="#/overview" underline="hover" color="inherit">
-            Hub
-          </Link>
           <Link href="#/agents" underline="hover" color="inherit">
-            Agents (phase 2)
+            Agents
           </Link>
           <Link href="#/tasks" underline="hover" color="inherit">
             Tasks
+          </Link>
+          <Link href="#/docs" underline="hover" color="inherit">
+            Docs
+          </Link>
+          <Link href="#/glossary" underline="hover" color="inherit">
+            Glossary
           </Link>
           <Link href="#/agent-flow" underline="hover" color="inherit">
             Agent Flow
           </Link>
         </Toolbar>
-        <Tabs
-          value={route === "agents" || route === "agent-flow" ? false : tab}
-          onChange={(_, value: number) => {
-            const next: OpsRoute =
-              value === 0
-                ? "overview"
-                : value === 1
-                  ? "architecture"
-                  : value === 2
-                    ? "bpmn"
-                    : value === 3
-                      ? "docs"
-                      : "tasks";
-            setRoute(next);
-          }}
-          variant="scrollable"
-          scrollButtons="auto"
-          sx={{ px: 2 }}
-        >
-          <Tab icon={<HomeOutlinedIcon />} iconPosition="start" label="Overview" />
-          <Tab icon={<AccountTreeOutlinedIcon />} iconPosition="start" label="Architecture" />
-          <Tab icon={<SchemaOutlinedIcon />} iconPosition="start" label="BPMN" />
-          <Tab icon={<DescriptionOutlinedIcon />} iconPosition="start" label="База знаний ОАП" />
-          <Tab icon={<AssignmentTurnedInOutlinedIcon />} iconPosition="start" label="Задачи" />
-        </Tabs>
       </AppBar>
 
       <Container maxWidth={false} sx={{ py: 2 }}>
-        {route === "overview" ? <OverviewPage /> : null}
-        {route === "architecture" ? <ArchitecturePage /> : null}
-        {route === "bpmn" ? <BpmnPage /> : null}
-        {route === "docs" ? <DocsPage /> : null}
-        {route === "tasks" ? <TasksPage /> : null}
-        {route === "agents" ? <AgentsPage /> : null}
-        {route === "agent-flow" ? <AgentFlowPage /> : null}
-        {route === "visual-explainer" ? <VisualExplainerPage /> : null}
+        <Suspense fallback={<RouteFallback />}>
+          {route === "overview" ? <OverviewPage /> : null}
+          {route === "architecture" ? <ArchitecturePage /> : null}
+          {route === "bpmn" ? <BpmnPage /> : null}
+          {route === "docs" ? <DocsPage /> : null}
+          {route === "glossary" ? <GlossaryPage /> : null}
+          {route === "tasks" ? <TasksPage /> : null}
+          {route === "agents" ? <AgentsPage /> : null}
+          {route === "agent-flow" ? <AgentFlowPage /> : null}
+          {route === "visual-explainer" ? <VisualExplainerPage /> : null}
+        </Suspense>
       </Container>
     </Box>
   );

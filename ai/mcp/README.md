@@ -31,7 +31,6 @@
 |--------|-----|-----------|-------|
 | **context7** | http | Актуальная документация библиотек при написании кода | global |
 | **playwright** | stdio (`npx @playwright/mcp@latest`) | Браузерное e2e тестирование из чата | global |
-| **codag_bible** | stdio (`node .run/codag/.../mcp-server.js`) | Кастомный MCP проекта Библия | global |
 | **supabase** | встроен через Anthropic | Управление БД (таблицы, миграции, функции) | session |
 
 ### Детали подключения
@@ -47,13 +46,6 @@ claude mcp add -s user -t http context7 https://mcp.context7.com/mcp \
 claude mcp add -s user -t stdio playwright -- npx @playwright/mcp@latest
 ```
 
-**codag_bible**
-```bash
-claude mcp add -s user -t stdio codag_bible -- node \
-  "/Users/pavelantipov/Downloads/VS Code/Библия/.run/codag/frontend/out/mcp-server.js" \
-  "/Users/pavelantipov/Downloads/VS Code/Библия"
-```
-
 **supabase** — для проекта подключается через `.mcp.json` с нужным `project_ref`.
 
 ## Где смотреть ключи (безопасно)
@@ -66,3 +58,7 @@ claude mcp add -s user -t stdio codag_bible -- node \
 ## Кастомные серверы
 
 Код собственных MCP-серверов кладём в `servers/`.
+
+Важно:
+- в этом README документируются только MCP-серверы, реально относящиеся к OAP;
+- внешние project-specific MCP примеры не хранить здесь, если их код и конфиг не живут в этом репозитории.

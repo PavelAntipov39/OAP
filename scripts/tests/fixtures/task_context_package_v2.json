@@ -18,7 +18,44 @@
     "suggested_agents": ["designer-agent", "ops-agent"],
     "selected_agents": [],
     "rationale": "Нужны UI и release проверки для candidate-практики.",
-    "reviewed_at": null
+    "reviewed_at": null,
+    "strategy": "reuse_existing",
+    "reuse_candidates": [
+      {
+        "profile_id": "designer-agent",
+        "name": "Продуктовый дизайнер",
+        "score": 0.72,
+        "decision": "accepted",
+        "rationale": "Strong fit by specialization scope and capability overlap."
+      }
+    ],
+    "created_profiles": [],
+    "spawned_instances": [
+      {
+        "instance_id": "inst-001",
+        "profile_id": "designer-agent",
+        "parent_instance_id": null,
+        "root_agent_id": "analyst-agent",
+        "task_id": "rec:analyst-agent:rec-001",
+        "purpose": "UI verification for candidate task",
+        "depth": 0,
+        "allowed_skills": ["playwright"],
+        "allowed_tools": ["Browser verification"],
+        "allowed_mcp": ["playwright"],
+        "applied_rules": ["OAP Design Rule"],
+        "input_refs": [".specify/specs/001-oap/spec.md"],
+        "output_refs": [],
+        "status": "planned",
+        "verify_status": "pending"
+      }
+    ],
+    "orchestration_budget": {
+      "max_instances": 7,
+      "max_tokens": 120000,
+      "max_wall_clock_minutes": 45,
+      "max_no_progress_hops": 2
+    },
+    "delegation_depth": 0
   },
   "ab_test_plan": {
     "enabled": true,

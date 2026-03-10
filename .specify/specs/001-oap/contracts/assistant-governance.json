@@ -1,0 +1,20 @@
+{
+  "version": "assistant_governance_v2",
+  "canonical_file": "AGENTS.md",
+  "entry_strategy": "generated_pointer",
+  "template_version": "v2",
+  "supported_assistants": [
+    {
+      "assistant_id": "github_copilot",
+      "display_name": "GitHub Copilot",
+      "entry_file": ".github/copilot-instructions.md",
+      "enabled": true
+    },
+    {
+      "assistant_id": "claude",
+      "display_name": "Claude",
+      "entry_file": "CLAUDE.md",
+      "enabled": true
+    }
+  ]
+}

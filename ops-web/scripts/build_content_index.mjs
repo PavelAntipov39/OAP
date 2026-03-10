@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs/promises";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
@@ -10,21 +11,30 @@ const opsRoot = path.resolve(__dirname, "..");
 const repoRoot = path.resolve(opsRoot, "..");
 const outDir = path.join(opsRoot, "src", "generated");
 const publicDir = path.join(opsRoot, "public");
+const specContractsDir = path.join(repoRoot, ".specify", "specs", "001-oap", "contracts");
+const assistantGovernanceContractPath = path.join(specContractsDir, "assistant-governance.json");
 const requiredC4Views = ["oap_context", "oap_containers", "db_rpc_boundary", "security_access"];
 const preferredSpecDir = "001-oap";
 const agentStatuses = new Set(["healthy", "degraded", "offline"]);
 const mcpStatuses = new Set(["online", "degraded", "offline"]);
 const usedMcpStatuses = new Set(["active", "reauth_required", "degraded", "offline"]);
+const capabilityReviewStatuses = new Set(["draft", "approved", "stale"]);
+const capabilityRecommendations = new Set(["rewrite_current", "trial_alternative", "keep_current", "replace_after_trial"]);
+const capabilitySourceTrust = new Set(["official", "curated", "rejected", "discovery_only"]);
+const capabilitySourceKinds = new Set(["catalog_index", "official_docs", "official_repo", "curated_repo"]);
+const externalTrialStatuses = new Set(["not_started", "scheduled", "running", "passed", "failed"]);
+const externalPromotionStatuses = new Set(["human_review_required", "approved", "watchlist", "rejected"]);
+const capabilityFreshnessStatuses = new Set(["fresh", "stale", "missing"]);
 const MODERN_AGENT_IDS = new Set(["analyst-agent", "designer-agent"]);
 const MODERN_AGENT_PLAN_RULES = {
   "analyst-agent": {
     title: "Операционный стандарт analyst-agent",
-    path: "docs/subservices/oap/ANALYST_OPERATING_PLAN.md",
+    path: "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
     description: "Канонический ежедневный цикл, policy источников, lifecycle улучшений и метрики аналитика.",
   },
   "designer-agent": {
     title: "Операционный стандарт designer-agent",
-    path: "docs/subservices/oap/DESIGNER_OPERATING_PLAN.md",
+    path: "docs/subservices/oap/agents/designer-agent/OPERATING_PLAN.md",
     description: "Канонический процесс дизайн-ревью, UI gate, UX-понятность и правила подсказок.",
   },
 };
@@ -42,19 +52,43 @@ const oapKbCoreSources = [
     required: true,
   },
   {
+    relPath: "docs/subservices/oap/CAPABILITY_GLOSSARY.json",
+    title: "ОАП: glossary capability comparison",
+    section: "service",
+    required: true,
+  },
+  {
     relPath: "docs/subservices/oap/DESIGN_RULES.md",
     title: "ОАП: правила дизайна и переиспользования",
     section: "policies",
     required: true,
   },
   {
-    relPath: "docs/subservices/oap/AGENT_WORKFLOW_PROMPT.md",
-    title: "ОАП: промт внедрения workflow-практик",
+    relPath: "docs/subservices/oap/AGENT_OPERATIONS_RULES.md",
+    title: "ОАП: операционные правила agent-card workflow",
     section: "policies",
     required: true,
   },
   {
-    relPath: "docs/subservices/oap/DESIGNER_OPERATING_PLAN.md",
+    relPath: "docs/subservices/oap/agents/analyst-agent/CARD_DATA_SOURCES_MAP.md",
+    title: "ОАП: карта источников данных analyst-card",
+    section: "service",
+    required: true,
+  },
+  {
+    relPath: "docs/subservices/oap/ROUTING_MANUAL_TRIALS.md",
+    title: "ОАП: manual trials capability-first routing",
+    section: "service",
+    required: true,
+  },
+  {
+    relPath: "docs/subservices/oap/REQUEST_ROUTING_CONTRACT.yaml",
+    title: "ОАП: machine-readable router contract",
+    section: "service",
+    required: true,
+  },
+  {
+    relPath: "docs/subservices/oap/agents/designer-agent/OPERATING_PLAN.md",
     title: "ОАП: операционный стандарт продакт дизайнера",
     section: "service",
     required: true,
@@ -143,6 +177,18 @@ const oapKbCoreSources = [
     section: "telemetry_reports",
     required: false,
   },
+  {
+    relPath: "artifacts/skill_shadow_trial_plan.json",
+    title: "Skill shadow-trial plan (JSON)",
+    section: "telemetry_reports",
+    required: false,
+  },
+  {
+    relPath: "artifacts/skill_shadow_trial_judgement.json",
+    title: "Skill shadow-trial judgement (JSON)",
+    section: "telemetry_reports",
+    required: false,
+  },
 ];
 const oapAgentsSectionRules = [
   {
@@ -183,6 +229,12 @@ function fileIdFromPath(filePath) {
   return filePath.replace(/[^\w.-]+/g, "_");
 }
 
+async function buildCapabilityGlossary() {
+  const sourcePath = path.join(repoRoot, "docs", "subservices", "oap", "CAPABILITY_GLOSSARY.json");
+  const raw = await fs.readFile(sourcePath, "utf8");
+  return JSON.parse(raw);
+}
+
 function slugify(value) {
   return asString(value)
     .toLowerCase()
@@ -199,6 +251,20 @@ function asString(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function stableStringify(value) {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
+  }
+  if (value && typeof value === "object") {
+    const entries = Object.keys(value)
+      .sort((a, b) => a.localeCompare(b, "en"))
+      .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`);
+    return `{${entries.join(",")}}`;
+  }
+  if (value === undefined) return "null";
+  return JSON.stringify(value);
+}
+
 function normalizePath(value) {
   return asString(value).replace(/^\.?\//, "").replace(/\\/g, "/").toLowerCase();
 }
@@ -212,6 +278,193 @@ function asNullableNumber(value) {
   if (value === null || value === undefined || value === "") return null;
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : null;
+}
+
+function normalizeStringArray(value) {
+  return Array.isArray(value) ? value.map((item) => asString(item)).filter(Boolean) : [];
+}
+
+function buildCapabilitySourceFingerprintPayload(agent) {
+  return {
+    capabilityOptimization: agent?.capabilityOptimization && typeof agent.capabilityOptimization === "object"
+      ? agent.capabilityOptimization
+      : {},
+    usedSkills: Array.isArray(agent?.usedSkills) ? agent.usedSkills : [],
+    availableSkills: Array.isArray(agent?.availableSkills) ? agent.availableSkills : [],
+    usedTools: Array.isArray(agent?.usedTools) ? agent.usedTools : [],
+    availableTools: Array.isArray(agent?.availableTools) ? agent.availableTools : [],
+    usedMcp: Array.isArray(agent?.usedMcp) ? agent.usedMcp : [],
+    availableMcp: Array.isArray(agent?.availableMcp) ? agent.availableMcp : [],
+    rulesApplied: Array.isArray(agent?.rulesApplied) ? agent.rulesApplied : [],
+    skillSourceRegistry: Array.isArray(agent?.skillSourceRegistry) ? agent.skillSourceRegistry : [],
+    externalSkillCandidates: Array.isArray(agent?.externalSkillCandidates) ? agent.externalSkillCandidates : [],
+  };
+}
+
+function computeCapabilitySourceFingerprint(agent) {
+  return createHash("sha1")
+    .update(stableStringify(buildCapabilitySourceFingerprintPayload(agent)), "utf8")
+    .digest("hex");
+}
+
+function hasDecisionGuidanceContent(value) {
+  if (!value || typeof value !== "object") return false;
+  return Boolean(
+    asString(value.purpose)
+    || asString(value.useWhen)
+    || asString(value.avoidWhen)
+    || normalizeStringArray(value.requiredContext).length > 0
+    || asString(value.expectedOutput)
+    || normalizeStringArray(value.failureModes).length > 0
+    || normalizeStringArray(value.fallbackTo).length > 0
+    || normalizeStringArray(value.examples).length > 0,
+  );
+}
+
+function normalizeDecisionGuidance(value, fallback = {}) {
+  const guidance = {
+    purpose: asString(value?.purpose) || asString(fallback?.purpose) || null,
+    useWhen: asString(value?.useWhen) || asString(fallback?.useWhen) || null,
+    avoidWhen: asString(value?.avoidWhen) || asString(fallback?.avoidWhen) || null,
+    requiredContext: normalizeStringArray(value?.requiredContext).length > 0
+      ? normalizeStringArray(value?.requiredContext)
+      : normalizeStringArray(fallback?.requiredContext),
+    expectedOutput: asString(value?.expectedOutput) || asString(fallback?.expectedOutput) || null,
+    failureModes: normalizeStringArray(value?.failureModes).length > 0
+      ? normalizeStringArray(value?.failureModes)
+      : normalizeStringArray(fallback?.failureModes),
+    fallbackTo: normalizeStringArray(value?.fallbackTo).length > 0
+      ? normalizeStringArray(value?.fallbackTo)
+      : normalizeStringArray(fallback?.fallbackTo),
+    examples: normalizeStringArray(value?.examples).length > 0
+      ? normalizeStringArray(value?.examples)
+      : normalizeStringArray(fallback?.examples),
+  };
+
+  return hasDecisionGuidanceContent(guidance) ? guidance : null;
+}
+
+function computeDescriptionCompletenessScore(guidance) {
+  if (!guidance) return 0;
+  const total = 8;
+  let filled = 0;
+  if (asString(guidance.purpose)) filled += 1;
+  if (asString(guidance.useWhen)) filled += 1;
+  if (asString(guidance.avoidWhen)) filled += 1;
+  if (normalizeStringArray(guidance.requiredContext).length > 0) filled += 1;
+  if (asString(guidance.expectedOutput)) filled += 1;
+  if (normalizeStringArray(guidance.failureModes).length > 0) filled += 1;
+  if (normalizeStringArray(guidance.fallbackTo).length > 0) filled += 1;
+  if (normalizeStringArray(guidance.examples).length > 0) filled += 1;
+  return Math.round((filled / total) * 100);
+}
+
+function normalizeCapabilityRecommendation(value, fallback = "keep_current") {
+  const normalized = asString(value).toLowerCase();
+  if (capabilityRecommendations.has(normalized)) return normalized;
+  return fallback;
+}
+
+function normalizeCapabilityQualitySignals(value, guidance, fallbackRecommendation = "keep_current") {
+  const explicitReviewStatus = asString(value?.reviewStatus).toLowerCase();
+  const lastReviewedAt = asString(value?.lastReviewedAt) || null;
+  const descriptionCompletenessScore = asNullableNumber(value?.descriptionCompletenessScore);
+  const computedScore = descriptionCompletenessScore ?? computeDescriptionCompletenessScore(guidance);
+  const reviewStatus = capabilityReviewStatuses.has(explicitReviewStatus)
+    ? explicitReviewStatus
+    : (computedScore >= 75 ? "approved" : "draft");
+  const improvementHint = asString(value?.improvementHint)
+    || (computedScore < 75 ? "Уточнить useWhen/avoidWhen/fallback и добавить примеры принятия решения." : null);
+
+  return {
+    reviewStatus,
+    lastReviewedAt,
+    descriptionCompletenessScore: computedScore,
+    verifyPassAfterUseRate: asNullableNumber(value?.verifyPassAfterUseRate),
+    fallbackAfterUseRate: asNullableNumber(value?.fallbackAfterUseRate),
+    improvementHint,
+    recommendation: normalizeCapabilityRecommendation(value?.recommendation, fallbackRecommendation),
+  };
+}
+
+function normalizeSkillSourceRegistry(value) {
+  const list = Array.isArray(value) ? value : [];
+  return list.map((item, index) => {
+    const id = asString(item?.id) || `source-${index + 1}`;
+    const title = asString(item?.title);
+    const url = asString(item?.url) || null;
+    const trust = capabilitySourceTrust.has(asString(item?.trust).toLowerCase()) ? asString(item?.trust).toLowerCase() : "discovery_only";
+    const kind = capabilitySourceKinds.has(asString(item?.kind).toLowerCase()) ? asString(item?.kind).toLowerCase() : "catalog_index";
+    const description = asString(item?.description) || "Источник для поиска и оценки skill-candidates.";
+    const usagePolicy = asString(item?.usagePolicy) || "Использовать как источник discovery, затем валидировать отдельно.";
+
+    assert(title.length > 0, `invalid_skill_source_title:${index}`);
+    return { id, title, url, trust, kind, description, usagePolicy };
+  });
+}
+
+function normalizeExternalSkillCandidates(value, ctx, skillSourceRegistry) {
+  const list = Array.isArray(value) ? value : [];
+  const sourceById = new Map(skillSourceRegistry.map((item) => [item.id, item]));
+  return list.map((item, index) => {
+    const id = asString(item?.id) || `${ctx}-candidate-${index + 1}`;
+    const name = asString(item?.name);
+    const sourceId = asString(item?.sourceId);
+    const source = sourceById.get(sourceId) || null;
+    const sourceTitle = asString(item?.sourceTitle) || source?.title || sourceId;
+    const sourceUrl = asString(item?.sourceUrl) || source?.url || null;
+    const trust = capabilitySourceTrust.has(asString(item?.trust).toLowerCase())
+      ? asString(item?.trust).toLowerCase()
+      : (source?.trust || "discovery_only");
+    const summary = asString(item?.summary) || "Кандидат на shadow-trial для замены или усиления текущего skill.";
+    const targetSkills = normalizeStringArray(item?.targetSkills);
+    const expectedEffect = asString(item?.expectedEffect) || null;
+    const decisionGuidance = normalizeDecisionGuidance(item?.decisionGuidance, {
+      purpose: summary,
+      useWhen: asString(item?.useWhen),
+      avoidWhen: asString(item?.avoidWhen),
+      expectedOutput: expectedEffect,
+      examples: normalizeStringArray(item?.examples),
+    });
+    const recommendation = normalizeCapabilityRecommendation(item?.recommendation, "trial_alternative");
+    const qualitySignals = normalizeCapabilityQualitySignals(item?.qualitySignals, decisionGuidance, recommendation);
+    const trialStatus = externalTrialStatuses.has(asString(item?.trialStatus).toLowerCase()) ? asString(item?.trialStatus).toLowerCase() : "not_started";
+    const promotionStatus = externalPromotionStatuses.has(asString(item?.promotionStatus).toLowerCase()) ? asString(item?.promotionStatus).toLowerCase() : "human_review_required";
+    const recommendationReason = asString(item?.recommendationReason) || null;
+    const rawTrialMetrics = item?.trialMetrics && typeof item.trialMetrics === "object" ? item.trialMetrics : null;
+    const trialMetrics = rawTrialMetrics ? {
+      taskSuccessRate: asNullableNumber(rawTrialMetrics.taskSuccessRate),
+      verificationPassRate: asNullableNumber(rawTrialMetrics.verificationPassRate),
+      timeToSolutionDeltaPct: asNullableNumber(rawTrialMetrics.timeToSolutionDeltaPct),
+      tokenCostDeltaPct: asNullableNumber(rawTrialMetrics.tokenCostDeltaPct),
+      fallbackRate: asNullableNumber(rawTrialMetrics.fallbackRate),
+      humanCorrectionRate: asNullableNumber(rawTrialMetrics.humanCorrectionRate),
+    } : null;
+
+    assert(name.length > 0, `invalid_external_skill_candidate_name:${ctx}:${index}`);
+    assert(sourceId.length > 0, `invalid_external_skill_candidate_source:${ctx}:${index}`);
+    assert(sourceTitle.length > 0, `invalid_external_skill_candidate_source_title:${ctx}:${index}`);
+    assert(targetSkills.length > 0, `invalid_external_skill_candidate_targets:${ctx}:${index}`);
+
+    return {
+      id,
+      name,
+      sourceId,
+      sourceTitle,
+      sourceUrl,
+      trust,
+      summary,
+      targetSkills,
+      expectedEffect,
+      decisionGuidance,
+      qualitySignals,
+      trialStatus,
+      promotionStatus,
+      recommendation,
+      recommendationReason,
+      trialMetrics,
+    };
+  });
 }
 
 function normalizeIceValue(value, fallback = 5) {
@@ -352,6 +605,195 @@ function parseDocumentInfo(relPath, content) {
     return parseMarkdownInfo(content);
   }
   return parseTextInfo(content);
+}
+
+function renderAssistantEntryPointer({
+  assistantId,
+  displayName,
+  canonicalFile,
+  templateVersion,
+}) {
+  const specPath = "/.specify/specs/001-oap/spec.md";
+  const uiSectionsPath = "ops-web/src/generated/ui-section-contract.json";
+  return [
+    `# ${displayName} Entry Point`,
+    "",
+    "<!-- generated: assistant-governance-v2 -->",
+    "<!-- do-not-edit: use `npm --prefix ops-web run prepare-content` -->",
+    "",
+    `Этот файл является короткой точкой входа для \`${assistantId}\` и генерируется автоматически.`,
+    "",
+    "## Канон правил",
+    `- Канонический файл правил: \`${canonicalFile}\`.`,
+    "- Локальные правила в этом файле не задаются.",
+    "",
+    "## Порядок чтения",
+    `1. \`${specPath}\``,
+    `2. \`${canonicalFile}\``,
+    "3. Этот entry-файл",
+    "",
+    "## Политика UI-ссылок",
+    `- Использовать semantic ids из \`${uiSectionsPath}\`.`,
+    "- Текущий display label брать из section-contract, а не из памяти.",
+    "- При отсутствии section-contract сверяться с актуальным runtime/code.",
+    "",
+    `Template version: \`${templateVersion}\`.`,
+    "",
+  ].join("\n");
+}
+
+async function buildAssistantGovernanceArtifacts() {
+  const raw = await fs.readFile(assistantGovernanceContractPath, "utf8");
+  const parsed = JSON.parse(raw);
+  const canonicalFile = asString(parsed?.canonical_file);
+  const entryStrategy = asString(parsed?.entry_strategy);
+  const templateVersion = asString(parsed?.template_version) || "v2";
+  const assistants = Array.isArray(parsed?.supported_assistants) ? parsed.supported_assistants : [];
+
+  assert(canonicalFile === "AGENTS.md", "assistant_governance_canonical_file_invalid");
+  assert(entryStrategy === "generated_pointer", "assistant_governance_entry_strategy_invalid");
+  assert(assistants.length > 0, "assistant_governance_supported_assistants_empty");
+
+  const generatedEntries = [];
+  for (const item of assistants) {
+    if (item?.enabled === false) continue;
+    const assistantId = asString(item?.assistant_id);
+    const displayName = asString(item?.display_name) || assistantId;
+    const entryFile = asString(item?.entry_file);
+
+    assert(assistantId.length > 0, "assistant_governance_assistant_id_missing");
+    assert(entryFile.length > 0, `assistant_governance_entry_file_missing:${assistantId}`);
+
+    const absoluteEntryFile = path.join(repoRoot, entryFile);
+    const content = renderAssistantEntryPointer({
+      assistantId,
+      displayName,
+      canonicalFile,
+      templateVersion,
+    });
+    await ensureDir(path.dirname(absoluteEntryFile));
+    await fs.writeFile(absoluteEntryFile, content, "utf8");
+    generatedEntries.push({
+      assistant_id: assistantId,
+      display_name: displayName,
+      entry_file: entryFile,
+      template_version: templateVersion,
+    });
+  }
+
+  return {
+    version: asString(parsed?.version) || "assistant_governance_v2",
+    canonical_file: canonicalFile,
+    entry_strategy: entryStrategy,
+    template_version: templateVersion,
+    supported_assistants: assistants,
+    generated_at: new Date().toISOString(),
+    generated_entries: generatedEntries,
+  };
+}
+
+function parseTabLabels(agentsPageSource) {
+  return Array.from(agentsPageSource.matchAll(/<Tab label="([^"]+)"\s*\/>/g))
+    .map((match) => asString(match[1]))
+    .filter(Boolean);
+}
+
+function parseSectionBlockTitle(fileSource, contextKey) {
+  const match = fileSource.match(/<SectionBlock\s+title="([^"]+)"/);
+  assert(match && asString(match[1]).length > 0, `ui_section_contract_section_title_missing:${contextKey}`);
+  return asString(match[1]);
+}
+
+async function buildUiSectionContract() {
+  const modernTabKeys = ["overview", "mcp", "skills_rules", "tasks_quality", "memory_context", "improvements"];
+  const legacyTabKeys = ["overview", "skills_rules", "tasks_quality", "memory_context", "improvements"];
+  const agentsPageRelPath = "ops-web/src/pages/AgentsPage.tsx";
+  const agentsPageSource = await fs.readFile(path.join(repoRoot, agentsPageRelPath), "utf8");
+  const labels = parseTabLabels(agentsPageSource);
+
+  assert(
+    labels.length >= modernTabKeys.length + legacyTabKeys.length,
+    "ui_section_contract_tabs_missing",
+  );
+
+  const sections = [];
+  const modernLabels = labels.slice(0, modernTabKeys.length);
+  const legacyLabels = labels.slice(modernTabKeys.length, modernTabKeys.length + legacyTabKeys.length);
+
+  modernTabKeys.forEach((tabKey, index) => {
+    sections.push({
+      section_id: `agents.modern.tab.${tabKey}`,
+      current_label: modernLabels[index],
+      container_type: "tab",
+      card_type: "modern_agent_drawer",
+      visibility: "default",
+      source_file: agentsPageRelPath,
+    });
+  });
+
+  legacyTabKeys.forEach((tabKey, index) => {
+    sections.push({
+      section_id: `agents.legacy.tab.${tabKey}`,
+      current_label: legacyLabels[index],
+      container_type: "tab",
+      card_type: "legacy_agent_drawer",
+      visibility: "default",
+      source_file: agentsPageRelPath,
+    });
+  });
+
+  const legacySectionFiles = [
+    {
+      section_id: "agents.legacy.analyst.drawer.how_it_works",
+      file_path: "ops-web/src/components/analyst-card/sections/AgentProcessSection.tsx",
+    },
+    {
+      section_id: "agents.legacy.analyst.drawer.work_contour",
+      file_path: "ops-web/src/components/analyst-card/sections/SkillsSection.tsx",
+    },
+    {
+      section_id: "agents.legacy.analyst.drawer.memory",
+      file_path: "ops-web/src/components/analyst-card/sections/MemorySection.tsx",
+    },
+    {
+      section_id: "agents.legacy.analyst.drawer.risks",
+      file_path: "ops-web/src/components/analyst-card/sections/RisksSection.tsx",
+    },
+    {
+      section_id: "agents.legacy.analyst.drawer.sessions",
+      file_path: "ops-web/src/components/analyst-card/sections/SessionsSection.tsx",
+    },
+    {
+      section_id: "agents.legacy.analyst.drawer.self_improvement",
+      file_path: "ops-web/src/components/analyst-card/sections/SelfImprovementSection.tsx",
+    },
+  ];
+
+  for (const section of legacySectionFiles) {
+    const fileSource = await fs.readFile(path.join(repoRoot, section.file_path), "utf8");
+    sections.push({
+      section_id: section.section_id,
+      current_label: parseSectionBlockTitle(fileSource, section.section_id),
+      container_type: "drawer_block",
+      card_type: "legacy_analyst_drawer",
+      visibility: "default",
+      source_file: section.file_path,
+    });
+  }
+
+  const seen = new Set();
+  for (const section of sections) {
+    assert(asString(section.section_id).length > 0, "ui_section_contract_section_id_missing");
+    assert(asString(section.current_label).length > 0, `ui_section_contract_label_missing:${section.section_id}`);
+    assert(!seen.has(section.section_id), `ui_section_contract_duplicate_section_id:${section.section_id}`);
+    seen.add(section.section_id);
+  }
+
+  return {
+    version: "ui_section_contract_v1",
+    generated_at: new Date().toISOString(),
+    sections,
+  };
 }
 
 function splitLevelTwoSections(source) {
@@ -808,8 +1250,15 @@ function normalizeUsedMcp(value, ctx) {
     const practicalTasks = Array.isArray(item?.practicalTasks)
       ? item.practicalTasks.map((task) => asString(task)).filter(Boolean)
       : [];
+    const decisionGuidance = normalizeDecisionGuidance(item?.decisionGuidance, {
+      purpose: note,
+      useWhen: practicalTasks[0] || null,
+      expectedOutput: impactInNumbers,
+      examples: practicalTasks,
+    });
+    const qualitySignals = normalizeCapabilityQualitySignals(item?.qualitySignals, decisionGuidance, "keep_current");
     assert(name.length > 0, `invalid_used_mcp_name:${ctx}:${index}`);
-    return { name, status, note, impactInNumbers, practicalTasks, lastUsedAt };
+    return { name, status, note, impactInNumbers, practicalTasks, lastUsedAt, decisionGuidance, qualitySignals };
   });
 }
 
@@ -827,6 +1276,13 @@ function normalizeAvailableMcp(value, ctx) {
       : [];
     const link = asString(item?.link) || null;
     const installComplexity = asString(item?.installComplexity) || null;
+    const decisionGuidance = normalizeDecisionGuidance(item?.decisionGuidance, {
+      purpose: description,
+      useWhen: whenToUse,
+      expectedOutput: expectedEffect,
+      examples: practicalTasks,
+    });
+    const qualitySignals = normalizeCapabilityQualitySignals(item?.qualitySignals, decisionGuidance, "keep_current");
     assert(name.length > 0, `invalid_available_mcp_name:${ctx}:${index}`);
     return {
       name,
@@ -838,6 +1294,8 @@ function normalizeAvailableMcp(value, ctx) {
       practicalTasks,
       link,
       installComplexity,
+      decisionGuidance,
+      qualitySignals,
     };
   });
 }
@@ -886,7 +1344,25 @@ function normalizeUsedSkills(value, ctx, skillCatalog) {
     assert(skillFilePath && /(^|[/\\])SKILL\.md$/i.test(skillFilePath), `used_skill_missing_skill_md:${ctx}:${name}`);
     assert(skillFileLoaded && asString(skillFileText).length > 0, `used_skill_unresolved_text:${ctx}:${name}`);
     const fullText = skillFileText;
-    return { name, usage, fullText, practicalTasks, lastUsedAt, skillFilePath, skillFileText, skillFileLoaded };
+    const decisionGuidance = normalizeDecisionGuidance(item?.decisionGuidance, {
+      purpose: usage,
+      useWhen: practicalTasks[0] || null,
+      expectedOutput: fullText,
+      examples: practicalTasks,
+    });
+    const qualitySignals = normalizeCapabilityQualitySignals(item?.qualitySignals, decisionGuidance, "keep_current");
+    return {
+      name,
+      usage,
+      fullText,
+      practicalTasks,
+      lastUsedAt,
+      skillFilePath,
+      skillFileText,
+      skillFileLoaded,
+      decisionGuidance,
+      qualitySignals,
+    };
   });
 }
 
@@ -902,8 +1378,15 @@ function normalizeAvailableSkills(value, ctx) {
       ? item.practicalTasks.map((task) => asString(task)).filter(Boolean)
       : [];
     const link = asString(item?.link) || null;
+    const decisionGuidance = normalizeDecisionGuidance(item?.decisionGuidance, {
+      purpose: benefit,
+      useWhen: recommendationBasis,
+      expectedOutput: expectedEffect,
+      examples: practicalTasks,
+    });
+    const qualitySignals = normalizeCapabilityQualitySignals(item?.qualitySignals, decisionGuidance, "trial_alternative");
     assert(name.length > 0, `invalid_available_skill_name:${ctx}:${index}`);
-    return { name, benefit, recommendationBasis, expectedEffect, fullText, practicalTasks, link };
+    return { name, benefit, recommendationBasis, expectedEffect, fullText, practicalTasks, link, decisionGuidance, qualitySignals };
   });
 }
 
@@ -918,11 +1401,18 @@ function normalizeUsedTools(value, ctx) {
       ? item.practicalTasks.map((task) => asString(task)).filter(Boolean)
       : [];
     const lastUsedAt = asString(item?.lastUsedAt) || null;
+    const decisionGuidance = normalizeDecisionGuidance(item?.decisionGuidance, {
+      purpose: usage,
+      useWhen: practicalTasks[0] || null,
+      expectedOutput: fullText,
+      examples: practicalTasks,
+    });
+    const qualitySignals = normalizeCapabilityQualitySignals(item?.qualitySignals, decisionGuidance, "keep_current");
     assert(name.length > 0, `invalid_used_tool_name:${ctx}:${index}`);
     assert(Boolean(usage), `invalid_used_tool_usage:${ctx}:${index}`);
     assert(Boolean(fullText), `invalid_used_tool_full_text:${ctx}:${index}`);
     assert(Boolean(source), `invalid_used_tool_source:${ctx}:${index}`);
-    return { name, usage, fullText, source, practicalTasks, lastUsedAt };
+    return { name, usage, fullText, source, practicalTasks, lastUsedAt, decisionGuidance, qualitySignals };
   });
 }
 
@@ -938,13 +1428,20 @@ function normalizeAvailableTools(value, ctx) {
     const practicalTasks = Array.isArray(item?.practicalTasks)
       ? item.practicalTasks.map((task) => asString(task)).filter(Boolean)
       : [];
+    const decisionGuidance = normalizeDecisionGuidance(item?.decisionGuidance, {
+      purpose: benefit,
+      useWhen: recommendationBasis,
+      expectedOutput: expectedEffect,
+      examples: practicalTasks,
+    });
+    const qualitySignals = normalizeCapabilityQualitySignals(item?.qualitySignals, decisionGuidance, "trial_alternative");
     assert(name.length > 0, `invalid_available_tool_name:${ctx}:${index}`);
     assert(Boolean(benefit), `invalid_available_tool_benefit:${ctx}:${index}`);
     assert(Boolean(recommendationBasis), `invalid_available_tool_recommendation_basis:${ctx}:${index}`);
     assert(Boolean(expectedEffect), `invalid_available_tool_expected_effect:${ctx}:${index}`);
     assert(Boolean(fullText), `invalid_available_tool_full_text:${ctx}:${index}`);
     assert(Boolean(source), `invalid_available_tool_source:${ctx}:${index}`);
-    return { name, benefit, recommendationBasis, expectedEffect, fullText, source, practicalTasks };
+    return { name, benefit, recommendationBasis, expectedEffect, fullText, source, practicalTasks, decisionGuidance, qualitySignals };
   });
 }
 
@@ -974,7 +1471,14 @@ function normalizeRulesApplied(value, ctx, contextRefs, docsByPath) {
     const doc = location ? docsByPath.get(normalizePath(location)) : null;
     const fullText = asString(item?.fullText) || doc?.content || null;
     const sourceUrl = asString(item?.sourceUrl) || doc?.sourceUrl || null;
-    return { title, location, description, fullText, sourceUrl };
+    const decisionGuidance = normalizeDecisionGuidance(item?.decisionGuidance, {
+      purpose: description,
+      useWhen: description,
+      expectedOutput: fullText,
+      examples: location ? [location] : [],
+    });
+    const qualitySignals = normalizeCapabilityQualitySignals(item?.qualitySignals, decisionGuidance, "keep_current");
+    return { title, location, description, fullText, sourceUrl, decisionGuidance, qualitySignals };
   }).filter((item) => item.location || item.description || item.fullText);
 
   const modernPlanRule = MODERN_AGENT_PLAN_RULES[ctx];
@@ -988,6 +1492,18 @@ function normalizeRulesApplied(value, ctx, contextRefs, docsByPath) {
         description: modernPlanRule.description,
         fullText: doc?.content || null,
         sourceUrl: doc?.sourceUrl || null,
+        decisionGuidance: normalizeDecisionGuidance(null, {
+          purpose: modernPlanRule.description,
+          useWhen: "Использовать как основной operating plan для текущего агента.",
+          expectedOutput: doc?.content || null,
+          examples: [modernPlanRule.path],
+        }),
+        qualitySignals: normalizeCapabilityQualitySignals(null, normalizeDecisionGuidance(null, {
+          purpose: modernPlanRule.description,
+          useWhen: "Использовать как основной operating plan для текущего агента.",
+          expectedOutput: doc?.content || null,
+          examples: [modernPlanRule.path],
+        }), "keep_current"),
       });
     }
   }
@@ -1005,6 +1521,18 @@ function normalizeRulesApplied(value, ctx, contextRefs, docsByPath) {
       description: asString(entry?.pathHint) || `Источник: ${asString(entry?.title) || "contextRef"}`,
       fullText: doc?.content || null,
       sourceUrl: asString(entry?.sourceUrl) || doc?.sourceUrl || null,
+      decisionGuidance: normalizeDecisionGuidance(null, {
+        purpose: asString(entry?.pathHint) || asString(entry?.title),
+        useWhen: asString(entry?.pathHint) || null,
+        expectedOutput: doc?.content || null,
+        examples: location ? [location] : [],
+      }),
+      qualitySignals: normalizeCapabilityQualitySignals(null, normalizeDecisionGuidance(null, {
+        purpose: asString(entry?.pathHint) || asString(entry?.title),
+        useWhen: asString(entry?.pathHint) || null,
+        expectedOutput: doc?.content || null,
+        examples: location ? [location] : [],
+      }), "keep_current"),
     };
   });
 
@@ -1014,6 +1542,18 @@ function normalizeRulesApplied(value, ctx, contextRefs, docsByPath) {
     description: "Системные инструкции среды выполнения (вне репозитория).",
     fullText: "Глобальные правила применяются на уровне платформы во время выполнения задач.",
     sourceUrl: null,
+    decisionGuidance: normalizeDecisionGuidance(null, {
+      purpose: "Платформенные ограничения и базовые инструкции runtime.",
+      useWhen: "Применяется ко всем задачам как внешний governance-layer.",
+      expectedOutput: "Безопасное и корректное поведение агента в пределах runtime.",
+      examples: ["Codex runtime system/developer instructions"],
+    }),
+    qualitySignals: normalizeCapabilityQualitySignals(null, normalizeDecisionGuidance(null, {
+      purpose: "Платформенные ограничения и базовые инструкции runtime.",
+      useWhen: "Применяется ко всем задачам как внешний governance-layer.",
+      expectedOutput: "Безопасное и корректное поведение агента в пределах runtime.",
+      examples: ["Codex runtime system/developer instructions"],
+    }), "keep_current"),
   });
 
   return fallback;
@@ -1224,6 +1764,266 @@ function normalizeWorkflowPolicy(value, ctx) {
   };
 }
 
+function normalizeWorkflowBackbone(value, ctx) {
+  const source = value && typeof value === "object" ? value : {};
+  const defaultCoreSteps = [
+    "step_0_intake",
+    "step_1_start",
+    "step_2_preflight",
+    "step_3_orchestration",
+    "step_4_context_sync",
+    "step_5_role_window",
+    "step_6_role_exit_decision",
+    "step_7_apply_or_publish",
+    "step_7_contract_gate",
+    "step_8_verify",
+    "step_8_error_channel",
+    "step_9_finalize",
+    "step_9_publish_snapshots",
+  ];
+  const defaultRoleStepsByAgent = {
+    "analyst-agent": [
+      "role_collect_quality_signals",
+      "role_score_candidates",
+      "role_select_priority",
+    ],
+    "designer-agent": [
+      "role_review_ui_kit",
+      "role_review_clarity",
+      "role_prepare_design_actions",
+    ],
+    "reader-agent": [
+      "role_collect_sources",
+      "role_synthesize_answer",
+      "role_check_coverage",
+    ],
+    "data-agent": [
+      "role_check_dataset_quality",
+      "role_analyze_drift",
+      "role_prepare_data_action",
+    ],
+    "ops-agent": [
+      "role_triage_operation",
+      "role_select_runbook_action",
+      "role_prepare_ops_resolution",
+    ],
+  };
+  const defaultPurposeByAgent = {
+    "analyst-agent": "Выполнить evidence-based анализ кандидатов и вернуть decision package по улучшениям.",
+    "designer-agent": "Выполнить UX/UI-проверку и вернуть пакет дизайн-действий и verify-требований.",
+    "reader-agent": "Собрать, синтезировать и упаковать ответ по релевантному контексту.",
+    "data-agent": "Проверить качество данных и вернуть пакет действий по ETL или quality-control.",
+    "ops-agent": "Разобрать операционный инцидент или change-request и вернуть runbook-based action package.",
+  };
+  const version = asString(source?.version) || "universal_backbone_v1";
+  const commonCoreSteps = normalizeStringArray(source?.commonCoreSteps);
+  const roleWindowSource = source?.roleWindow && typeof source.roleWindow === "object" ? source.roleWindow : {};
+  const stepExecutionPolicySource = source?.stepExecutionPolicy && typeof source.stepExecutionPolicy === "object"
+    ? source.stepExecutionPolicy
+    : {};
+  const roleWindow = {
+    entryStep: asString(roleWindowSource?.entryStep) || "step_5_role_window",
+    exitStep: asString(roleWindowSource?.exitStep) || "step_6_role_exit_decision",
+    purpose: asString(roleWindowSource?.purpose) || defaultPurposeByAgent[ctx]
+      || "Выполнить доменную логику агента в bounded role window и вернуть нормализованный result package.",
+    internalSteps: normalizeStringArray(roleWindowSource?.internalSteps).length > 0
+      ? normalizeStringArray(roleWindowSource?.internalSteps)
+      : (defaultRoleStepsByAgent[ctx] || [
+          "role_analyze_domain_task",
+          "role_execute_domain_logic",
+          "role_prepare_result_package",
+        ]),
+  };
+  const stepExecutionPolicy = {
+    skippedStepsAllowed: typeof stepExecutionPolicySource?.skippedStepsAllowed === "boolean"
+      ? stepExecutionPolicySource.skippedStepsAllowed
+      : true,
+    skippedStepStatus: asString(stepExecutionPolicySource?.skippedStepStatus) || "skipped",
+  };
+
+  assert(version === "universal_backbone_v1", `invalid_workflow_backbone_version:${ctx}`);
+  assert(roleWindow.entryStep.length > 0, `invalid_workflow_backbone_role_entry:${ctx}`);
+  assert(roleWindow.exitStep.length > 0, `invalid_workflow_backbone_role_exit:${ctx}`);
+  assert(stepExecutionPolicy.skippedStepStatus === "skipped", `invalid_workflow_backbone_skip_status:${ctx}`);
+
+  return {
+    version,
+    commonCoreSteps: commonCoreSteps.length > 0 ? commonCoreSteps : defaultCoreSteps,
+    roleWindow,
+    stepExecutionPolicy,
+    supportsDynamicInstances: typeof source?.supportsDynamicInstances === "boolean" ? source.supportsDynamicInstances : true,
+  };
+}
+
+function normalizeCapabilityOptimization(value, ctx) {
+  const source = value && typeof value === "object" ? value : {};
+  const refreshMode = asString(source?.refreshMode) || "on_run";
+  const sourcePolicy = asString(source?.sourcePolicy) || "official_first";
+  const trialMode = asString(source?.trialMode) || "shadow";
+  const promotionMode = asString(source?.promotionMode) || "human_approve";
+  const minShadowSampleSize = Math.max(1, asNumber(source?.minShadowSampleSize) || 3);
+  const staleAfterHours = Math.max(1, asNumber(source?.staleAfterHours) || 168);
+
+  assert(refreshMode === "on_run", `invalid_capability_refresh_mode:${ctx}`);
+  assert(sourcePolicy === "official_first", `invalid_capability_source_policy:${ctx}`);
+  assert(trialMode === "shadow", `invalid_capability_trial_mode:${ctx}`);
+  assert(promotionMode === "human_approve", `invalid_capability_promotion_mode:${ctx}`);
+
+  return {
+    enabled: typeof source?.enabled === "boolean" ? source.enabled : true,
+    refreshMode,
+    sourcePolicy,
+    trialMode,
+    promotionMode,
+    minShadowSampleSize,
+    staleAfterHours,
+  };
+}
+
+function normalizeSnapshotCandidate(value, ctx, skillSourceRegistry) {
+  if (!value || typeof value !== "object") return null;
+  const [candidate] = normalizeExternalSkillCandidates([value], ctx, skillSourceRegistry);
+  return candidate || null;
+}
+
+function normalizeSnapshotTrial(value) {
+  if (!value || typeof value !== "object") return null;
+  return {
+    trialId: asString(value?.trial_id || value?.trialId),
+    candidateId: asString(value?.candidate_id || value?.candidateId),
+    candidateName: asString(value?.candidate_name || value?.candidateName),
+    sourceTitle: asString(value?.source?.title || value?.sourceTitle),
+    sourceUrl: asString(value?.source?.url || value?.sourceUrl) || null,
+    sourceTrust: asString(value?.source?.trust || value?.sourceTrust) || "unknown",
+    baselineSkillName: asString(value?.baseline_skill?.name || value?.baselineSkillName) || null,
+    baselineSkillState: asString(value?.baseline_skill?.state || value?.baselineSkillState) || null,
+    baselineContractScore: asNullableNumber(value?.baseline_skill?.contract_score ?? value?.baselineContractScore),
+    baselineReviewStatus: asString(value?.baseline_skill?.review_status || value?.baselineReviewStatus) || null,
+    candidateRecommendation: asString(value?.candidate?.recommendation || value?.candidateRecommendation) || null,
+    candidatePromotionStatus: asString(value?.candidate?.promotion_status || value?.candidatePromotionStatus) || null,
+    candidateTrialStatus: asString(value?.candidate?.trial_status || value?.candidateTrialStatus) || null,
+    representativeTasks: normalizeStringArray(value?.representative_tasks || value?.representativeTasks),
+    eligible: Boolean(value?.eligible),
+    blockReasons: normalizeStringArray(value?.block_reasons || value?.blockReasons),
+  };
+}
+
+function normalizeSnapshotJudgement(value) {
+  if (!value || typeof value !== "object") return null;
+  return {
+    trialId: asString(value?.trial_id || value?.trialId),
+    candidateId: asString(value?.candidate_id || value?.candidateId),
+    recommendation: normalizeCapabilityRecommendation(value?.recommendation, "keep_current"),
+    humanApprovalRequired: typeof value?.human_approval_required === "boolean"
+      ? value.human_approval_required
+      : Boolean(value?.humanApprovalRequired),
+    blockers: normalizeStringArray(value?.blockers),
+    comparisons: (Array.isArray(value?.comparisons) ? value.comparisons : []).map((comparison) => ({
+      metric: asString(comparison?.metric),
+      status: asString(comparison?.status),
+      baseline: asNullableNumber(comparison?.baseline),
+      shadow: asNullableNumber(comparison?.shadow),
+      deltaPp: asNullableNumber(comparison?.delta_pp ?? comparison?.deltaPp),
+      deltaPct: asNullableNumber(comparison?.delta_pct ?? comparison?.deltaPct),
+    })),
+  };
+}
+
+function computeCapabilityFreshness(rawSnapshot, currentFingerprint, staleAfterHours) {
+  if (!rawSnapshot || typeof rawSnapshot !== "object") {
+    return { freshnessStatus: "missing", staleReason: "snapshot_missing" };
+  }
+  const lastRefreshedAt = asString(rawSnapshot?.lastRefreshedAt || rawSnapshot?.generated_at);
+  if (!lastRefreshedAt) {
+    return { freshnessStatus: "stale", staleReason: "missing_last_refreshed_at" };
+  }
+  const snapshotFingerprint = asString(rawSnapshot?.sourceFingerprint);
+  if (snapshotFingerprint && snapshotFingerprint !== currentFingerprint) {
+    return { freshnessStatus: "stale", staleReason: "source_fingerprint_changed" };
+  }
+  const refreshedAtMs = Date.parse(lastRefreshedAt);
+  if (!Number.isFinite(refreshedAtMs)) {
+    return { freshnessStatus: "stale", staleReason: "invalid_last_refreshed_at" };
+  }
+  const ageHours = (Date.now() - refreshedAtMs) / 36e5;
+  if (ageHours > staleAfterHours) {
+    return {
+      freshnessStatus: "stale",
+      staleReason: `stale_after_hours:${Math.round(ageHours * 10) / 10}>${staleAfterHours}`,
+    };
+  }
+  return { freshnessStatus: "fresh", staleReason: null };
+}
+
+function normalizeCapabilitySnapshot(rawSnapshot, rawAgent, capabilityOptimization, skillSourceRegistry, legacyArtifacts, agentId) {
+  const currentFingerprint = computeCapabilitySourceFingerprint(rawAgent);
+  const freshness = computeCapabilityFreshness(rawSnapshot, currentFingerprint, capabilityOptimization.staleAfterHours);
+  const summary = rawSnapshot?.summary && typeof rawSnapshot.summary === "object" ? rawSnapshot.summary : {};
+  const rows = Array.isArray(rawSnapshot?.tableRows) ? rawSnapshot.tableRows : [];
+
+  return {
+    version: asString(rawSnapshot?.version) || "agent_capability_snapshot.v1",
+    agentId,
+    lastRefreshedAt: asString(rawSnapshot?.lastRefreshedAt || rawSnapshot?.generated_at) || null,
+    lastRunId: asString(rawSnapshot?.lastRunId) || null,
+    refreshMode: asString(rawSnapshot?.refreshMode) || capabilityOptimization.refreshMode,
+    freshnessStatus: capabilityFreshnessStatuses.has(freshness.freshnessStatus) ? freshness.freshnessStatus : "missing",
+    staleReason: freshness.staleReason,
+    staleAfterHours: capabilityOptimization.staleAfterHours,
+    sourceFingerprint: asString(rawSnapshot?.sourceFingerprint) || currentFingerprint,
+    planArtifactPath: asString(rawSnapshot?.planArtifactPath) || legacyArtifacts?.planPath || null,
+    judgementArtifactPath: asString(rawSnapshot?.judgementArtifactPath) || legacyArtifacts?.judgementPath || null,
+    snapshotArtifactPath: asString(rawSnapshot?.snapshotArtifactPath) || legacyArtifacts?.snapshotPath || null,
+    tableRows: rows.map((row, index) => {
+      const decisionGuidance = normalizeDecisionGuidance(row?.decisionGuidance, {});
+      const qualitySignals = normalizeCapabilityQualitySignals(row?.qualitySignals, decisionGuidance, row?.decisionStatus);
+      const bestCandidate = normalizeSnapshotCandidate(
+        row?.bestCandidate,
+        `${agentId}:snapshot-candidate:${index}`,
+        skillSourceRegistry,
+      );
+      const planTrial = normalizeSnapshotTrial(row?.planTrial);
+      const judgement = normalizeSnapshotJudgement(row?.judgement);
+      const decisionStatus = normalizeCapabilityRecommendation(
+        row?.decisionStatus || judgement?.recommendation || bestCandidate?.recommendation || qualitySignals?.recommendation,
+        "keep_current",
+      );
+      const decisionBlockedByStale = freshness.freshnessStatus === "stale" && (
+        decisionStatus === "replace_after_trial"
+        || ["approved", "human_review_required"].includes(asString(bestCandidate?.promotionStatus))
+      );
+
+      return {
+        key: asString(row?.key) || `${agentId}:${index}`,
+        type: ["rule", "tool", "skill", "mcp"].includes(asString(row?.type)) ? asString(row?.type) : "skill",
+        name: asString(row?.name),
+        stateLabel: asString(row?.stateLabel) || "used",
+        sourceLabel: asString(row?.sourceLabel) || "docs/agents/registry.yaml",
+        sourceUrl: asString(row?.sourceUrl) || null,
+        trustLabel: asString(row?.trustLabel) || "approved",
+        decisionGuidance,
+        qualitySignals,
+        bestCandidate,
+        planTrial,
+        judgement,
+        decisionStatus,
+        decisionReason: asString(row?.decisionReason) || null,
+        decisionBlockedByStale,
+        decisionBlockReason: decisionBlockedByStale ? freshness.staleReason : null,
+      };
+    }),
+    summary: {
+      rowsTotal: asNumber(summary?.rowsTotal),
+      externalCandidatesTotal: asNumber(summary?.externalCandidatesTotal),
+      judgedTotal: asNumber(summary?.judgedTotal),
+      blockedByPolicyTotal: asNumber(summary?.blockedByPolicyTotal),
+      eligibleTrialsTotal: asNumber(summary?.eligibleTrialsTotal),
+    },
+    staleBeforeRefresh: typeof rawSnapshot?.staleBeforeRefresh === "boolean" ? rawSnapshot.staleBeforeRefresh : null,
+    staleBeforeRefreshReason: asString(rawSnapshot?.staleBeforeRefreshReason) || null,
+  };
+}
+
 function normalizeLearningArtifacts(value, ctx) {
   const source = value && typeof value === "object" ? value : {};
   const defaultLessonsPath = ctx ? `docs/subservices/oap/tasks/lessons/${ctx}.md` : "docs/subservices/oap/tasks/lessons.md";
@@ -1260,6 +2060,46 @@ function normalizeDoneGatePolicy(value, ctx) {
     fallbackStatus: ["backlog", "ready", "in_progress", "ab_test", "in_review", "done"].includes(fallbackStatus)
       ? fallbackStatus
       : "in_review",
+  };
+}
+
+function normalizeAgentClass(value, agentId) {
+  const normalized = asString(value).toLowerCase();
+  if (normalized === "core" || normalized === "specialist") return normalized;
+  return MODERN_AGENT_IDS.has(agentId) ? "core" : "specialist";
+}
+
+function normalizeAgentOrigin(value) {
+  const normalized = asString(value).toLowerCase();
+  if (normalized === "manual" || normalized === "dynamic") return normalized;
+  return "manual";
+}
+
+function normalizeAgentLifecycle(value) {
+  const normalized = asString(value).toLowerCase();
+  if (normalized === "active" || normalized === "retire_candidate" || normalized === "retired") return normalized;
+  return "active";
+}
+
+function normalizeAuditDisposition(value) {
+  const normalized = asString(value).toLowerCase();
+  if (normalized === "keep" || normalized === "merge" || normalized === "retire_candidate") return normalized;
+  return "keep";
+}
+
+function normalizeCapabilityContract(value, { id, role }) {
+  const source = value && typeof value === "object" ? value : {};
+  const mission = asString(source?.mission) || `Deliver scoped outcomes for ${id}.`;
+  const entryCriteria = Array.isArray(source?.entryCriteria)
+    ? source.entryCriteria.map((item) => asString(item)).filter(Boolean)
+    : [];
+  const doneCondition = asString(source?.doneCondition) || "Task output is verified against acceptance criteria.";
+  const outputSchema = asString(source?.outputSchema) || `${slugify(id || role || "agent")}_output.v1`;
+  return {
+    mission,
+    entryCriteria,
+    doneCondition,
+    outputSchema,
   };
 }
 
@@ -1600,7 +2440,7 @@ function normalizeMemoryContext(input, ctx, options) {
   };
 }
 
-async function buildAgentsManifest(docs) {
+async function buildAgentsManifest(docs, skillShadowTrialArtifactsByAgent = new Map()) {
   const registryPath = path.join(repoRoot, "docs", "agents", "registry.yaml");
   const registryRaw = await fs.readFile(registryPath, "utf8");
   const repoBrowseBase = resolveRepoBrowseBase();
@@ -1639,6 +2479,17 @@ async function buildAgentsManifest(docs) {
     const shortDescription = asString(agent?.shortDescription) || null;
     const processLinkTitle = asString(agent?.processLink?.title) || null;
     const processLinkUrl = asString(agent?.processLink?.url) || null;
+    const agentClass = normalizeAgentClass(agent?.agentClass, id);
+    const origin = normalizeAgentOrigin(agent?.origin);
+    const createdByAgentId = asString(agent?.createdByAgentId) || null;
+    const parentTemplateId = asString(agent?.parentTemplateId) || null;
+    const derivedFromAgentId = asString(agent?.derivedFromAgentId) || null;
+    const specializationScope = asString(agent?.specializationScope) || role || "general";
+    const lifecycle = normalizeAgentLifecycle(agent?.lifecycle);
+    const creationReason = asString(agent?.creationReason) || null;
+    const capabilityContract = normalizeCapabilityContract(agent?.capabilityContract, { id, role });
+    const auditDisposition = normalizeAuditDisposition(agent?.auditDisposition);
+    const auditNote = asString(agent?.auditNote) || null;
 
     assert(id.length > 0, `invalid_agent_id:${index}`);
     assert(name.length > 0, `invalid_agent_name:${index}`);
@@ -1668,6 +2519,8 @@ async function buildAgentsManifest(docs) {
     const mcpServers = normalizeMcpServers(agent?.mcpServers, id);
     const usedMcp = normalizeUsedMcp(agent?.usedMcp, id);
     const availableMcp = normalizeAvailableMcp(agent?.availableMcp, id);
+    const skillSourceRegistry = normalizeSkillSourceRegistry(agent?.skillSourceRegistry);
+    const externalSkillCandidates = normalizeExternalSkillCandidates(agent?.externalSkillCandidates, id, skillSourceRegistry);
     const usedSkills = normalizeUsedSkills(agent?.usedSkills, id, skillCatalog);
     const availableSkills = normalizeAvailableSkills(agent?.availableSkills, id);
     const usedTools = normalizeUsedTools(agent?.usedTools, id);
@@ -1678,6 +2531,8 @@ async function buildAgentsManifest(docs) {
     const improvements = normalizeImprovements(agent?.improvements, id, repoBrowseBase, repoRef);
     const operatingPlan = normalizeOperatingPlan(agent?.operatingPlan, id);
     const workflowPolicy = normalizeWorkflowPolicy(agent?.workflowPolicy, id);
+    const workflowBackbone = normalizeWorkflowBackbone(agent?.workflowBackbone, id);
+    const capabilityOptimization = normalizeCapabilityOptimization(agent?.capabilityOptimization, id);
     const learningArtifacts = normalizeLearningArtifacts(agent?.learningArtifacts, id);
     const workflowMetricsCatalog = normalizeWorkflowMetricsCatalog(agent?.workflowMetricsCatalog, id);
     const doneGatePolicy = normalizeDoneGatePolicy(agent?.doneGatePolicy, id);
@@ -1691,6 +2546,23 @@ async function buildAgentsManifest(docs) {
       usedMcp,
       telemetry,
     });
+    const capabilityArtifacts = skillShadowTrialArtifactsByAgent.get(id) || null;
+    const skillShadowTrial = capabilityArtifacts ? {
+      planPath: capabilityArtifacts.planPath || null,
+      judgementPath: capabilityArtifacts.judgementPath || null,
+      planGeneratedAt: capabilityArtifacts.planGeneratedAt || null,
+      judgementGeneratedAt: capabilityArtifacts.judgementGeneratedAt || null,
+      trials: Array.isArray(capabilityArtifacts.trials) ? capabilityArtifacts.trials : [],
+      judgements: Array.isArray(capabilityArtifacts.judgements) ? capabilityArtifacts.judgements : [],
+    } : null;
+    const capabilitySnapshot = normalizeCapabilitySnapshot(
+      capabilityArtifacts?.snapshotRaw || null,
+      agent,
+      capabilityOptimization,
+      skillSourceRegistry,
+      capabilityArtifacts,
+      id,
+    );
 
     return {
       id,
@@ -1698,6 +2570,17 @@ async function buildAgentsManifest(docs) {
       role,
       shortDescription,
       status,
+      agentClass,
+      origin,
+      createdByAgentId,
+      parentTemplateId,
+      derivedFromAgentId,
+      specializationScope,
+      lifecycle,
+      creationReason,
+      capabilityContract,
+      auditDisposition,
+      auditNote,
       skills,
       usedSkills,
       availableSkills,
@@ -1707,6 +2590,11 @@ async function buildAgentsManifest(docs) {
       mcpServers,
       usedMcp,
       availableMcp,
+      capabilityOptimization,
+      skillSourceRegistry,
+      externalSkillCandidates,
+      skillShadowTrial,
+      capabilitySnapshot,
       contextRefs,
       memoryContext,
       rulesApplied,
@@ -1717,6 +2605,7 @@ async function buildAgentsManifest(docs) {
       improvements,
       operatingPlan,
       workflowPolicy,
+      workflowBackbone,
       learningArtifacts,
       workflowMetricsCatalog,
       doneGatePolicy,
@@ -1853,20 +2742,199 @@ async function buildAgentBenchmarkSummarySnapshot() {
   }
 }
 
+async function loadSkillShadowTrialArtifactsByAgent() {
+  const legacyPlanRelPath = "artifacts/skill_shadow_trial_plan.json";
+  const legacyJudgementRelPath = "artifacts/skill_shadow_trial_judgement.json";
+  const trialsRoot = path.join(repoRoot, "artifacts", "capability_trials");
+  const byAgent = new Map();
+
+  const ensureAgent = (agentId) => {
+    const key = asString(agentId);
+    if (!key) return null;
+    if (!byAgent.has(key)) {
+      byAgent.set(key, {
+        planPath: null,
+        judgementPath: null,
+        planGeneratedAt: null,
+        judgementGeneratedAt: null,
+        trials: [],
+        judgements: [],
+        snapshotPath: null,
+        snapshotGeneratedAt: null,
+        snapshotRaw: null,
+      });
+    }
+    return byAgent.get(key);
+  };
+
+  try {
+    const entries = await fs.readdir(trialsRoot, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const agentId = entry.name;
+      const agentBucket = ensureAgent(agentId);
+      if (!agentBucket) continue;
+      const agentDir = path.join(trialsRoot, agentId);
+      const planRelPath = path.join("artifacts", "capability_trials", agentId, "shadow_trial_plan.json").replace(/\\/g, "/");
+      const judgementRelPath = path.join("artifacts", "capability_trials", agentId, "shadow_trial_judgement.json").replace(/\\/g, "/");
+      const snapshotRelPath = path.join("artifacts", "capability_trials", agentId, "capability_snapshot.json").replace(/\\/g, "/");
+
+      try {
+        const raw = await fs.readFile(path.join(agentDir, "shadow_trial_plan.json"), "utf8");
+        const parsed = JSON.parse(raw);
+        agentBucket.planPath = planRelPath;
+        agentBucket.planGeneratedAt = asString(parsed?.generated_at) || null;
+        const trials = Array.isArray(parsed?.trials) ? parsed.trials : [];
+        agentBucket.trials = trials.map((trial) => ({
+          trialId: asString(trial?.trial_id),
+          candidateId: asString(trial?.candidate_id),
+          candidateName: asString(trial?.candidate_name),
+          sourceTitle: asString(trial?.source?.title),
+          sourceUrl: asString(trial?.source?.url) || null,
+          sourceTrust: asString(trial?.source?.trust) || "unknown",
+          baselineSkillName: asString(trial?.baseline_skill?.name) || null,
+          baselineSkillState: asString(trial?.baseline_skill?.state) || null,
+          baselineContractScore: asNullableNumber(trial?.baseline_skill?.contract_score),
+          baselineReviewStatus: asString(trial?.baseline_skill?.review_status) || null,
+          candidateRecommendation: asString(trial?.candidate?.recommendation) || null,
+          candidatePromotionStatus: asString(trial?.candidate?.promotion_status) || null,
+          candidateTrialStatus: asString(trial?.candidate?.trial_status) || null,
+          representativeTasks: normalizeStringArray(trial?.representative_tasks),
+          eligible: Boolean(trial?.eligible),
+          blockReasons: normalizeStringArray(trial?.block_reasons),
+        }));
+      } catch {
+        // Optional artifact.
+      }
+
+      try {
+        const raw = await fs.readFile(path.join(agentDir, "shadow_trial_judgement.json"), "utf8");
+        const parsed = JSON.parse(raw);
+        const items = Array.isArray(parsed) ? parsed : [parsed];
+        agentBucket.judgementPath = judgementRelPath;
+        for (const item of items) {
+          if (!item || typeof item !== "object") continue;
+          agentBucket.judgementGeneratedAt = asString(item?.generated_at) || agentBucket.judgementGeneratedAt || null;
+          agentBucket.judgements.push({
+            trialId: asString(item?.trial_id),
+            candidateId: asString(item?.candidate_id),
+            recommendation: asString(item?.recommendation) || null,
+            humanApprovalRequired: Boolean(item?.human_approval_required),
+            blockers: normalizeStringArray(item?.blockers),
+            comparisons: (Array.isArray(item?.comparisons) ? item.comparisons : []).map((comparison) => ({
+              metric: asString(comparison?.metric),
+              status: asString(comparison?.status),
+              baseline: asNullableNumber(comparison?.baseline),
+              shadow: asNullableNumber(comparison?.shadow),
+              deltaPp: asNullableNumber(comparison?.delta_pp),
+              deltaPct: asNullableNumber(comparison?.delta_pct),
+            })),
+          });
+        }
+      } catch {
+        // Optional artifact.
+      }
+
+      try {
+        const raw = await fs.readFile(path.join(agentDir, "capability_snapshot.json"), "utf8");
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          agentBucket.snapshotPath = snapshotRelPath;
+          agentBucket.snapshotGeneratedAt = asString(parsed?.lastRefreshedAt || parsed?.generated_at) || null;
+          agentBucket.snapshotRaw = parsed;
+        }
+      } catch {
+        // Optional artifact.
+      }
+    }
+  } catch {
+    // Optional artifacts root.
+  }
+
+  try {
+    const raw = await fs.readFile(path.join(repoRoot, legacyPlanRelPath), "utf8");
+    const parsed = JSON.parse(raw);
+    const agentBucket = ensureAgent(parsed?.agent_id);
+    if (agentBucket && !agentBucket.planPath) {
+      agentBucket.planPath = legacyPlanRelPath;
+      agentBucket.planGeneratedAt = asString(parsed?.generated_at) || null;
+      const trials = Array.isArray(parsed?.trials) ? parsed.trials : [];
+      agentBucket.trials = trials.map((trial) => ({
+        trialId: asString(trial?.trial_id),
+        candidateId: asString(trial?.candidate_id),
+        candidateName: asString(trial?.candidate_name),
+        sourceTitle: asString(trial?.source?.title),
+        sourceUrl: asString(trial?.source?.url) || null,
+        sourceTrust: asString(trial?.source?.trust) || "unknown",
+        baselineSkillName: asString(trial?.baseline_skill?.name) || null,
+        baselineSkillState: asString(trial?.baseline_skill?.state) || null,
+        baselineContractScore: asNullableNumber(trial?.baseline_skill?.contract_score),
+        baselineReviewStatus: asString(trial?.baseline_skill?.review_status) || null,
+        candidateRecommendation: asString(trial?.candidate?.recommendation) || null,
+        candidatePromotionStatus: asString(trial?.candidate?.promotion_status) || null,
+        candidateTrialStatus: asString(trial?.candidate?.trial_status) || null,
+        representativeTasks: normalizeStringArray(trial?.representative_tasks),
+        eligible: Boolean(trial?.eligible),
+        blockReasons: normalizeStringArray(trial?.block_reasons),
+      }));
+    }
+  } catch {
+    // Optional artifact. UI falls back to registry-only state.
+  }
+
+  try {
+    const raw = await fs.readFile(path.join(repoRoot, legacyJudgementRelPath), "utf8");
+    const parsed = JSON.parse(raw);
+    const items = Array.isArray(parsed) ? parsed : [parsed];
+    for (const item of items) {
+      if (!item || typeof item !== "object") continue;
+      const agentBucket = ensureAgent(item?.agent_id);
+      if (!agentBucket) continue;
+      if (!agentBucket.judgementPath) {
+        agentBucket.judgementPath = legacyJudgementRelPath;
+      }
+      agentBucket.judgementGeneratedAt = asString(item?.generated_at) || agentBucket.judgementGeneratedAt || null;
+      agentBucket.judgements.push({
+        trialId: asString(item?.trial_id),
+        candidateId: asString(item?.candidate_id),
+        recommendation: asString(item?.recommendation) || null,
+        humanApprovalRequired: Boolean(item?.human_approval_required),
+        blockers: normalizeStringArray(item?.blockers),
+        comparisons: (Array.isArray(item?.comparisons) ? item.comparisons : []).map((comparison) => ({
+          metric: asString(comparison?.metric),
+          status: asString(comparison?.status),
+          baseline: asNullableNumber(comparison?.baseline),
+          shadow: asNullableNumber(comparison?.shadow),
+          deltaPp: asNullableNumber(comparison?.delta_pp),
+          deltaPct: asNullableNumber(comparison?.delta_pct),
+        })),
+      });
+    }
+  } catch {
+    // Optional artifact. UI falls back to plan-only or registry-only state.
+  }
+
+  return byAgent;
+}
+
 async function main() {
   await ensureDir(outDir);
   await ensureDir(publicDir);
 
+  const assistantGovernance = await buildAssistantGovernanceArtifacts();
+  const uiSectionContract = await buildUiSectionContract();
   const c4Manifest = await buildC4Manifest();
   const bpmnDiagrams = await buildBpmnManifest();
   const docs = await buildDocsIndex();
-  const agentsManifest = await buildAgentsManifest(docs);
+  const skillShadowTrialArtifactsByAgent = await loadSkillShadowTrialArtifactsByAgent();
+  const agentsManifest = await buildAgentsManifest(docs, skillShadowTrialArtifactsByAgent);
   const searchIndex = buildSearchIndex(docs);
   const oapKbDocs = await buildOapKbIndex();
   const oapKbSearchIndex = buildOapKbSearchIndex(oapKbDocs);
   const oapKbRawLogs = await buildOapRawLogsIndex();
   const analystLatestCycle = await buildAnalystLatestCycleSnapshot();
   const agentBenchmarkSummary = await buildAgentBenchmarkSummarySnapshot();
+  const capabilityGlossary = await buildCapabilityGlossary();
 
   await writeJson("c4-manifest.json", c4Manifest);
   await writeJson("bpmn-manifest.json", { diagrams: bpmnDiagrams });
@@ -1878,6 +2946,9 @@ async function main() {
   await writeJson("oap-kb-raw-logs.json", { documents: oapKbRawLogs });
   await writeJson("agent-latest-cycle-analyst.json", analystLatestCycle);
   await writeJson("agent-benchmark-summary.json", agentBenchmarkSummary);
+  await writeJson("capability-glossary.json", capabilityGlossary);
+  await writeJson("assistant-governance.json", assistantGovernance);
+  await writeJson("ui-section-contract.json", uiSectionContract);
   await ensureDir(path.join(publicDir, "generated"));
   await fs.writeFile(
     path.join(publicDir, "generated", "agent-latest-cycle-analyst.json"),
@@ -1889,9 +2960,14 @@ async function main() {
     `${JSON.stringify(agentBenchmarkSummary, null, 2)}\n`,
     "utf8",
   );
+  await fs.writeFile(
+    path.join(publicDir, "generated", "ui-section-contract.json"),
+    `${JSON.stringify(uiSectionContract, null, 2)}\n`,
+    "utf8",
+  );
 
   process.stdout.write(
-    `[ops-web] generated indexes: docs=${docs.length}, oap_kb=${oapKbDocs.length}, oap_raw_logs=${oapKbRawLogs.length}, bpmn=${bpmnDiagrams.length}, c4_views=${c4Manifest.views.length}, agents=${agentsManifest.agents.length}\n`,
+    `[ops-web] generated indexes: docs=${docs.length}, oap_kb=${oapKbDocs.length}, oap_raw_logs=${oapKbRawLogs.length}, bpmn=${bpmnDiagrams.length}, c4_views=${c4Manifest.views.length}, agents=${agentsManifest.agents.length}, ui_sections=${uiSectionContract.sections.length}, assistant_entries=${assistantGovernance.generated_entries.length}\n`,
   );
 }
 

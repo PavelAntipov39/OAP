@@ -28,9 +28,6 @@ import BlockIcon from "@mui/icons-material/Block";
 import type { SessionActionStep } from "../../../lib/analystCardData";
 
 const TOOL_ICONS: Record<string, React.ReactElement> = {
-  Read: <DescriptionIcon sx={{ fontSize: 16 }} />,
-  Write: <EditNoteIcon sx={{ fontSize: 16 }} />,
-  Edit: <EditNoteIcon sx={{ fontSize: 16 }} />,
   Grep: <SearchIcon sx={{ fontSize: 16 }} />,
   Glob: <SearchIcon sx={{ fontSize: 16 }} />,
   Bash: <TerminalIcon sx={{ fontSize: 16 }} />,
@@ -38,6 +35,12 @@ const TOOL_ICONS: Record<string, React.ReactElement> = {
   Agent: <SmartToyIcon sx={{ fontSize: 16 }} />,
   WebSearch: <PublicIcon sx={{ fontSize: 16 }} />,
   WebFetch: <PublicIcon sx={{ fontSize: 16 }} />,
+};
+
+const CRUD_ICONS: Record<string, React.ReactElement> = {
+  read: <DescriptionIcon sx={{ fontSize: 16 }} />,
+  write: <EditNoteIcon sx={{ fontSize: 16 }} />,
+  delete: <EditNoteIcon sx={{ fontSize: 16 }} />,
 };
 
 const STATUS_CONFIG: Record<
@@ -75,7 +78,7 @@ function formatDuration(ms: number | null): string {
 function ActionRow({ step }: { step: SessionActionStep }) {
   const [expanded, setExpanded] = React.useState(false);
   const statusCfg = STATUS_CONFIG[step.status];
-  const toolIcon = TOOL_ICONS[step.tool] ?? <BuildIcon sx={{ fontSize: 16 }} />;
+  const toolIcon = TOOL_ICONS[step.tool] ?? (step.crudAction ? CRUD_ICONS[step.crudAction] : null) ?? <BuildIcon sx={{ fontSize: 16 }} />;
 
   return (
     <Box

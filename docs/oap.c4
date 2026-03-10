@@ -60,7 +60,7 @@ model {
   }
 
   doc_sources = external_system "Документы и правила (Git repo)" {
-    description "AGENTS, registry, OAP docs, lessons и runbook."
+    description "AGENTS, registry, profile templates, OAP docs, lessons и runbook."
   }
 
   notification_channel = external_system "Канал уведомлений" {
@@ -83,11 +83,15 @@ model {
     }
 
     task_sync = container "Task Sync (Python)" {
-      description "Синхронизация задач из registry и telemetry в task board."
+      description "Синхронизация задач из registry/telemetry в task board и упаковка orchestration context."
     }
 
     telemetry_pipeline = container "Telemetry Pipeline (Python)" {
       description "Логирование событий, агрегация отчетов и построение cycle artifacts."
+    }
+
+    profile_orchestrator = container "Profile Orchestrator (Python)" {
+      description "Reuse-first подбор профилей, создание specialist profiles и planning agent instances."
     }
 
     candidate_processor = container "Candidate Processor (Python)" {
@@ -122,6 +126,7 @@ model {
     task_sync -> postgres.public_contract "upsert задач и статусов [SQL/RPC]"
     telemetry_pipeline -> postgres.public_contract "запись telemetry и чтение агрегатов [SQL/RPC]"
     candidate_processor -> postgres.public_contract "upsert candidate intake/assessment [SQL/RPC]"
+    task_sync -> profile_orchestrator "build collaboration_plan / specialist orchestration [Python]"
 
     postgres.public_contract -> postgres.rls_gate "access check [RLS]"
     postgres.rls_gate -> postgres.task_data "policy-guarded access"
@@ -129,6 +134,7 @@ model {
     postgres.rls_gate -> postgres.candidate_data "policy-guarded access"
 
     task_sync -> doc_sources "read registry/spec/contracts [git files]"
+    profile_orchestrator -> doc_sources "read/write registry + profile templates [git files]"
     telemetry_pipeline -> notification_channel "send digests/alerts [optional]"
     n8n_automation -> candidate_processor "candidate payload + source_key [HTTPS]"
     telegram_candidate_bot -> n8n_automation "send inbound candidate content"

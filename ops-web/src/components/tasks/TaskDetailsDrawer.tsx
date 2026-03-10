@@ -19,7 +19,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 
-import { getAgentTaskDetails, HUMAN_DECISION_LABEL, TASK_UI_STAGE_ORDER, TASK_UI_STAGE_META, type AgentTaskDetails, type AgentTaskHumanDecisionType } from "../../lib/tasksApi";
+import { getAgentTaskDetails, HUMAN_DECISION_LABEL, TASK_UI_STAGE_ORDER, TASK_UI_STAGE_META, type AgentTaskDetails, type AgentTaskHumanDecisionType, type AgentTaskServiceMode } from "../../lib/tasksApi";
 import {
   formatReadinessSummary,
   getMissingReadinessItems,
@@ -29,6 +29,8 @@ import {
 } from "../../lib/taskReadiness";
 import { TASK_RULES_CONTENT, TASK_RULES_PATH } from "../../lib/taskRulesContent";
 import { TextContentModal } from "../TextContentModal";
+import { SkillToolMcpTooltip } from "../skill-tooltip/SkillToolMcpTooltip";
+import { TaskDetailsDrawerExperimental } from "./TaskDetailsDrawerExperimental";
 import { TaskTimeline } from "./TaskTimeline";
 
 const TASK_STATUS_LABEL: Record<AgentTaskDetails["task"]["status"], string> = {
@@ -43,13 +45,22 @@ const TASK_STATUS_LABEL: Record<AgentTaskDetails["task"]["status"], string> = {
 };
 
 const WUUNU_DEV_MODE = import.meta.env.DEV;
+const EXPERIMENTAL_TASK_CARD_IDS = new Set(["demo-human-approve"]);
 
 type TaskDetailsDrawerProps = {
   open: boolean;
   taskId: string | null;
   onClose: () => void;
   onOpenAgent: (agentId: string) => void;
+  serviceMode?: AgentTaskServiceMode;
 };
+
+function shouldUseExperimentalTaskCard(taskId: string | null, serviceMode?: AgentTaskServiceMode): boolean {
+  return Boolean(
+    (taskId && EXPERIMENTAL_TASK_CARD_IDS.has(taskId)) ||
+    serviceMode === "waiting_human"
+  );
+}
 
 function renderStringList(values: string[], emptyText = "не зафиксировано") {
   if (values.length === 0) {
@@ -144,16 +155,16 @@ function renderUsageTable(
     );
   }
   return (
-    <List dense disablePadding>
+    <Stack spacing={0.6}>
       {values.map((item) => (
-        <ListItem key={item.name} disableGutters sx={{ py: 0.2 }}>
-          <ListItemText
-            primaryTypographyProps={{ variant: "body2" }}
-            primary={`${item.name} - событий: ${item.events}, задач: ${item.tasks}`}
-          />
-        </ListItem>
+        <Stack key={item.name} direction="row" spacing={0.8} alignItems="center" useFlexGap flexWrap="wrap">
+          <SkillToolMcpTooltip name={item.name} size="small" variant="outlined" />
+          <Typography variant="body2" color="text.secondary">
+            событий: {item.events}, задач: {item.tasks}
+          </Typography>
+        </Stack>
       ))}
-    </List>
+    </Stack>
   );
 }
 
@@ -165,6 +176,14 @@ function passRuleLabel(value: string): string {
 
 function yesNoLabel(value: boolean): string {
   return value ? "да" : "нет";
+}
+
+function collaborationStrategyLabel(value: string | undefined): string {
+  const normalized = (value || "").toLowerCase();
+  if (normalized === "reuse_existing") return "reuse_existing (переиспользование профиля)";
+  if (normalized === "create_new") return "create_new (создание нового профиля)";
+  if (normalized === "mixed") return "mixed (переиспользование + создание)";
+  return "не зафиксировано";
 }
 
 function stageChipColor(details: AgentTaskDetails): "default" | "info" | "warning" | "success" {
@@ -221,7 +240,7 @@ function humanDecisionPreviewMeta(decisionType: AgentTaskHumanDecisionType): {
   };
 }
 
-export function TaskDetailsDrawer({ open, taskId, onClose, onOpenAgent }: TaskDetailsDrawerProps) {
+function TaskDetailsDrawerLegacy({ open, taskId, onClose, onOpenAgent }: TaskDetailsDrawerProps) {
   const [details, setDetails] = React.useState<AgentTaskDetails | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState("");
@@ -788,6 +807,103 @@ export function TaskDetailsDrawer({ open, taskId, onClose, onOpenAgent }: TaskDe
                           <Typography variant="caption" color="text.secondary">
                             Проверено: {formatDateTimeShort(collaborationPlan.reviewed_at)}
                           </Typography>
+                          <Typography variant="body2">
+                            <strong>Стратегия оркестрации:</strong> {collaborationStrategyLabel(collaborationPlan.strategy)}
+                          </Typography>
+                          <Typography variant="body2">
+                            <strong>Глубина делегирования:</strong>{" "}
+                            {Number.isFinite(Number(collaborationPlan.delegation_depth))
+                              ? Math.max(0, Math.round(Number(collaborationPlan.delegation_depth)))
+                              : 0}
+                          </Typography>
+                          <Typography variant="body2">
+                            <strong>Бюджет оркестрации:</strong>{" "}
+                            {collaborationPlan.orchestration_budget
+                              ? [
+                                  `instances=${collaborationPlan.orchestration_budget.max_instances}`,
+                                  `tokens=${collaborationPlan.orchestration_budget.max_tokens}`,
+                                  `wall-clock=${collaborationPlan.orchestration_budget.max_wall_clock_minutes}m`,
+                                  `no-progress-hops=${collaborationPlan.orchestration_budget.max_no_progress_hops}`,
+                                ].join(", ")
+                              : "не зафиксировано"}
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            Reuse candidates
+                          </Typography>
+                          {!collaborationPlan.reuse_candidates || collaborationPlan.reuse_candidates.length === 0 ? (
+                            <Typography variant="body2" color="text.secondary">
+                              не зафиксировано
+                            </Typography>
+                          ) : (
+                            <Stack spacing={0.5}>
+                              {collaborationPlan.reuse_candidates.map((candidate) => (
+                                <Paper key={`${candidate.profile_id}-${candidate.name}`} variant="outlined" sx={{ p: 0.7 }}>
+                                  <Typography variant="body2">
+                                    <strong>{candidate.name}</strong> ({candidate.profile_id})
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary" component="div">
+                                    score={candidate.score.toFixed(2)} | decision={candidate.decision}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary" component="div">
+                                    {candidate.rationale || "обоснование не зафиксировано"}
+                                  </Typography>
+                                </Paper>
+                              ))}
+                            </Stack>
+                          )}
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            Созданные профили
+                          </Typography>
+                          {!collaborationPlan.created_profiles || collaborationPlan.created_profiles.length === 0 ? (
+                            <Typography variant="body2" color="text.secondary">
+                              нет
+                            </Typography>
+                          ) : (
+                            <Stack spacing={0.5}>
+                              {collaborationPlan.created_profiles.map((profile) => (
+                                <Paper key={profile.id} variant="outlined" sx={{ p: 0.7 }}>
+                                  <Typography variant="body2">
+                                    <strong>{profile.name}</strong> ({profile.id})
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary" component="div">
+                                    scope={profile.specialization_scope} | lifecycle={profile.lifecycle}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary" component="div">
+                                    reason={profile.creation_reason || "не зафиксировано"}
+                                  </Typography>
+                                </Paper>
+                              ))}
+                            </Stack>
+                          )}
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            Graph инстансов
+                          </Typography>
+                          {!collaborationPlan.spawned_instances || collaborationPlan.spawned_instances.length === 0 ? (
+                            <Typography variant="body2" color="text.secondary">
+                              не зафиксировано
+                            </Typography>
+                          ) : (
+                            <Stack spacing={0.5}>
+                              {collaborationPlan.spawned_instances.map((instance) => (
+                                <Paper key={instance.instance_id} variant="outlined" sx={{ p: 0.7 }}>
+                                  <Typography variant="body2">
+                                    <strong>{instance.instance_id}</strong>
+                                    {" -> "}
+                                    {instance.profile_id}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary" component="div">
+                                    depth={instance.depth} | parent={instance.parent_instance_id || "root"} | status={instance.status} | verify={instance.verify_status}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary" component="div">
+                                    purpose={instance.purpose || "не зафиксировано"}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary" component="div">
+                                    tools={instance.allowed_tools.join(", ") || "none"} | mcp={instance.allowed_mcp.join(", ") || "none"}
+                                  </Typography>
+                                </Paper>
+                              ))}
+                            </Stack>
+                          )}
                         </Stack>
                       )}
 
@@ -1067,4 +1183,12 @@ export function TaskDetailsDrawer({ open, taskId, onClose, onOpenAgent }: TaskDe
       />
     </Drawer>
   );
+}
+
+export function TaskDetailsDrawer(props: TaskDetailsDrawerProps) {
+  if (shouldUseExperimentalTaskCard(props.taskId, props.serviceMode)) {
+    return <TaskDetailsDrawerExperimental {...props} />;
+  }
+
+  return <TaskDetailsDrawerLegacy {...props} />;
 }

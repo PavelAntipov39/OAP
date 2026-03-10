@@ -6,9 +6,16 @@
 ## 2. Main Payloads
 - `agents-manifest.json`
   - source: `docs/agents/registry.yaml` + normalization logic in `ops-web/scripts/build_content_index.mjs`.
-  - contains: agent identity, tasks metrics, MCP/skills, memory context, improvements, workflow policy.
+  - contains: agent identity, profile metadata, tasks metrics, MCP/skills, memory context, improvements, workflow policy, workflow backbone.
 - `oap-kb-index.json`
   - source: OAP docs and selected AGENTS sections.
+- `assistant-governance.json`
+  - source: `/.specify/specs/001-oap/contracts/assistant-governance.json` + generator in `ops-web/scripts/build_content_index.mjs`.
+  - contains canonical assistant policy entry metadata and generated entry targets.
+- `ui-section-contract.json`
+  - source: runtime UI composition scan in `ops-web/scripts/build_content_index.mjs`.
+  - contains semantic section map:
+    `section_id`, `current_label`, `container_type`, `card_type`, `visibility`, `source_file`.
 - `agent-latest-cycle-analyst.json`
   - source: telemetry-derived artifact from `scripts/agent_telemetry.py`.
 - `agent-benchmark-summary.json`
@@ -35,6 +42,13 @@
     - `{ key, title, value, source_ref?, updated_at? }`
   - `collaboration_plan`:
     - `{ analysis_required, suggested_agents[], selected_agents[], rationale, reviewed_at? }`
+    - orchestration extensions:
+      - `strategy`: `reuse_existing|create_new|mixed`
+      - `reuse_candidates[]`: `{ profile_id, name, score, decision, rationale }`
+      - `created_profiles[]`: `{ id, name, created_by_agent_id, parent_template_id?, derived_from_agent_id?, specialization_scope, lifecycle, creation_reason, capability_contract }`
+      - `spawned_instances[]`: `{ instance_id, profile_id, parent_instance_id?, root_agent_id, task_id, purpose, depth, allowed_skills[], allowed_tools[], allowed_mcp[], applied_rules[], input_refs[], output_refs[], status, verify_status }`
+      - `orchestration_budget`: `{ max_instances, max_tokens, max_wall_clock_minutes, max_no_progress_hops }`
+      - `delegation_depth`
   - `ab_test_plan`:
     - `{ enabled, sessions_required, pass_rule, target_metric, expected_delta_pct, guardrails[], rollback_on_fail }`
     - `sessions_required` must stay in `3..8`.
@@ -51,6 +65,25 @@
   - `#/agents?agent=<agent-id>&tab=<tab-key>`
   - `tab-key`: `overview|mcp|skills_rules|tasks_quality|memory_context|improvements`
 - `analyst-agent` must use the same routing/drawer contract as other modern agents (no special-case routing branch).
+- Persistent agent profiles displayed in the drawer must also expose:
+  - `agentClass`: `core|specialist`
+  - `origin`: `manual|dynamic`
+  - `lifecycle`: `active|retire_candidate|retired`
+  - optional `createdByAgentId`, `parentTemplateId`, `derivedFromAgentId`, `specializationScope`, `creationReason`
+  - `capabilityContract`: `{ mission, entryCriteria[], doneCondition, outputSchema }`
+  - `workflowBackbone`:
+    - `version`: currently `universal_backbone_v1`
+    - `commonCoreSteps[]`: shared cycle template used for comparability across agents
+    - `roleWindow`: `{ entryStep, exitStep, purpose, internalSteps[] }`
+    - `stepExecutionPolicy`: `{ skippedStepsAllowed, skippedStepStatus }`
+    - `supportsDynamicInstances`: whether spawned specialist instances are expected to use the same backbone
+- Dynamic specialist profiles are shown on `#/agents` immediately after creation once the registry/manifests are refreshed.
+
+## 4.2 Dynamic UI Section Contract
+- Governance/docs and assistant entry-files must reference UI nodes by `section_id`.
+- `current_label` is runtime metadata and may change without governance-doc rewrites.
+- Label lookup source:
+  `ops-web/src/generated/ui-section-contract.json`.
 
 ## 5. Candidate Intake Contract (runtime)
 - Canonical entity name: `candidate`.

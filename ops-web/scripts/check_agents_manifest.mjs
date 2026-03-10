@@ -8,13 +8,63 @@ const __dirname = path.dirname(__filename);
 const opsRoot = path.resolve(__dirname, "..");
 const repoRoot = path.resolve(opsRoot, "..");
 const manifestPath = path.join(opsRoot, "src", "generated", "agents-manifest.json");
+const assistantGovernanceContractPath = path.join(
+  repoRoot,
+  ".specify",
+  "specs",
+  "001-oap",
+  "contracts",
+  "assistant-governance.json",
+);
+const uiSectionContractPath = path.join(opsRoot, "src", "generated", "ui-section-contract.json");
 const schemaPath = path.resolve(opsRoot, "..", "docs", "subservices", "oap", "agents-card.schema.json");
 const MODERN_AGENT_IDS = new Set(["analyst-agent", "designer-agent"]);
+const UNIVERSAL_BACKBONE_STEPS = [
+  "step_0_intake",
+  "step_1_start",
+  "step_2_preflight",
+  "step_3_orchestration",
+  "step_4_context_sync",
+  "step_5_role_window",
+  "step_6_role_exit_decision",
+  "step_7_apply_or_publish",
+  "step_7_contract_gate",
+  "step_8_verify",
+  "step_8_error_channel",
+  "step_9_finalize",
+  "step_9_publish_snapshots",
+];
+const EXPECTED_ROLE_WINDOW_BY_AGENT = {
+  "reader-agent": {
+    internalSteps: ["role_collect_sources", "role_synthesize_answer", "role_check_coverage"],
+    purposeIncludes: "контекст",
+  },
+  "data-agent": {
+    internalSteps: ["role_check_dataset_quality", "role_analyze_drift", "role_prepare_data_action"],
+    purposeIncludes: "качество данных",
+  },
+  "ops-agent": {
+    internalSteps: ["role_triage_operation", "role_select_runbook_action", "role_prepare_ops_resolution"],
+    purposeIncludes: "runbook",
+  },
+  "designer-agent": {
+    internalSteps: ["role_review_ui_kit", "role_review_clarity", "role_prepare_design_actions"],
+    purposeIncludes: "UX/UI",
+  },
+  "analyst-agent": {
+    internalSteps: ["role_collect_quality_signals", "role_score_candidates", "role_select_priority"],
+    purposeIncludes: "анализ кандидатов",
+  },
+};
 
 function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
+}
+
+function asString(value) {
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function asNumber(value) {
@@ -32,6 +82,14 @@ function assertStringArray(value, message) {
   }
 }
 
+function assertExactStringArray(value, expected, message) {
+  assert(Array.isArray(value), message);
+  assert(
+    value.length === expected.length && value.every((item, index) => item === expected[index]),
+    `${message}:${JSON.stringify(value)}!=${JSON.stringify(expected)}`,
+  );
+}
+
 function assertOptionalUrl(value, message) {
   if (value === null || value === undefined || value === "") return;
   assertNonEmptyString(value, message);
@@ -47,6 +105,141 @@ function assertOptionalNumber(value, message) {
   if (value === null || value === undefined || value === "") return;
   const numeric = Number(value);
   assert(!Number.isNaN(numeric), message);
+}
+
+function renderAssistantEntryPointer({
+  assistantId,
+  displayName,
+  canonicalFile,
+  templateVersion,
+}) {
+  const specPath = "/.specify/specs/001-oap/spec.md";
+  const uiSectionsPath = "ops-web/src/generated/ui-section-contract.json";
+  return [
+    `# ${displayName} Entry Point`,
+    "",
+    "<!-- generated: assistant-governance-v2 -->",
+    "<!-- do-not-edit: use `npm --prefix ops-web run prepare-content` -->",
+    "",
+    `Этот файл является короткой точкой входа для \`${assistantId}\` и генерируется автоматически.`,
+    "",
+    "## Канон правил",
+    `- Канонический файл правил: \`${canonicalFile}\`.`,
+    "- Локальные правила в этом файле не задаются.",
+    "",
+    "## Порядок чтения",
+    `1. \`${specPath}\``,
+    `2. \`${canonicalFile}\``,
+    "3. Этот entry-файл",
+    "",
+    "## Политика UI-ссылок",
+    `- Использовать semantic ids из \`${uiSectionsPath}\`.`,
+    "- Текущий display label брать из section-contract, а не из памяти.",
+    "- При отсутствии section-contract сверяться с актуальным runtime/code.",
+    "",
+    `Template version: \`${templateVersion}\`.`,
+    "",
+  ].join("\n");
+}
+
+async function validateAssistantGovernance() {
+  const raw = await fs.readFile(assistantGovernanceContractPath, "utf8");
+  const contract = JSON.parse(raw);
+  const canonicalFile = asString(contract?.canonical_file);
+  const entryStrategy = asString(contract?.entry_strategy);
+  const templateVersion = asString(contract?.template_version) || "v2";
+  const assistants = Array.isArray(contract?.supported_assistants) ? contract.supported_assistants : [];
+
+  assert(canonicalFile === "AGENTS.md", "assistant_governance_canonical_file_invalid");
+  assert(entryStrategy === "generated_pointer", "assistant_governance_entry_strategy_invalid");
+  assert(assistants.length > 0, "assistant_governance_supported_assistants_empty");
+
+  for (const assistant of assistants) {
+    if (assistant?.enabled === false) continue;
+    const assistantId = asString(assistant?.assistant_id);
+    const displayName = asString(assistant?.display_name) || assistantId;
+    const entryFile = asString(assistant?.entry_file);
+    assert(assistantId.length > 0, "assistant_governance_assistant_id_missing");
+    assert(entryFile.length > 0, `assistant_governance_entry_file_missing:${assistantId}`);
+
+    const absoluteEntry = path.join(repoRoot, entryFile);
+    let actualContent = "";
+    try {
+      actualContent = await fs.readFile(absoluteEntry, "utf8");
+    } catch {
+      throw new Error(`assistant_governance_entry_file_not_found:${entryFile}`);
+    }
+    const expectedContent = renderAssistantEntryPointer({
+      assistantId,
+      displayName,
+      canonicalFile,
+      templateVersion,
+    });
+    assert(
+      actualContent === expectedContent,
+      `assistant_governance_entry_file_mismatch:${entryFile}`,
+    );
+
+    const lineCount = actualContent.split(/\r?\n/).length;
+    assert(lineCount <= 40, `assistant_governance_entry_file_too_long:${entryFile}:${lineCount}`);
+  }
+}
+
+async function validateUiSectionContract() {
+  const raw = await fs.readFile(uiSectionContractPath, "utf8");
+  const contract = JSON.parse(raw);
+  const sections = Array.isArray(contract?.sections) ? contract.sections : [];
+  assert(sections.length > 0, "ui_section_contract_sections_empty");
+
+  const seen = new Set();
+  for (const section of sections) {
+    const sectionId = asString(section?.section_id);
+    const currentLabel = asString(section?.current_label);
+    const containerType = asString(section?.container_type);
+    const cardType = asString(section?.card_type);
+    const visibility = asString(section?.visibility);
+    const sourceFile = asString(section?.source_file);
+
+    assert(sectionId.length > 0, "ui_section_contract_section_id_missing");
+    assert(!seen.has(sectionId), `ui_section_contract_duplicate_section_id:${sectionId}`);
+    seen.add(sectionId);
+
+    assert(currentLabel.length > 0, `ui_section_contract_current_label_missing:${sectionId}`);
+    assert(["tab", "section", "drawer_block"].includes(containerType), `ui_section_contract_container_type_invalid:${sectionId}`);
+    assert(cardType.length > 0, `ui_section_contract_card_type_missing:${sectionId}`);
+    assert(visibility.length > 0, `ui_section_contract_visibility_missing:${sectionId}`);
+    assert(sourceFile.length > 0, `ui_section_contract_source_file_missing:${sectionId}`);
+    await assertFileExists(sourceFile, `ui_section_contract_source_file_not_found:${sectionId}`);
+  }
+}
+
+async function validateGovernanceNoHardcodedUiLabels() {
+  const governanceFiles = [
+    path.join(repoRoot, ".github", "copilot-instructions.md"),
+    path.join(repoRoot, "CLAUDE.md"),
+  ];
+  const disallowedLabels = [
+    "Как работает ИИ агент",
+    "Рабочий контур агента",
+    "Навыки и Правила",
+    "Задачи и качество",
+    "Память и контекст",
+  ];
+
+  for (const filePath of governanceFiles) {
+    let content = "";
+    try {
+      content = await fs.readFile(filePath, "utf8");
+    } catch {
+      throw new Error(`governance_file_missing:${path.relative(repoRoot, filePath).replace(/\\/g, "/")}`);
+    }
+    for (const label of disallowedLabels) {
+      assert(
+        !content.includes(label),
+        `governance_hardcoded_ui_label_detected:${path.relative(repoRoot, filePath).replace(/\\/g, "/")}:${label}`,
+      );
+    }
+  }
 }
 
 async function assertFileExists(relPath, message) {
@@ -73,6 +266,10 @@ async function assertFileExists(relPath, message) {
 }
 
 async function main() {
+  await validateAssistantGovernance();
+  await validateUiSectionContract();
+  await validateGovernanceNoHardcodedUiLabels();
+
   const schemaRaw = await fs.readFile(schemaPath, "utf8");
   const schema = JSON.parse(schemaRaw);
   assertNonEmptyString(schema.$id, "schema_missing_id");
@@ -90,6 +287,32 @@ async function main() {
     assert(typeof agent.name === "string" && agent.name.length > 0, `agent_missing_name:${agent.id}`);
     assert(typeof agent.role === "string" && agent.role.length > 0, `agent_missing_role:${agent.id}`);
     assert(["healthy", "degraded", "offline"].includes(agent.status), `agent_invalid_status:${agent.id}`);
+    assert(["core", "specialist"].includes(agent.agentClass), `agent_class_invalid:${agent.id}`);
+    assert(["manual", "dynamic"].includes(agent.origin), `agent_origin_invalid:${agent.id}`);
+    assert(typeof agent.specializationScope === "string" && agent.specializationScope.trim().length > 0, `agent_scope_missing:${agent.id}`);
+    assert(["active", "retire_candidate", "retired"].includes(agent.lifecycle), `agent_lifecycle_invalid:${agent.id}`);
+    assert(agent.capabilityContract && typeof agent.capabilityContract === "object", `agent_capability_contract_missing:${agent.id}`);
+    assertNonEmptyString(agent.capabilityContract.mission, `agent_capability_mission_missing:${agent.id}`);
+    assertStringArray(agent.capabilityContract.entryCriteria, `agent_capability_entry_criteria_invalid:${agent.id}`);
+    assertNonEmptyString(agent.capabilityContract.doneCondition, `agent_capability_done_condition_missing:${agent.id}`);
+    assertNonEmptyString(agent.capabilityContract.outputSchema, `agent_capability_output_schema_missing:${agent.id}`);
+    assert(agent.capabilityOptimization && typeof agent.capabilityOptimization === "object", `agent_capability_optimization_missing:${agent.id}`);
+    assert(agent.capabilityOptimization.enabled === true, `agent_capability_optimization_enabled_invalid:${agent.id}`);
+    assert(agent.capabilityOptimization.refreshMode === "on_run", `agent_capability_optimization_refresh_mode_invalid:${agent.id}`);
+    assert(agent.capabilityOptimization.sourcePolicy === "official_first", `agent_capability_optimization_source_policy_invalid:${agent.id}`);
+    assert(agent.capabilityOptimization.trialMode === "shadow", `agent_capability_optimization_trial_mode_invalid:${agent.id}`);
+    assert(agent.capabilityOptimization.promotionMode === "human_approve", `agent_capability_optimization_promotion_mode_invalid:${agent.id}`);
+    assert(
+      Number.isFinite(Number(agent.capabilityOptimization.minShadowSampleSize))
+      && Number(agent.capabilityOptimization.minShadowSampleSize) >= 3,
+      `agent_capability_optimization_min_shadow_sample_size_invalid:${agent.id}`,
+    );
+    assert(
+      Number.isFinite(Number(agent.capabilityOptimization.staleAfterHours))
+      && Number(agent.capabilityOptimization.staleAfterHours) >= 1,
+      `agent_capability_optimization_stale_after_hours_invalid:${agent.id}`,
+    );
+    assert(["keep", "merge", "retire_candidate"].includes(agent.auditDisposition), `agent_audit_disposition_invalid:${agent.id}`);
     assert(Array.isArray(agent.skills), `agent_missing_skills:${agent.id}`);
     assert(Array.isArray(agent.repositories), `agent_missing_repositories:${agent.id}`);
     assert(Array.isArray(agent.mcpServers), `agent_missing_mcp:${agent.id}`);
@@ -116,6 +339,37 @@ async function main() {
     assert(typeof agent.workflowPolicy.verifyBeforeDone === "boolean", `agent_workflow_policy_verify_invalid:${agent.id}`);
     assert(typeof agent.workflowPolicy.selfImprovementLoop === "boolean", `agent_workflow_policy_learn_invalid:${agent.id}`);
     assert(typeof agent.workflowPolicy.autonomousBugfix === "boolean", `agent_workflow_policy_bugfix_invalid:${agent.id}`);
+
+    assert(agent.workflowBackbone && typeof agent.workflowBackbone === "object", `agent_workflow_backbone_missing:${agent.id}`);
+    assertNonEmptyString(agent.workflowBackbone.version, `agent_workflow_backbone_version_missing:${agent.id}`);
+    assert(agent.workflowBackbone.version === "universal_backbone_v1", `agent_workflow_backbone_version_invalid:${agent.id}`);
+    assertExactStringArray(
+      agent.workflowBackbone.commonCoreSteps,
+      UNIVERSAL_BACKBONE_STEPS,
+      `agent_workflow_backbone_core_steps_invalid:${agent.id}`,
+    );
+    assert(agent.workflowBackbone.roleWindow && typeof agent.workflowBackbone.roleWindow === "object", `agent_workflow_backbone_role_window_missing:${agent.id}`);
+    assertNonEmptyString(agent.workflowBackbone.roleWindow.entryStep, `agent_workflow_backbone_role_entry_missing:${agent.id}`);
+    assertNonEmptyString(agent.workflowBackbone.roleWindow.exitStep, `agent_workflow_backbone_role_exit_missing:${agent.id}`);
+    assertNonEmptyString(agent.workflowBackbone.roleWindow.purpose, `agent_workflow_backbone_role_purpose_missing:${agent.id}`);
+    assertStringArray(agent.workflowBackbone.roleWindow.internalSteps, `agent_workflow_backbone_role_steps_invalid:${agent.id}`);
+    assert(agent.workflowBackbone.stepExecutionPolicy && typeof agent.workflowBackbone.stepExecutionPolicy === "object", `agent_workflow_backbone_step_policy_missing:${agent.id}`);
+    assert(typeof agent.workflowBackbone.stepExecutionPolicy.skippedStepsAllowed === "boolean", `agent_workflow_backbone_skip_allowed_invalid:${agent.id}`);
+    assert(agent.workflowBackbone.stepExecutionPolicy.skippedStepStatus === "skipped", `agent_workflow_backbone_skip_status_invalid:${agent.id}`);
+    assert(typeof agent.workflowBackbone.supportsDynamicInstances === "boolean", `agent_workflow_backbone_dynamic_flag_invalid:${agent.id}`);
+
+    const expectedRoleWindow = EXPECTED_ROLE_WINDOW_BY_AGENT[agent.id];
+    if (expectedRoleWindow) {
+      assertExactStringArray(
+        agent.workflowBackbone.roleWindow.internalSteps,
+        expectedRoleWindow.internalSteps,
+        `agent_workflow_backbone_role_steps_mismatch:${agent.id}`,
+      );
+      assert(
+        agent.workflowBackbone.roleWindow.purpose.toLowerCase().includes(expectedRoleWindow.purposeIncludes.toLowerCase()),
+        `agent_workflow_backbone_role_purpose_mismatch:${agent.id}:${agent.workflowBackbone.roleWindow.purpose}`,
+      );
+    }
 
     assert(agent.learningArtifacts && typeof agent.learningArtifacts === "object", `agent_learning_artifacts_missing:${agent.id}`);
     assertNonEmptyString(agent.learningArtifacts.todoPath, `agent_learning_todo_path_missing:${agent.id}`);

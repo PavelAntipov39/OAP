@@ -69,10 +69,9 @@ export function buildFileTraceMermaid(snapshot: AgentLatestCycleSnapshot): strin
   for (const edge of edges) {
     const s = stepNode(edge.step || "unknown-step");
     const f = fileNode(edge.path || "unknown-path");
-    const edgeLabel = edge.kind === "write" ? "write" : "read";
+    const edgeLabel = edge.kind === "delete" ? "delete" : edge.kind === "write" ? "write" : "read";
     lines.push(`  ${s} -->|"${edgeLabel}"| ${f}`);
   }
 
   return lines.join("\n");
 }
-

@@ -1,4 +1,15 @@
-# OAP Agent Workflow Prompt (Analyst/Designer Cards)
+# Deprecated: moved to AGENT_OPERATIONS_RULES.md
+
+Этот путь сохранен только для обратной совместимости.
+
+Канонический документ:
+- `docs/subservices/oap/AGENT_OPERATIONS_RULES.md`
+
+Причина переименования:
+- старое имя смешивало prompt и operational rules;
+- новый путь явно отражает, что это operating contract, а не разовый prompt.
+
+При любом обновлении правил нужно менять канонический файл, а не этот alias.# OAP Agent Workflow Prompt (Analyst/Designer Cards)
 
 Используй этот промт **только для под-проекта ОАП**.  
 Не применяй изменения к внешним доменным проектам, если это явно не запрошено.

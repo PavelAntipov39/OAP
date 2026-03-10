@@ -85,8 +85,8 @@
       "availableTools": [],
       "repositories": [
         {
-          "name": "bible-web",
-          "url": "https://github.com/example/bible-web",
+          "name": "oap-web",
+          "url": "https://github.com/example/oap-web",
           "branch": "main"
         }
       ],
@@ -416,6 +416,30 @@
         "selfImprovementLoop": true,
         "autonomousBugfix": true
       },
+      "workflowBackbone": {
+        "version": "universal_backbone_v1",
+        "commonCoreSteps": ["step_0_intake", "step_1_start", "step_2_preflight", "step_3_orchestration", "step_4_context_sync", "step_5_role_window", "step_6_role_exit_decision", "step_7_apply_or_publish", "step_7_contract_gate", "step_8_verify", "step_8_error_channel", "step_9_finalize", "step_9_publish_snapshots"],
+        "roleWindow": {
+          "entryStep": "step_5_role_window",
+          "exitStep": "step_6_role_exit_decision",
+          "purpose": "Собрать, синтезировать и упаковать ответ по релевантому контексту пользователя.",
+          "internalSteps": ["role_collect_sources", "role_synthesize_answer", "role_check_coverage"]
+        },
+        "stepExecutionPolicy": {
+          "skippedStepsAllowed": true,
+          "skippedStepStatus": "skipped"
+        },
+        "supportsDynamicInstances": true
+      },
+      "capabilityOptimization": {
+        "enabled": true,
+        "refreshMode": "on_run",
+        "sourcePolicy": "official_first",
+        "trialMode": "shadow",
+        "promotionMode": "human_approve",
+        "minShadowSampleSize": 3,
+        "staleAfterHours": 168
+      },
       "learningArtifacts": {
         "todoPath": "docs/subservices/oap/tasks/todo.md",
         "lessonsPath": "docs/subservices/oap/tasks/lessons/reader-agent.md",
@@ -437,7 +461,7 @@
       "source": "registry+tasks-sync",
       "updatedAt": "2026-02-24T18:35:00Z",
       "runbook": "Проверить ошибки deploy и состояние MCP-интеграций.",
-      "trackerUrl": "https://github.com/example/bible-web/issues"
+      "trackerUrl": "https://github.com/example/oap-web/issues"
     },
     {
       "id": "data-agent",
@@ -489,8 +513,8 @@
       "availableTools": [],
       "repositories": [
         {
-          "name": "bible-etl",
-          "url": "https://github.com/example/bible-etl",
+          "name": "oap-etl",
+          "url": "https://github.com/example/oap-etl",
           "branch": "main"
         }
       ],
@@ -605,6 +629,30 @@
         "selfImprovementLoop": true,
         "autonomousBugfix": true
       },
+      "workflowBackbone": {
+        "version": "universal_backbone_v1",
+        "commonCoreSteps": ["step_0_intake", "step_1_start", "step_2_preflight", "step_3_orchestration", "step_4_context_sync", "step_5_role_window", "step_6_role_exit_decision", "step_7_apply_or_publish", "step_7_contract_gate", "step_8_verify", "step_8_error_channel", "step_9_finalize", "step_9_publish_snapshots"],
+        "roleWindow": {
+          "entryStep": "step_5_role_window",
+          "exitStep": "step_6_role_exit_decision",
+          "purpose": "Проверить качество данных и вернуть пакет действий по ETL или quality-control.",
+          "internalSteps": ["role_check_dataset_quality", "role_analyze_drift", "role_prepare_data_action"]
+        },
+        "stepExecutionPolicy": {
+          "skippedStepsAllowed": true,
+          "skippedStepStatus": "skipped"
+        },
+        "supportsDynamicInstances": true
+      },
+      "capabilityOptimization": {
+        "enabled": true,
+        "refreshMode": "on_run",
+        "sourcePolicy": "official_first",
+        "trialMode": "shadow",
+        "promotionMode": "human_approve",
+        "minShadowSampleSize": 3,
+        "staleAfterHours": 168
+      },
       "learningArtifacts": {
         "todoPath": "docs/subservices/oap/tasks/todo.md",
         "lessonsPath": "docs/subservices/oap/tasks/lessons/data-agent.md",
@@ -626,7 +674,7 @@
       "source": "registry+manual-ops",
       "updatedAt": "2026-02-24T18:32:00Z",
       "runbook": "Проверить latest ETL run, затем пересчитать FTS и QC.",
-      "trackerUrl": "https://github.com/example/bible-etl/issues"
+      "trackerUrl": "https://github.com/example/oap-etl/issues"
     },
     {
       "id": "ops-agent",
@@ -668,8 +716,8 @@
       "availableTools": [],
       "repositories": [
         {
-          "name": "bible-ops",
-          "url": "https://github.com/example/bible-ops",
+          "name": "oap-ops",
+          "url": "https://github.com/example/oap-ops",
           "branch": "main"
         }
       ],
@@ -773,6 +821,30 @@
         "selfImprovementLoop": true,
         "autonomousBugfix": true
       },
+      "workflowBackbone": {
+        "version": "universal_backbone_v1",
+        "commonCoreSteps": ["step_0_intake", "step_1_start", "step_2_preflight", "step_3_orchestration", "step_4_context_sync", "step_5_role_window", "step_6_role_exit_decision", "step_7_apply_or_publish", "step_7_contract_gate", "step_8_verify", "step_8_error_channel", "step_9_finalize", "step_9_publish_snapshots"],
+        "roleWindow": {
+          "entryStep": "step_5_role_window",
+          "exitStep": "step_6_role_exit_decision",
+          "purpose": "Разобрать операционную проблему и вернуть runbook-based action package.",
+          "internalSteps": ["role_triage_operation", "role_select_runbook_action", "role_prepare_ops_resolution"]
+        },
+        "stepExecutionPolicy": {
+          "skippedStepsAllowed": true,
+          "skippedStepStatus": "skipped"
+        },
+        "supportsDynamicInstances": true
+      },
+      "capabilityOptimization": {
+        "enabled": true,
+        "refreshMode": "on_run",
+        "sourcePolicy": "official_first",
+        "trialMode": "shadow",
+        "promotionMode": "human_approve",
+        "minShadowSampleSize": 3,
+        "staleAfterHours": 168
+      },
       "learningArtifacts": {
         "todoPath": "docs/subservices/oap/tasks/todo.md",
         "lessonsPath": "docs/subservices/oap/tasks/lessons/ops-agent.md",
@@ -794,7 +866,7 @@
       "source": "registry+manual-ops",
       "updatedAt": "2026-02-24T18:31:00Z",
       "runbook": "При деградации MCP: проверка токена и перезапуск сервера.",
-      "trackerUrl": "https://github.com/example/bible-ops/issues"
+      "trackerUrl": "https://github.com/example/oap-ops/issues"
     },
     {
       "id": "designer-agent",
@@ -870,8 +942,8 @@
       ],
       "repositories": [
         {
-          "name": "bible-ops",
-          "url": "https://github.com/example/bible-ops",
+          "name": "oap-ops",
+          "url": "https://github.com/example/oap-ops",
           "branch": "main"
         }
       ],
@@ -940,14 +1012,14 @@
         },
         {
           "title": "ОАП: операционный стандарт продакт дизайнера",
-          "filePath": "docs/subservices/oap/DESIGNER_OPERATING_PLAN.md",
+          "filePath": "docs/subservices/oap/agents/designer-agent/OPERATING_PLAN.md",
           "pathHint": "Процесс по которому работает ИИ агент, UI gate и критерии понятности интерфейса"
         }
       ],
       "rulesApplied": [
         {
           "title": "Операционный стандарт designer-agent",
-          "location": "docs/subservices/oap/DESIGNER_OPERATING_PLAN.md",
+          "location": "docs/subservices/oap/agents/designer-agent/OPERATING_PLAN.md",
           "description": "Канонический процесс дизайн-ревью, UI gate и правила понятности интерфейсов.",
           "fullText": "",
           "sourceUrl": null
@@ -1074,6 +1146,30 @@
         "selfImprovementLoop": true,
         "autonomousBugfix": true
       },
+      "workflowBackbone": {
+        "version": "universal_backbone_v1",
+        "commonCoreSteps": ["step_0_intake", "step_1_start", "step_2_preflight", "step_3_orchestration", "step_4_context_sync", "step_5_role_window", "step_6_role_exit_decision", "step_7_apply_or_publish", "step_7_contract_gate", "step_8_verify", "step_8_error_channel", "step_9_finalize", "step_9_publish_snapshots"],
+        "roleWindow": {
+          "entryStep": "step_5_role_window",
+          "exitStep": "step_6_role_exit_decision",
+          "purpose": "Выполнить UX/UI-проверку и вернуть пакет дизайн-действий и verify-требований.",
+          "internalSteps": ["role_review_ui_kit", "role_review_clarity", "role_prepare_design_actions"]
+        },
+        "stepExecutionPolicy": {
+          "skippedStepsAllowed": true,
+          "skippedStepStatus": "skipped"
+        },
+        "supportsDynamicInstances": true
+      },
+      "capabilityOptimization": {
+        "enabled": true,
+        "refreshMode": "on_run",
+        "sourcePolicy": "official_first",
+        "trialMode": "shadow",
+        "promotionMode": "human_approve",
+        "minShadowSampleSize": 3,
+        "staleAfterHours": 168
+      },
       "learningArtifacts": {
         "todoPath": "docs/subservices/oap/tasks/todo.md",
         "lessonsPath": "docs/subservices/oap/tasks/lessons/designer-agent.md",
@@ -1135,7 +1231,7 @@
       "source": "registry+manual-design",
       "updatedAt": "2026-02-26T21:00:00Z",
       "runbook": "Проверить соответствие UI kit, затем подтвердить понятность интерфейса и полноту подсказок.",
-      "trackerUrl": "https://github.com/example/bible-ops/issues",
+      "trackerUrl": "https://github.com/example/oap-ops/issues",
       "notes": "Карточка должна рендериться в modern-режиме как у analyst-agent."
     },
     {
@@ -1157,7 +1253,38 @@
           "practicalTasks": [
             "Подготовка архитектуры карточки агента",
             "Подготовка roadmap улучшений"
-          ]
+          ],
+          "decisionGuidance": {
+            "purpose": "Структурировать рекомендации и архитектурные выводы в формате evidence -> action -> metric.",
+            "useWhen": "Использовать, когда нужно зафиксировать вывод по изменениям в ОАП, правилам, контрактам или workflow.",
+            "avoidWhen": "Не использовать как единственный capability, если задача зависит от свежей внешней документации или runtime-данных.",
+            "requiredContext": [
+              "spec/contracts/runbook или другой source of truth",
+              "минимум одна evidence-ссылка на ключевой вывод"
+            ],
+            "expectedOutput": "Короткий проверяемый текст: проблема, evidence, действие, ожидаемый эффект, способ проверки.",
+            "failureModes": [
+              "Общий текст без evidence",
+              "Смешивание taxonomy Skills / Tools / MCP / Rules"
+            ],
+            "fallbackTo": [
+              "QMD retrieval",
+              "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md"
+            ],
+            "examples": [
+              "Архитектурное ADR по карточке аналитика",
+              "Краткий prompt для self-improvement задачи"
+            ]
+          },
+          "qualitySignals": {
+            "reviewStatus": "approved",
+            "lastReviewedAt": "2026-03-08T18:30:00Z",
+            "descriptionCompletenessScore": 88,
+            "verifyPassAfterUseRate": 92,
+            "fallbackAfterUseRate": 8,
+            "improvementHint": "Добавить явные anti-pattern hints для задач, где нужен свежий vendor-doc context.",
+            "recommendation": "keep_current"
+          }
         }
       ],
       "availableSkills": [
@@ -1171,7 +1298,37 @@
             "Проверка новой карточки агента",
             "Проверка фильтров и KPI-блоков"
           ],
-          "link": "https://playwright.dev/docs/intro"
+          "link": "https://playwright.dev/docs/intro",
+          "decisionGuidance": {
+            "purpose": "Проверять UI-гипотезы и регрессии в реальном браузере.",
+            "useWhen": "Использовать, когда изменение затрагивает UI-поведение, роутинг, фильтры, модалки или таблицы.",
+            "avoidWhen": "Не использовать для чисто schema/backend/markdown-изменений без runtime-поведения.",
+            "requiredContext": [
+              "ожидаемый пользовательский сценарий",
+              "конкретная страница или deep-link"
+            ],
+            "expectedOutput": "Проверенный сценарий, найденные регрессии или подтверждение, что UI работает как ожидается.",
+            "failureModes": [
+              "Проверка не того сценария",
+              "Ложноположительный успех без реального assert"
+            ],
+            "fallbackTo": [
+              "doc"
+            ],
+            "examples": [
+              "Проверка capability comparison modal",
+              "Smoke для deep-link в карточку агента"
+            ]
+          },
+          "qualitySignals": {
+            "reviewStatus": "draft",
+            "lastReviewedAt": "2026-03-08T18:35:00Z",
+            "descriptionCompletenessScore": 84,
+            "verifyPassAfterUseRate": null,
+            "fallbackAfterUseRate": null,
+            "improvementHint": "Нужен shadow-trial на UI-задачах analyst-agent перед переводом в usedSkills.",
+            "recommendation": "trial_alternative"
+          }
         },
         {
           "name": "sentry",
@@ -1183,7 +1340,38 @@
             "Приоритизация критичных улучшений",
             "Подготовка anti-regression рекомендаций"
           ],
-          "link": "https://docs.sentry.io/"
+          "link": "https://docs.sentry.io/",
+          "decisionGuidance": {
+            "purpose": "Добавлять production evidence к приоритизации улучшений.",
+            "useWhen": "Использовать, когда нужно проверить реальный impact ошибки, деградации или regressions в проде.",
+            "avoidWhen": "Не использовать, если задача полностью локальная и не требует production evidence.",
+            "requiredContext": [
+              "идентификатор проекта или issue",
+              "формулировка проверяемой гипотезы"
+            ],
+            "expectedOutput": "Список подтвержденных production-сигналов и их связь с рекомендацией.",
+            "failureModes": [
+              "Слишком общий вывод без issue-level evidence",
+              "Приоритизация по шумным событиям"
+            ],
+            "fallbackTo": [
+              "Supabase",
+              "doc"
+            ],
+            "examples": [
+              "Проверка production-инцидентов перед изменением workflow",
+              "Приоритизация anti-regression задач"
+            ]
+          },
+          "qualitySignals": {
+            "reviewStatus": "draft",
+            "lastReviewedAt": "2026-03-08T18:40:00Z",
+            "descriptionCompletenessScore": 82,
+            "verifyPassAfterUseRate": null,
+            "fallbackAfterUseRate": null,
+            "improvementHint": "Нужен shadow-trial на задачах с прод-данными и явным issue scope.",
+            "recommendation": "trial_alternative"
+          }
         }
       ],
       "usedTools": [
@@ -1195,14 +1383,45 @@
           "practicalTasks": [
             "Анализ причин review-ошибок",
             "Подготовка рекомендаций по MCP и навыкам"
-          ]
+          ],
+          "decisionGuidance": {
+            "purpose": "Быстро собрать релевантный evidence-first контекст по длинной документации.",
+            "useWhen": "Использовать, когда нужный ответ распределен по нескольким markdown/spec/runbook документам и точный файл заранее неизвестен.",
+            "avoidWhen": "Не использовать, когда точный файл и строка уже известны или когда нужен code-symbol lookup/runtime data.",
+            "requiredContext": [
+              "поисковый вопрос или гипотеза",
+              "приоритетные пространства поиска: spec/contracts/runbook"
+            ],
+            "expectedOutput": "Набор релевантных выдержек с источниками, достаточный для принятия решения.",
+            "failureModes": [
+              "Слишком широкий запрос без контекста",
+              "Замена retrieval на итоговый вывод без последующей проверки"
+            ],
+            "fallbackTo": [
+              "doc",
+              "contextRefs"
+            ],
+            "examples": [
+              "Сверка требований перед изменением карточки агента",
+              "Поиск runbook-оснований для новой policy"
+            ]
+          },
+          "qualitySignals": {
+            "reviewStatus": "approved",
+            "lastReviewedAt": "2026-03-08T18:45:00Z",
+            "descriptionCompletenessScore": 93,
+            "verifyPassAfterUseRate": 94,
+            "fallbackAfterUseRate": 6,
+            "improvementHint": "Добавить примеры слабых query и рекомендованных query-шаблонов для trial loop.",
+            "recommendation": "keep_current"
+          }
         }
       ],
       "availableTools": [],
       "repositories": [
         {
-          "name": "bible-ops",
-          "url": "https://github.com/example/bible-ops",
+          "name": "oap-ops",
+          "url": "https://github.com/example/oap-ops",
           "branch": "main"
         }
       ],
@@ -1229,7 +1448,37 @@
             "Сбор оснований для MCP-рекомендаций",
             "Анализ архитектурных ограничений"
           ],
-          "impactInNumbers": "Экономия токенов на аналитических задачах: ~25-40%."
+          "impactInNumbers": "Экономия токенов на аналитических задачах: ~25-40%.",
+          "decisionGuidance": {
+            "purpose": "Предоставить транспорт и исполнение для retrieval по markdown-контексту.",
+            "useWhen": "Использовать вместе с QMD retrieval, когда задача зависит от поиска по длинным документам.",
+            "avoidWhen": "Не подключать как основной источник истины для runtime-данных или code-symbol lookup.",
+            "requiredContext": [
+              "доступный qmd server",
+              "поисковый запрос и ограничение области поиска"
+            ],
+            "expectedOutput": "Релевантные выдержки и ссылки на документы без полного ручного перебора контекста.",
+            "failureModes": [
+              "Слабый retrieval query",
+              "Попытка использовать MCP как policy вместо integration-layer"
+            ],
+            "fallbackTo": [
+              "contextRefs",
+              "manual doc review"
+            ],
+            "examples": [
+              "Сбор spec/contracts evidence для analyst-agent"
+            ]
+          },
+          "qualitySignals": {
+            "reviewStatus": "approved",
+            "lastReviewedAt": "2026-03-08T18:50:00Z",
+            "descriptionCompletenessScore": 90,
+            "verifyPassAfterUseRate": 95,
+            "fallbackAfterUseRate": 5,
+            "improvementHint": "Уточнить degraded/offline fallback в decision surface таблицы.",
+            "recommendation": "keep_current"
+          }
         },
         {
           "name": "Supabase",
@@ -1239,7 +1488,38 @@
             "Проверка целостности метрик",
             "Валидация выводов по данным"
           ],
-          "impactInNumbers": "Снижение ложных рекомендаций за счет проверки фактов в данных."
+          "impactInNumbers": "Снижение ложных рекомендаций за счет проверки фактов в данных.",
+          "decisionGuidance": {
+            "purpose": "Проверять рекомендации against реальные данные и RPC/DB contracts.",
+            "useWhen": "Использовать, когда рекомендация зависит от фактических данных, метрик, RPC или структуры operational storage.",
+            "avoidWhen": "Не использовать для задач, где достаточно markdown/governance контекста без live data.",
+            "requiredContext": [
+              "понятная гипотеза, что именно проверяем в данных",
+              "доступ к нужному проекту/таблице/contract"
+            ],
+            "expectedOutput": "Подтвержденный или опровергнутый вывод по данным, пригодный для решения аналитика.",
+            "failureModes": [
+              "Проверка не того dataset",
+              "Смешивание inference и факта"
+            ],
+            "fallbackTo": [
+              "QMD",
+              "doc"
+            ],
+            "examples": [
+              "Проверка формулы метрики перед рекомендацией",
+              "Валидация целостности manifest-derived данных"
+            ]
+          },
+          "qualitySignals": {
+            "reviewStatus": "approved",
+            "lastReviewedAt": "2026-03-08T18:55:00Z",
+            "descriptionCompletenessScore": 89,
+            "verifyPassAfterUseRate": 91,
+            "fallbackAfterUseRate": 9,
+            "improvementHint": "Добавить точный safety-hint: сначала формулировать query intent, затем идти в live data.",
+            "recommendation": "keep_current"
+          }
         }
       ],
       "availableMcp": [
@@ -1287,25 +1567,281 @@
         },
         {
           "title": "ОАП: операционный стандарт аналитика",
-          "filePath": "docs/subservices/oap/ANALYST_OPERATING_PLAN.md",
+          "filePath": "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
           "pathHint": "Процесс по которому работает ИИ агент, политика источников, whitelist, lifecycle улучшений, уведомления и критичные случаи",
-          "sourceUrl": "https://github.com/PavelAntipov39/pervoe-slovo/blob/codex/universal-entity-modal/docs/subservices/oap/ANALYST_OPERATING_PLAN.md"
+          "sourceUrl": "https://github.com/PavelAntipov39/pervoe-slovo/blob/codex/universal-entity-modal/docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md"
         }
       ],
       "rulesApplied": [
         {
           "title": "Операционный стандарт analyst-agent",
-          "location": "docs/subservices/oap/ANALYST_OPERATING_PLAN.md",
+          "location": "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
           "description": "Канонический ежедневный цикл и правила принятия решений для аналитика.",
           "fullText": "",
-          "sourceUrl": "https://github.com/PavelAntipov39/pervoe-slovo/blob/codex/universal-entity-modal/docs/subservices/oap/ANALYST_OPERATING_PLAN.md"
+          "sourceUrl": "https://github.com/PavelAntipov39/pervoe-slovo/blob/codex/universal-entity-modal/docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
+          "decisionGuidance": {
+            "purpose": "Задает канонический цикл, done-gates и decision policy analyst-agent.",
+            "useWhen": "Использовать как основной governance-layer для каждого цикла analyst-agent и для проверки step-contract.",
+            "avoidWhen": "Не использовать как замену task-specific evidence или external docs.",
+            "requiredContext": [
+              "текущий task_id/run_id",
+              "цель и ограничения задачи"
+            ],
+            "expectedOutput": "Консистентное прохождение канонического цикла без пропуска verify/lesson.",
+            "failureModes": [
+              "Пропуск verify или lesson",
+              "Нарушение step-contract"
+            ],
+            "fallbackTo": [
+              "AGENTS.md"
+            ],
+            "examples": [
+              "Валидация этапов 0..9.1",
+              "Проверка rollout warning -> strict"
+            ]
+          },
+          "qualitySignals": {
+            "reviewStatus": "approved",
+            "lastReviewedAt": "2026-03-08T19:00:00Z",
+            "descriptionCompletenessScore": 91,
+            "verifyPassAfterUseRate": 96,
+            "fallbackAfterUseRate": 4,
+            "improvementHint": "Поддерживать в sync с telemetry step-contract и session schema modal.",
+            "recommendation": "keep_current"
+          }
         },
         {
           "title": "QMD Retrieval Policy",
           "location": "AGENTS.md",
           "description": "Регламент использования QMD при сборе доказательной базы из больших текстовых контекстов.",
           "fullText": "",
-          "sourceUrl": null
+          "sourceUrl": null,
+          "decisionGuidance": {
+            "purpose": "Ограничить использование retrieval случаями, где он реально повышает качество решения.",
+            "useWhen": "Использовать для cross-file evidence retrieval по spec/contracts/runbook, когда точный файл заранее неизвестен.",
+            "avoidWhen": "Не использовать для известного файла/строки, code-symbol lookup и live business data.",
+            "requiredContext": [
+              "поисковая гипотеза",
+              "границы корпуса документов"
+            ],
+            "expectedOutput": "Точный retrieval budget и список ситуаций, где QMD обязателен или не нужен.",
+            "failureModes": [
+              "Использование QMD без выгоды по качеству",
+              "Слишком маленький retrieval budget для high-risk задачи"
+            ],
+            "fallbackTo": [
+              "OPERATING_PLAN.md",
+              "contextRefs"
+            ],
+            "examples": [
+              "Поиск evidence по нескольким policy-docs",
+              "Быстрый старт сложной архитектурной задачи"
+            ]
+          },
+          "qualitySignals": {
+            "reviewStatus": "approved",
+            "lastReviewedAt": "2026-03-08T19:05:00Z",
+            "descriptionCompletenessScore": 92,
+            "verifyPassAfterUseRate": 94,
+            "fallbackAfterUseRate": 6,
+            "improvementHint": "Добавить явные пороги top-k/score threshold в examples для trial-analysis.",
+            "recommendation": "keep_current"
+          }
+        }
+      ],
+      "skillSourceRegistry": [
+        {
+          "id": "skills-sh",
+          "title": "skills.sh",
+          "url": "https://skills.sh/",
+          "trust": "discovery_only",
+          "kind": "catalog_index",
+          "description": "Каталог skill-идей и входная точка discovery новых кандидатов.",
+          "usagePolicy": "Использовать только как индекс того, что существует; trust подтверждать по официальному источнику."
+        },
+        {
+          "id": "anthropic-guidance",
+          "title": "Anthropic Docs + Blog",
+          "url": "https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/implement-tool-use",
+          "trust": "official",
+          "kind": "official_docs",
+          "description": "Официальные практики построения tool/skill contracts и refinement-loop.",
+          "usagePolicy": "Использовать для contract quality, trial-criteria и проверки useWhen/avoidWhen."
+        },
+        {
+          "id": "openai-guidance",
+          "title": "OpenAI Platform Docs",
+          "url": "https://platform.openai.com/docs/guides/tools",
+          "trust": "official",
+          "kind": "official_docs",
+          "description": "Официальные рекомендации по tools, evals и prompt optimization для agentic workflows.",
+          "usagePolicy": "Использовать для quality surface, eval heuristics и prompt/tool selection guidance."
+        },
+        {
+          "id": "playwright-official",
+          "title": "Playwright Docs",
+          "url": "https://playwright.dev/docs/intro",
+          "trust": "official",
+          "kind": "official_docs",
+          "description": "Официальный источник для browser-verification skill и runtime assertions.",
+          "usagePolicy": "Использовать как trusted source при trial/playwright skill enablement."
+        },
+        {
+          "id": "sentry-official",
+          "title": "Sentry Docs",
+          "url": "https://docs.sentry.io/",
+          "trust": "official",
+          "kind": "official_docs",
+          "description": "Официальный источник для production-observability skill и incident evidence.",
+          "usagePolicy": "Использовать как trusted source при trial Sentry-based analyst tasks."
+        }
+      ],
+      "externalSkillCandidates": [
+        {
+          "id": "candidate-openai-docs-for-doc",
+          "name": "openai-docs",
+          "sourceId": "openai-guidance",
+          "sourceTitle": "OpenAI Platform Docs",
+          "sourceUrl": "https://platform.openai.com/docs/guides/tools",
+          "trust": "official",
+          "summary": "Официальный skill для задач, где аналитический вывод зависит от свежих OpenAI API/product guidance.",
+          "targetSkills": [
+            "doc"
+          ],
+          "expectedEffect": "Снижение устаревших рекомендаций на задачах, завязанных на OpenAI platform behavior.",
+          "decisionGuidance": {
+            "purpose": "Подтягивать актуальный vendor guidance для OpenAI-зависимых аналитических выводов.",
+            "useWhen": "Использовать вместо или поверх doc, когда вывод зависит от последних OpenAI docs/guides, а не только от локальной документации проекта.",
+            "avoidWhen": "Не использовать для задач, где source of truth полностью локален и не зависит от внешнего vendor behavior.",
+            "requiredContext": [
+              "конкретный OpenAI feature/API scope",
+              "вопрос, требующий vendor-confirmed answer"
+            ],
+            "expectedOutput": "Подтвержденный выдержками из official docs вывод без устаревших assumptions.",
+            "failureModes": [
+              "Использование skill без явного OpenAI-specific question",
+              "Подмена локального source of truth внешним guidance"
+            ],
+            "fallbackTo": [
+              "doc",
+              "QMD retrieval"
+            ],
+            "examples": [
+              "Сравнение подходов OpenAI к tool descriptions",
+              "Проверка свежих ограничений по structured outputs"
+            ]
+          },
+          "qualitySignals": {
+            "reviewStatus": "draft",
+            "lastReviewedAt": "2026-03-08T19:10:00Z",
+            "descriptionCompletenessScore": 86,
+            "verifyPassAfterUseRate": null,
+            "fallbackAfterUseRate": null,
+            "improvementHint": "Нужен shadow-trial на OpenAI-specific аналитических задачах и замер time-to-solution.",
+            "recommendation": "trial_alternative"
+          },
+          "trialStatus": "scheduled",
+          "promotionStatus": "human_review_required",
+          "recommendation": "trial_alternative",
+          "recommendationReason": "Кандидат релевантен только части doc-задач, но обещает лучшее качество на vendor-specific вопросах.",
+          "trialMetrics": null
+        },
+        {
+          "id": "candidate-playwright-for-playwright",
+          "name": "playwright",
+          "sourceId": "playwright-official",
+          "sourceTitle": "Playwright Docs",
+          "sourceUrl": "https://playwright.dev/docs/intro",
+          "trust": "official",
+          "summary": "Trusted candidate для перехода из availableSkills в usedSkills на UI-heavy задачах analyst-agent.",
+          "targetSkills": [
+            "playwright"
+          ],
+          "expectedEffect": "Более надежная verify-фаза на изменениях, затрагивающих UI и маршруты.",
+          "decisionGuidance": {
+            "purpose": "Дать analyst-agent browser-level verify capability в shadow mode.",
+            "useWhen": "Использовать на задачах, где итог нельзя надежно проверить статическим чтением кода.",
+            "avoidWhen": "Не использовать для задач без UI/runtime поведения.",
+            "requiredContext": [
+              "сценарий проверки",
+              "ожидаемый UI outcome"
+            ],
+            "expectedOutput": "Проверенный в браузере сценарий с понятным pass/fail результатом.",
+            "failureModes": [
+              "Недостаточно точные assertions",
+              "Избыточный e2e для простой статической правки"
+            ],
+            "fallbackTo": [
+              "doc"
+            ],
+            "examples": [
+              "Проверка capability comparison modal",
+              "Верификация deeplink в карточку аналитика"
+            ]
+          },
+          "qualitySignals": {
+            "reviewStatus": "draft",
+            "lastReviewedAt": "2026-03-08T19:12:00Z",
+            "descriptionCompletenessScore": 85,
+            "verifyPassAfterUseRate": null,
+            "fallbackAfterUseRate": null,
+            "improvementHint": "Нужен representative task set из 3-5 UI-задач analyst-agent.",
+            "recommendation": "trial_alternative"
+          },
+          "trialStatus": "not_started",
+          "promotionStatus": "human_review_required",
+          "recommendation": "trial_alternative",
+          "recommendationReason": "Кандидат соответствует official-first policy, но должен пройти shadow-run до enablement.",
+          "trialMetrics": null
+        },
+        {
+          "id": "candidate-sentry-for-sentry",
+          "name": "sentry",
+          "sourceId": "sentry-official",
+          "sourceTitle": "Sentry Docs",
+          "sourceUrl": "https://docs.sentry.io/",
+          "trust": "official",
+          "summary": "Trusted candidate для production-evidence задач analyst-agent.",
+          "targetSkills": [
+            "sentry"
+          ],
+          "expectedEffect": "Повышение качества приоритизации улучшений через реальный production impact.",
+          "decisionGuidance": {
+            "purpose": "Подключать production-observability evidence к аналитическим решениям.",
+            "useWhen": "Использовать на задачах, где необходимо понять реальный impact инцидентов или ошибок в проде.",
+            "avoidWhen": "Не использовать для задач без production signal и issue-level scope.",
+            "requiredContext": [
+              "проект или issue scope",
+              "гипотеза, что именно подтверждаем"
+            ],
+            "expectedOutput": "Подтвержденная production-сторона рекомендации и ее приоритет.",
+            "failureModes": [
+              "Слишком общий выбор событий",
+              "Шум вместо сигнала"
+            ],
+            "fallbackTo": [
+              "Supabase",
+              "doc"
+            ],
+            "examples": [
+              "Приоритизация anti-regression инициативы",
+              "Проверка реального impact workflow-ошибки"
+            ]
+          },
+          "qualitySignals": {
+            "reviewStatus": "draft",
+            "lastReviewedAt": "2026-03-08T19:15:00Z",
+            "descriptionCompletenessScore": 84,
+            "verifyPassAfterUseRate": null,
+            "fallbackAfterUseRate": null,
+            "improvementHint": "Нужен shadow-trial на задачах с явной связью recommendation -> incident evidence.",
+            "recommendation": "trial_alternative"
+          },
+          "trialStatus": "not_started",
+          "promotionStatus": "human_review_required",
+          "recommendation": "trial_alternative",
+          "recommendationReason": "Сильный production-evidence кандидат, но пока без measured gain для analyst-agent.",
+          "trialMetrics": null
         }
       ],
       "processLink": {
@@ -1415,7 +1951,12 @@
           "Улучшение без evidence и target metric не переводится в applied.",
           "Сначала формируется полный список улучшений, затем внедряется top-priority.",
           "Остальные улучшения остаются в backlog с датой пересмотра.",
-          "Приоритет определяется PriorityScore = ICE + evidence_strength + section_risk."
+          "Приоритет определяется PriorityScore = ICE + evidence_strength + section_risk.",
+          "Термин не меняет смысл в пределах одного решения; при смене смысла аналитик обязан переписать формулировку до фиксации.",
+          "Если evidence конфликтует, решение переводится в verify или clarify, а не в applied.",
+          "Каждый decision point завершается только допустимым lifecycle-статусом; расплывчатые исходы без статуса запрещены.",
+          "Рекомендация, риск или критика без достаточного основания не создается и не коммуницируется как факт.",
+          "Объяснение адаптируется под адресата, но смысл решения и evidence не меняются."
         ]
       },
       "workflowPolicy": {
@@ -1424,6 +1965,30 @@
         "verifyBeforeDone": true,
         "selfImprovementLoop": true,
         "autonomousBugfix": true
+      },
+      "workflowBackbone": {
+        "version": "universal_backbone_v1",
+        "commonCoreSteps": ["step_0_intake", "step_1_start", "step_2_preflight", "step_3_orchestration", "step_4_context_sync", "step_5_role_window", "step_6_role_exit_decision", "step_7_apply_or_publish", "step_7_contract_gate", "step_8_verify", "step_8_error_channel", "step_9_finalize", "step_9_publish_snapshots"],
+        "roleWindow": {
+          "entryStep": "step_5_role_window",
+          "exitStep": "step_6_role_exit_decision",
+          "purpose": "Выполнить evidence-based анализ кандидатов и вернуть decision package по улучшениям.",
+          "internalSteps": ["role_collect_quality_signals", "role_score_candidates", "role_select_priority"]
+        },
+        "stepExecutionPolicy": {
+          "skippedStepsAllowed": true,
+          "skippedStepStatus": "skipped"
+        },
+        "supportsDynamicInstances": true
+      },
+      "capabilityOptimization": {
+        "enabled": true,
+        "refreshMode": "on_run",
+        "sourcePolicy": "official_first",
+        "trialMode": "shadow",
+        "promotionMode": "human_approve",
+        "minShadowSampleSize": 3,
+        "staleAfterHours": 168
       },
       "learningArtifacts": {
         "todoPath": "docs/subservices/oap/tasks/todo.md",
@@ -1495,7 +2060,7 @@
             "anchor_id": "anchor-oap-plan",
             "category": "governance",
             "title": "Операционный стандарт аналитика",
-            "filePath": "docs/subservices/oap/ANALYST_OPERATING_PLAN.md",
+            "filePath": "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
             "pathHint": "Канонический процесс и правила принятия решений",
             "whySelected": "Задаёт обязательный цикл работы и правила переходов улучшений",
             "tokens_est": 2800,
@@ -1529,22 +2094,50 @@
           {
             "mandatory": true,
             "title": "Evidence-first: улучшение без доказательства не внедряется",
-            "location": "docs/subservices/oap/ANALYST_OPERATING_PLAN.md",
+            "location": "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
             "description": "Любая рекомендация требует targetMetric, baselineWindow и expectedDelta до перевода в applied.",
             "sourceUrl": null
           },
           {
             "mandatory": true,
             "title": "Whitelist источников",
-            "location": "docs/subservices/oap/ANALYST_OPERATING_PLAN.md",
+            "location": "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
             "description": "Принимаются только источники из whitelist: официальные docs вендоров и проверенные open-source практики.",
             "sourceUrl": null
           },
           {
             "mandatory": false,
             "title": "Сначала полный список, потом top-priority",
-            "location": "docs/subservices/oap/ANALYST_OPERATING_PLAN.md",
+            "location": "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
             "description": "Нельзя внедрять первое попавшееся улучшение — сначала формируется полный кандидатный список и затем выбирается top-priority.",
+            "sourceUrl": null
+          },
+          {
+            "mandatory": true,
+            "title": "Термин не меняет смысл в пределах одного решения",
+            "location": "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
+            "description": "Если термин меняет смысл по ходу рассуждения, аналитик обязан переписать формулировку до фиксации решения.",
+            "sourceUrl": null
+          },
+          {
+            "mandatory": true,
+            "title": "Противоречащие evidence не переводятся в applied",
+            "location": "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
+            "description": "При конфликте доказательств решение уходит в verify или clarify, а не маркируется как примененное.",
+            "sourceUrl": null
+          },
+          {
+            "mandatory": true,
+            "title": "Каждое решение должно иметь формальный исход",
+            "location": "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
+            "description": "Решение должно завершаться явным lifecycle-статусом; расплывчатые исходы без статуса запрещены.",
+            "sourceUrl": null
+          },
+          {
+            "mandatory": true,
+            "title": "Коммуникация адаптируется под адресата, а не подменяет решение",
+            "location": "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
+            "description": "Форма объяснения меняется под владельца, агента или UI, но смысл решения и его основания остаются теми же.",
             "sourceUrl": null
           }
         ],
@@ -1554,7 +2147,7 @@
           "top_k": 5,
           "latency_ms": 340,
           "qualitySignals": [
-            { "score": 0.91, "line_refs": ["ANALYST_OPERATING_PLAN.md:L12"], "coverage": 0.88 }
+            { "score": 0.91, "line_refs": ["OPERATING_PLAN.md:L12"], "coverage": 0.88 }
           ]
         },
         "decisionUsage": {
@@ -1604,7 +2197,7 @@
       "source": "registry+analytics-sync",
       "updatedAt": "2026-03-02T10:00:00Z",
       "runbook": "Проверить данные задач, затем сформировать рекомендации с основанием и ожидаемым эффектом.",
-      "trackerUrl": "https://github.com/example/bible-ops/issues",
+      "trackerUrl": "https://github.com/example/oap-ops/issues",
       "notes": null
     }
   ]

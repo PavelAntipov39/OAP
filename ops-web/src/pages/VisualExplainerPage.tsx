@@ -143,7 +143,7 @@ const STEPS: StepDef[] = [
     label: "Мониторинг внешних источников",
     description: "Опрос whitelist-источников: официальные docs/changelog Anthropic/OpenAI, OSS-практики. При обнаружении новой практики — фиксация candidate со статусом candidate_received.",
     files: [
-      { path: "docs/subservices/oap/ANALYST_OPERATING_PLAN.md", crud: "Чтение (sourcePolicy)" },
+      { path: "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md", crud: "Чтение (sourcePolicy)" },
       { path: ".logs/agents/analyst-agent.jsonl", crud: "Запись (candidate_received)" },
     ],
   },

@@ -5,12 +5,57 @@ import type { AgentDoneGatePolicy, AgentLearningArtifacts, AgentMemoryContext, A
 import { SectionBlock } from "../SectionBlock";
 import { FilePathLink } from "../FilePathLink";
 
-const OPERATING_PLAN_PATH = "docs/subservices/oap/ANALYST_OPERATING_PLAN.md";
-const BPMN_FLOW_PATH = "docs/bpmn/analyst-agent-flow.bpmn";
-const LOG_PATH = ".logs/agents/analyst-agent.jsonl";
-const ERROR_LOG_PATH = ".logs/agents/analyst-agent-errors.jsonl";
-const RISKS_REPORT_PATH = "artifacts/agent_cycle_validation_report.json";
+const DEFAULT_OPERATING_PLAN_PATH = "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md";
+const DEFAULT_BPMN_FLOW_PATH = "docs/bpmn/analyst-agent-flow.bpmn";
+const DEFAULT_LOG_PATH = ".logs/agents/analyst-agent.jsonl";
+const DEFAULT_ERROR_LOG_PATH = ".logs/agents/analyst-agent-errors.jsonl";
+const DEFAULT_RISKS_REPORT_PATH = "artifacts/agent_cycle_validation_report.json";
 const ANALYST_FLOW_HASH = "#/agent-flow";
+const DESIGNER_OPERATING_PLAN_PATH = "docs/subservices/oap/agents/designer-agent/OPERATING_PLAN.md";
+const DESIGNER_UX_GATE_RULES_PATH = "docs/subservices/oap/DESIGN_RULES.md";
+const DESIGNER_UX_GATE_ITEMS: Array<{
+  key: string;
+  title: string;
+  check: string;
+  prevents: string;
+  impacts: string;
+}> = [
+  {
+    key: "priority-first-screen",
+    title: "Приоритет первого экрана",
+    check: "На первом экране оставляем только данные, нужные для следующего действия.",
+    prevents: "Снижает риск пропустить критичный статус и уменьшает время поиска нужной информации.",
+    impacts: "Влияет на скорость выполнения задачи и на долю задач без доуточнений.",
+  },
+  {
+    key: "cta-clarity",
+    title: "Ясность действия",
+    check: "Кнопка и заголовок однозначно объясняют результат действия после клика.",
+    prevents: "Уменьшает ошибочные действия и повторные открытия одной и той же задачи.",
+    impacts: "Влияет на качество выполнения задач и длительность рабочего цикла.",
+  },
+  {
+    key: "state-consistency",
+    title: "Консистентность состояний",
+    check: "Одинаковые статусы, цвета и подписи трактуются одинаково во всех блоках.",
+    prevents: "Убирает противоречивые трактовки состояния задачи в разных частях интерфейса.",
+    impacts: "Влияет на количество ошибок проверки и стабильность процесса.",
+  },
+  {
+    key: "tooltip-inline-help",
+    title: "Пояснения в точке риска",
+    check: "Для неоднозначных метрик и действий есть tooltip или inline-help простым языком.",
+    prevents: "Снижает число ручных уточнений перед запуском задачи.",
+    impacts: "Влияет на скорость старта задачи и на количество возвратов в дизайн.",
+  },
+  {
+    key: "safe-action-guardrails",
+    title: "Защита рискованных действий",
+    check: "Для действий с риском потери данных есть подтверждение и понятное описание последствий.",
+    prevents: "Снижает вероятность случайных изменений и откатов.",
+    impacts: "Влияет на регрессии, время исправлений и скорость доставки изменений.",
+  },
+];
 
 function openInNewTab(hash: string) {
   const base = window.location.origin + window.location.pathname;
@@ -23,6 +68,13 @@ export function AgentProcessSection({
   shortDescription,
   learningArtifacts,
   memoryContext,
+  operatingPlanPath = DEFAULT_OPERATING_PLAN_PATH,
+  flowPath = DEFAULT_BPMN_FLOW_PATH,
+  flowLinkHash,
+  agentLogPath = DEFAULT_LOG_PATH,
+  errorLogPath = DEFAULT_ERROR_LOG_PATH,
+  risksReportPath = DEFAULT_RISKS_REPORT_PATH,
+  hasSessions = true,
   onOpenFile,
   onOpenModal,
   onOpenAgentLog,
@@ -33,6 +85,13 @@ export function AgentProcessSection({
   shortDescription?: string | null;
   learningArtifacts?: AgentLearningArtifacts | null;
   memoryContext?: AgentMemoryContext | null;
+  operatingPlanPath?: string;
+  flowPath?: string | null;
+  flowLinkHash?: string | null;
+  agentLogPath?: string;
+  errorLogPath?: string;
+  risksReportPath?: string;
+  hasSessions?: boolean;
   onOpenFile: (path: string) => void;
   onOpenModal: (title: string, content: string) => void;
   onOpenAgentLog: () => void;
@@ -54,6 +113,7 @@ export function AgentProcessSection({
 
   const modeValue = doneGatePolicy?.mode === "strict" ? "strict" : "soft_warning";
   const modeLabel = doneGatePolicy?.mode === "strict" ? "строгий" : "мягкий";
+  const isDesignerAgent = operatingPlanPath.trim().toLowerCase() === DESIGNER_OPERATING_PLAN_PATH.toLowerCase();
 
   return (
     <SectionBlock
@@ -91,12 +151,48 @@ export function AgentProcessSection({
           </Link>
           <Box sx={{ mt: 0.5, pl: 1.5 }}>
             <FilePathLink
-              path={OPERATING_PLAN_PATH}
-              label={OPERATING_PLAN_PATH}
+              path={operatingPlanPath}
+              label={operatingPlanPath}
               onClick={onOpenFile}
             />
           </Box>
         </Box>
+
+        {isDesignerAgent ? (
+          <Box>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              UX-гейт качества перед передачей в разработку
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
+              Контрольный список продакт-дизайнера, который снижает риск регрессий и возвратов после внедрения.
+            </Typography>
+            <Stack spacing={0.75} sx={{ mt: 0.8 }}>
+              {DESIGNER_UX_GATE_ITEMS.map((item, index) => (
+                <Box key={`designer-ux-gate-${item.key}`} sx={{ pl: 1.25 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {index + 1}. {item.title}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.2 }}>
+                    Что проверяем: {item.check}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.1 }}>
+                    Что предотвращает: {item.prevents}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.1 }}>
+                    На какие метрики влияет: {item.impacts}
+                  </Typography>
+                </Box>
+              ))}
+            </Stack>
+            <Box sx={{ mt: 0.6, pl: 1.5 }}>
+              <FilePathLink
+                path={DESIGNER_UX_GATE_RULES_PATH}
+                label={DESIGNER_UX_GATE_RULES_PATH}
+                onClick={onOpenFile}
+              />
+            </Box>
+          </Box>
+        ) : null}
 
         {/* Схема работы агента */}
         <Box>
@@ -106,18 +202,26 @@ export function AgentProcessSection({
             variant="body2"
             underline="hover"
             sx={{ fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 0.5 }}
-            onClick={() => openInNewTab(ANALYST_FLOW_HASH)}
+            onClick={() => {
+              if (flowLinkHash) {
+                openInNewTab(flowLinkHash);
+                return;
+              }
+              if (flowPath) onOpenFile(flowPath);
+            }}
           >
             <OpenInNewIcon sx={{ fontSize: 14 }} />
             Схема работы агента
           </Link>
-          <Box sx={{ mt: 0.5, pl: 1.5 }}>
-            <FilePathLink
-              path={BPMN_FLOW_PATH}
-              label={BPMN_FLOW_PATH}
-              onClick={() => openInNewTab(ANALYST_FLOW_HASH)}
-            />
-          </Box>
+          {flowPath ? (
+            <Box sx={{ mt: 0.5, pl: 1.5 }}>
+              <FilePathLink
+                path={flowPath}
+                label={flowPath}
+                onClick={onOpenFile}
+              />
+            </Box>
+          ) : null}
         </Box>
 
         {/* Журнал действий агента */}
@@ -134,25 +238,27 @@ export function AgentProcessSection({
           </Link>
           <Box sx={{ mt: 0.5, pl: 1.5 }}>
             <FilePathLink
-              path={LOG_PATH}
-              label={LOG_PATH}
+              path={agentLogPath}
+              label={agentLogPath}
               onClick={() => onOpenAgentLog()}
             />
           </Box>
         </Box>
 
-        <Box>
-          <Link
-            component="button"
-            type="button"
-            variant="body2"
-            underline="hover"
-            sx={{ fontWeight: 600, cursor: "pointer", display: "inline" }}
-            onClick={onOpenSessionsList}
-          >
-            Список сессий цикла агента
-          </Link>
-        </Box>
+        {hasSessions ? (
+          <Box>
+            <Link
+              component="button"
+              type="button"
+              variant="body2"
+              underline="hover"
+              sx={{ fontWeight: 600, cursor: "pointer", display: "inline" }}
+              onClick={onOpenSessionsList}
+            >
+              Список сессий цикла агента
+            </Link>
+          </Box>
+        ) : null}
 
         <Divider />
 
@@ -191,7 +297,7 @@ export function AgentProcessSection({
               variant="body2"
               underline="hover"
               sx={{ fontWeight: 600, cursor: "pointer", display: "inline" }}
-              onClick={() => onOpenFile(ERROR_LOG_PATH)}
+              onClick={() => onOpenFile(errorLogPath)}
             >
               Журнал списка ошибок
             </Link>
@@ -204,7 +310,7 @@ export function AgentProcessSection({
           </Typography>
           <Box sx={{ mt: 0.5, pl: 1.5 }}>
             <FilePathLink
-              path={ERROR_LOG_PATH}
+              path={errorLogPath}
               onClick={onOpenFile}
             />
           </Box>
@@ -219,7 +325,7 @@ export function AgentProcessSection({
               variant="body2"
               underline="hover"
               sx={{ fontWeight: 600, cursor: "pointer", display: "inline" }}
-              onClick={() => onOpenFile(RISKS_REPORT_PATH)}
+              onClick={() => onOpenFile(risksReportPath)}
             >
               Риски
             </Link>
@@ -238,7 +344,7 @@ export function AgentProcessSection({
           </Typography>
           <Box sx={{ mt: 0.5, pl: 1.5 }}>
             <FilePathLink
-              path={RISKS_REPORT_PATH}
+              path={risksReportPath}
               onClick={onOpenFile}
             />
           </Box>

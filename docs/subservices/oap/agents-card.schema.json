@@ -29,6 +29,124 @@
       "format": "uri",
       "minLength": 1
     },
+    "capabilityDecisionGuidance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "purpose": { "type": ["string", "null"] },
+        "useWhen": { "type": ["string", "null"] },
+        "avoidWhen": { "type": ["string", "null"] },
+        "requiredContext": { "$ref": "#/$defs/stringArray" },
+        "expectedOutput": { "type": ["string", "null"] },
+        "failureModes": { "$ref": "#/$defs/stringArray" },
+        "fallbackTo": { "$ref": "#/$defs/stringArray" },
+        "examples": { "$ref": "#/$defs/stringArray" }
+      }
+    },
+    "capabilityQualitySignals": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reviewStatus": {
+          "type": ["string", "null"],
+          "enum": ["draft", "approved", "stale", null]
+        },
+        "lastReviewedAt": { "type": ["string", "null"] },
+        "descriptionCompletenessScore": { "type": ["number", "null"] },
+        "verifyPassAfterUseRate": { "type": ["number", "null"] },
+        "fallbackAfterUseRate": { "type": ["number", "null"] },
+        "improvementHint": { "type": ["string", "null"] },
+        "recommendation": {
+          "type": ["string", "null"],
+          "enum": ["rewrite_current", "trial_alternative", "keep_current", "replace_after_trial", null]
+        }
+      }
+    },
+    "skillSourceRegistryEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "url", "trust", "kind", "description", "usagePolicy"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "title": { "$ref": "#/$defs/nonEmptyString" },
+        "url": { "$ref": "#/$defs/urlString" },
+        "trust": {
+          "type": "string",
+          "enum": ["official", "curated", "rejected", "discovery_only"]
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["catalog_index", "official_docs", "official_repo", "curated_repo"]
+        },
+        "description": { "$ref": "#/$defs/nonEmptyString" },
+        "usagePolicy": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "externalSkillTrialMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "taskSuccessRate": { "type": ["number", "null"] },
+        "verificationPassRate": { "type": ["number", "null"] },
+        "timeToSolutionDeltaPct": { "type": ["number", "null"] },
+        "tokenCostDeltaPct": { "type": ["number", "null"] },
+        "fallbackRate": { "type": ["number", "null"] },
+        "humanCorrectionRate": { "type": ["number", "null"] }
+      }
+    },
+    "externalSkillCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "sourceId",
+        "sourceTitle",
+        "trust",
+        "summary",
+        "targetSkills",
+        "decisionGuidance",
+        "qualitySignals",
+        "trialStatus",
+        "promotionStatus",
+        "recommendation"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "sourceId": { "$ref": "#/$defs/nonEmptyString" },
+        "sourceTitle": { "$ref": "#/$defs/nonEmptyString" },
+        "sourceUrl": { "type": ["string", "null"] },
+        "trust": {
+          "type": "string",
+          "enum": ["official", "curated", "rejected", "discovery_only"]
+        },
+        "summary": { "$ref": "#/$defs/nonEmptyString" },
+        "targetSkills": { "$ref": "#/$defs/stringArray" },
+        "expectedEffect": { "type": ["string", "null"] },
+        "decisionGuidance": { "$ref": "#/$defs/capabilityDecisionGuidance" },
+        "qualitySignals": { "$ref": "#/$defs/capabilityQualitySignals" },
+        "trialStatus": {
+          "type": "string",
+          "enum": ["not_started", "scheduled", "running", "passed", "failed"]
+        },
+        "promotionStatus": {
+          "type": "string",
+          "enum": ["human_review_required", "approved", "watchlist", "rejected"]
+        },
+        "recommendation": {
+          "type": "string",
+          "enum": ["rewrite_current", "trial_alternative", "keep_current", "replace_after_trial"]
+        },
+        "recommendationReason": { "type": ["string", "null"] },
+        "trialMetrics": {
+          "anyOf": [
+            { "$ref": "#/$defs/externalSkillTrialMetrics" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
     "taskCounters": {
       "type": "object",
       "additionalProperties": false,
@@ -90,7 +208,19 @@
         "note": { "$ref": "#/$defs/nonEmptyString" },
         "impactInNumbers": { "$ref": "#/$defs/nonEmptyString" },
         "practicalTasks": { "$ref": "#/$defs/stringArray" },
-        "lastUsedAt": { "type": ["string", "null"] }
+        "lastUsedAt": { "type": ["string", "null"] },
+        "decisionGuidance": {
+          "anyOf": [
+            { "$ref": "#/$defs/capabilityDecisionGuidance" },
+            { "type": "null" }
+          ]
+        },
+        "qualitySignals": {
+          "anyOf": [
+            { "$ref": "#/$defs/capabilityQualitySignals" },
+            { "type": "null" }
+          ]
+        }
       }
     },
     "availableMcp": {
@@ -115,7 +245,19 @@
         "basis": { "$ref": "#/$defs/nonEmptyString" },
         "practicalTasks": { "$ref": "#/$defs/stringArray" },
         "link": { "$ref": "#/$defs/urlString" },
-        "installComplexity": { "$ref": "#/$defs/nonEmptyString" }
+        "installComplexity": { "$ref": "#/$defs/nonEmptyString" },
+        "decisionGuidance": {
+          "anyOf": [
+            { "$ref": "#/$defs/capabilityDecisionGuidance" },
+            { "type": "null" }
+          ]
+        },
+        "qualitySignals": {
+          "anyOf": [
+            { "$ref": "#/$defs/capabilityQualitySignals" },
+            { "type": "null" }
+          ]
+        }
       }
     },
     "usedSkill": {
@@ -130,7 +272,19 @@
         "lastUsedAt": { "type": ["string", "null"] },
         "skillFilePath": { "type": ["string", "null"] },
         "skillFileText": { "type": ["string", "null"] },
-        "skillFileLoaded": { "type": ["boolean", "null"] }
+        "skillFileLoaded": { "type": ["boolean", "null"] },
+        "decisionGuidance": {
+          "anyOf": [
+            { "$ref": "#/$defs/capabilityDecisionGuidance" },
+            { "type": "null" }
+          ]
+        },
+        "qualitySignals": {
+          "anyOf": [
+            { "$ref": "#/$defs/capabilityQualitySignals" },
+            { "type": "null" }
+          ]
+        }
       }
     },
     "availableSkill": {
@@ -152,7 +306,19 @@
         "expectedEffect": { "$ref": "#/$defs/nonEmptyString" },
         "fullText": { "$ref": "#/$defs/nonEmptyString" },
         "practicalTasks": { "$ref": "#/$defs/stringArray" },
-        "link": { "$ref": "#/$defs/urlString" }
+        "link": { "$ref": "#/$defs/urlString" },
+        "decisionGuidance": {
+          "anyOf": [
+            { "$ref": "#/$defs/capabilityDecisionGuidance" },
+            { "type": "null" }
+          ]
+        },
+        "qualitySignals": {
+          "anyOf": [
+            { "$ref": "#/$defs/capabilityQualitySignals" },
+            { "type": "null" }
+          ]
+        }
       }
     },
     "usedTool": {
@@ -165,7 +331,19 @@
         "fullText": { "$ref": "#/$defs/nonEmptyString" },
         "source": { "$ref": "#/$defs/nonEmptyString" },
         "practicalTasks": { "$ref": "#/$defs/stringArray" },
-        "lastUsedAt": { "type": ["string", "null"] }
+        "lastUsedAt": { "type": ["string", "null"] },
+        "decisionGuidance": {
+          "anyOf": [
+            { "$ref": "#/$defs/capabilityDecisionGuidance" },
+            { "type": "null" }
+          ]
+        },
+        "qualitySignals": {
+          "anyOf": [
+            { "$ref": "#/$defs/capabilityQualitySignals" },
+            { "type": "null" }
+          ]
+        }
       }
     },
     "availableTool": {
@@ -187,7 +365,30 @@
         "expectedEffect": { "$ref": "#/$defs/nonEmptyString" },
         "fullText": { "$ref": "#/$defs/nonEmptyString" },
         "source": { "$ref": "#/$defs/nonEmptyString" },
-        "practicalTasks": { "$ref": "#/$defs/stringArray" }
+        "practicalTasks": { "$ref": "#/$defs/stringArray" },
+        "decisionGuidance": {
+          "anyOf": [
+            { "$ref": "#/$defs/capabilityDecisionGuidance" },
+            { "type": "null" }
+          ]
+        },
+        "qualitySignals": {
+          "anyOf": [
+            { "$ref": "#/$defs/capabilityQualitySignals" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "capabilityContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mission", "entryCriteria", "doneCondition", "outputSchema"],
+      "properties": {
+        "mission": { "$ref": "#/$defs/nonEmptyString" },
+        "entryCriteria": { "$ref": "#/$defs/stringArray" },
+        "doneCondition": { "$ref": "#/$defs/nonEmptyString" },
+        "outputSchema": { "$ref": "#/$defs/nonEmptyString" }
       }
     },
     "contextRef": {
@@ -390,6 +591,88 @@
         "autonomousBugfix": { "type": "boolean" }
       }
     },
+    "workflowBackbone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "commonCoreSteps",
+        "roleWindow",
+        "stepExecutionPolicy",
+        "supportsDynamicInstances"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "enum": ["universal_backbone_v1"]
+        },
+        "commonCoreSteps": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "roleWindow": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["entryStep", "exitStep", "purpose", "internalSteps"],
+          "properties": {
+            "entryStep": { "$ref": "#/$defs/nonEmptyString" },
+            "exitStep": { "$ref": "#/$defs/nonEmptyString" },
+            "purpose": { "$ref": "#/$defs/nonEmptyString" },
+            "internalSteps": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/nonEmptyString" }
+            }
+          }
+        },
+        "stepExecutionPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["skippedStepsAllowed", "skippedStepStatus"],
+          "properties": {
+            "skippedStepsAllowed": { "type": "boolean" },
+            "skippedStepStatus": {
+              "type": "string",
+              "enum": ["skipped"]
+            }
+          }
+        },
+        "supportsDynamicInstances": { "type": "boolean" }
+      }
+    },
+    "capabilityOptimization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "refreshMode",
+        "sourcePolicy",
+        "trialMode",
+        "promotionMode",
+        "minShadowSampleSize",
+        "staleAfterHours"
+      ],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "refreshMode": {
+          "type": "string",
+          "enum": ["on_run"]
+        },
+        "sourcePolicy": {
+          "type": "string",
+          "enum": ["official_first"]
+        },
+        "trialMode": {
+          "type": "string",
+          "enum": ["shadow"]
+        },
+        "promotionMode": {
+          "type": "string",
+          "enum": ["human_approve"]
+        },
+        "minShadowSampleSize": { "type": "number" },
+        "staleAfterHours": { "type": "number" }
+      }
+    },
     "learningArtifacts": {
       "type": "object",
       "additionalProperties": false,
@@ -419,6 +702,193 @@
         }
       }
     },
+    "capabilitySnapshotTrial": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trialId", "candidateId", "candidateName", "sourceTitle", "sourceTrust", "representativeTasks", "eligible", "blockReasons"],
+      "properties": {
+        "trialId": { "$ref": "#/$defs/nonEmptyString" },
+        "candidateId": { "$ref": "#/$defs/nonEmptyString" },
+        "candidateName": { "$ref": "#/$defs/nonEmptyString" },
+        "sourceTitle": { "$ref": "#/$defs/nonEmptyString" },
+        "sourceUrl": { "type": ["string", "null"] },
+        "sourceTrust": { "$ref": "#/$defs/nonEmptyString" },
+        "baselineSkillName": { "type": ["string", "null"] },
+        "baselineSkillState": { "type": ["string", "null"] },
+        "baselineContractScore": { "type": ["number", "null"] },
+        "baselineReviewStatus": { "type": ["string", "null"] },
+        "candidateRecommendation": { "type": ["string", "null"] },
+        "candidatePromotionStatus": { "type": ["string", "null"] },
+        "candidateTrialStatus": { "type": ["string", "null"] },
+        "representativeTasks": { "$ref": "#/$defs/stringArray" },
+        "eligible": { "type": "boolean" },
+        "blockReasons": { "$ref": "#/$defs/stringArray" }
+      }
+    },
+    "capabilitySnapshotComparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metric", "status", "baseline", "shadow", "deltaPp", "deltaPct"],
+      "properties": {
+        "metric": { "$ref": "#/$defs/nonEmptyString" },
+        "status": { "$ref": "#/$defs/nonEmptyString" },
+        "baseline": { "type": ["number", "null"] },
+        "shadow": { "type": ["number", "null"] },
+        "deltaPp": { "type": ["number", "null"] },
+        "deltaPct": { "type": ["number", "null"] }
+      }
+    },
+    "capabilitySnapshotJudgement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trialId", "candidateId", "recommendation", "humanApprovalRequired", "blockers", "comparisons"],
+      "properties": {
+        "trialId": { "$ref": "#/$defs/nonEmptyString" },
+        "candidateId": { "$ref": "#/$defs/nonEmptyString" },
+        "recommendation": {
+          "type": "string",
+          "enum": ["rewrite_current", "trial_alternative", "keep_current", "replace_after_trial"]
+        },
+        "humanApprovalRequired": { "type": "boolean" },
+        "blockers": { "$ref": "#/$defs/stringArray" },
+        "comparisons": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/capabilitySnapshotComparison" }
+        }
+      }
+    },
+    "capabilitySnapshotRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "type",
+        "name",
+        "stateLabel",
+        "sourceLabel",
+        "sourceUrl",
+        "trustLabel",
+        "decisionGuidance",
+        "qualitySignals",
+        "bestCandidate",
+        "planTrial",
+        "judgement",
+        "decisionStatus",
+        "decisionReason",
+        "decisionBlockedByStale",
+        "decisionBlockReason"
+      ],
+      "properties": {
+        "key": { "$ref": "#/$defs/nonEmptyString" },
+        "type": {
+          "type": "string",
+          "enum": ["rule", "tool", "skill", "mcp"]
+        },
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "stateLabel": { "$ref": "#/$defs/nonEmptyString" },
+        "sourceLabel": { "$ref": "#/$defs/nonEmptyString" },
+        "sourceUrl": { "type": ["string", "null"] },
+        "trustLabel": { "$ref": "#/$defs/nonEmptyString" },
+        "decisionGuidance": {
+          "anyOf": [
+            { "$ref": "#/$defs/capabilityDecisionGuidance" },
+            { "type": "null" }
+          ]
+        },
+        "qualitySignals": {
+          "anyOf": [
+            { "$ref": "#/$defs/capabilityQualitySignals" },
+            { "type": "null" }
+          ]
+        },
+        "bestCandidate": {
+          "anyOf": [
+            { "$ref": "#/$defs/externalSkillCandidate" },
+            { "type": "null" }
+          ]
+        },
+        "planTrial": {
+          "anyOf": [
+            { "$ref": "#/$defs/capabilitySnapshotTrial" },
+            { "type": "null" }
+          ]
+        },
+        "judgement": {
+          "anyOf": [
+            { "$ref": "#/$defs/capabilitySnapshotJudgement" },
+            { "type": "null" }
+          ]
+        },
+        "decisionStatus": {
+          "type": "string",
+          "enum": ["rewrite_current", "trial_alternative", "keep_current", "replace_after_trial"]
+        },
+        "decisionReason": { "type": ["string", "null"] },
+        "decisionBlockedByStale": { "type": "boolean" },
+        "decisionBlockReason": { "type": ["string", "null"] }
+      }
+    },
+    "capabilitySnapshotSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rowsTotal", "externalCandidatesTotal", "judgedTotal", "blockedByPolicyTotal", "eligibleTrialsTotal"],
+      "properties": {
+        "rowsTotal": { "type": "number" },
+        "externalCandidatesTotal": { "type": "number" },
+        "judgedTotal": { "type": "number" },
+        "blockedByPolicyTotal": { "type": "number" },
+        "eligibleTrialsTotal": { "type": "number" }
+      }
+    },
+    "capabilitySnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "agentId",
+        "lastRefreshedAt",
+        "lastRunId",
+        "refreshMode",
+        "freshnessStatus",
+        "staleReason",
+        "staleAfterHours",
+        "sourceFingerprint",
+        "planArtifactPath",
+        "judgementArtifactPath",
+        "snapshotArtifactPath",
+        "tableRows",
+        "summary",
+        "staleBeforeRefresh",
+        "staleBeforeRefreshReason"
+      ],
+      "properties": {
+        "version": { "$ref": "#/$defs/nonEmptyString" },
+        "agentId": { "$ref": "#/$defs/nonEmptyString" },
+        "lastRefreshedAt": { "type": ["string", "null"] },
+        "lastRunId": { "type": ["string", "null"] },
+        "refreshMode": {
+          "type": "string",
+          "enum": ["on_run"]
+        },
+        "freshnessStatus": {
+          "type": "string",
+          "enum": ["fresh", "stale", "missing"]
+        },
+        "staleReason": { "type": ["string", "null"] },
+        "staleAfterHours": { "type": "number" },
+        "sourceFingerprint": { "type": ["string", "null"] },
+        "planArtifactPath": { "type": ["string", "null"] },
+        "judgementArtifactPath": { "type": ["string", "null"] },
+        "snapshotArtifactPath": { "type": ["string", "null"] },
+        "tableRows": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/capabilitySnapshotRow" }
+        },
+        "summary": { "$ref": "#/$defs/capabilitySnapshotSummary" },
+        "staleBeforeRefresh": { "type": ["boolean", "null"] },
+        "staleBeforeRefreshReason": { "type": ["string", "null"] }
+      }
+    },
     "ruleApplied": {
       "type": "object",
       "additionalProperties": false,
@@ -428,7 +898,19 @@
         "location": { "type": ["string", "null"] },
         "description": { "type": ["string", "null"] },
         "fullText": { "type": ["string", "null"] },
-        "sourceUrl": { "type": ["string", "null"] }
+        "sourceUrl": { "type": ["string", "null"] },
+        "decisionGuidance": {
+          "anyOf": [
+            { "$ref": "#/$defs/capabilityDecisionGuidance" },
+            { "type": "null" }
+          ]
+        },
+        "qualitySignals": {
+          "anyOf": [
+            { "$ref": "#/$defs/capabilityQualitySignals" },
+            { "type": "null" }
+          ]
+        }
       }
     },
     "memoryCurrentTask": {
@@ -683,12 +1165,20 @@
         "mcpServers",
         "usedMcp",
         "availableMcp",
+        "agentClass",
+        "origin",
+        "specializationScope",
+        "lifecycle",
+        "capabilityContract",
+        "auditDisposition",
         "contextRefs",
         "tasks",
         "taskEvents",
         "analystRecommendations",
         "improvements",
         "workflowPolicy",
+        "workflowBackbone",
+        "capabilityOptimization",
         "learningArtifacts",
         "workflowMetricsCatalog",
         "doneGatePolicy",
@@ -704,6 +1194,29 @@
           "type": "string",
           "enum": ["healthy", "degraded", "offline"]
         },
+        "agentClass": {
+          "type": "string",
+          "enum": ["core", "specialist"]
+        },
+        "origin": {
+          "type": "string",
+          "enum": ["manual", "dynamic"]
+        },
+        "createdByAgentId": { "type": ["string", "null"] },
+        "parentTemplateId": { "type": ["string", "null"] },
+        "derivedFromAgentId": { "type": ["string", "null"] },
+        "specializationScope": { "$ref": "#/$defs/nonEmptyString" },
+        "lifecycle": {
+          "type": "string",
+          "enum": ["active", "retire_candidate", "retired"]
+        },
+        "creationReason": { "type": ["string", "null"] },
+        "capabilityContract": { "$ref": "#/$defs/capabilityContract" },
+        "auditDisposition": {
+          "type": "string",
+          "enum": ["keep", "merge", "retire_candidate"]
+        },
+        "auditNote": { "type": ["string", "null"] },
         "skills": { "$ref": "#/$defs/stringArray" },
         "usedSkills": {
           "type": "array",
@@ -736,6 +1249,20 @@
         "availableMcp": {
           "type": "array",
           "items": { "$ref": "#/$defs/availableMcp" }
+        },
+        "skillSourceRegistry": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/skillSourceRegistryEntry" }
+        },
+        "externalSkillCandidates": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/externalSkillCandidate" }
+        },
+        "capabilitySnapshot": {
+          "anyOf": [
+            { "$ref": "#/$defs/capabilitySnapshot" },
+            { "type": "null" }
+          ]
         },
         "contextRefs": {
           "type": "array",
@@ -792,6 +1319,12 @@
         },
         "workflowPolicy": {
           "$ref": "#/$defs/workflowPolicy"
+        },
+        "workflowBackbone": {
+          "$ref": "#/$defs/workflowBackbone"
+        },
+        "capabilityOptimization": {
+          "$ref": "#/$defs/capabilityOptimization"
         },
         "learningArtifacts": {
           "$ref": "#/$defs/learningArtifacts"

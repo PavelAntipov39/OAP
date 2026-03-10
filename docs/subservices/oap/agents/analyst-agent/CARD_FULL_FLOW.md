@@ -1,4 +1,15 @@
-# Analyst Agent Card - Full Process Model (C4 with BPMN logic)
+# Deprecated: moved to CARD_DATA_SOURCES_MAP.md
+
+Этот путь сохранен только для обратной совместимости.
+
+Канонический документ:
+- `docs/subservices/oap/agents/analyst-agent/CARD_DATA_SOURCES_MAP.md`
+
+Причина переименования:
+- старое имя смешивало process model и data-source mapping;
+- новый путь явно отражает, что документ описывает происхождение полей и артефактов analyst-card.
+
+При любом обновлении data-source map нужно менять канонический файл, а не этот alias.# Analyst Agent Card - Full Process Model (C4 with BPMN logic)
 
 Этот файл описывает полную процессную модель `analyst-agent` с привязкой к реальным сущностям карточки:
 - какие поля карточки существуют;
@@ -11,7 +22,7 @@
 - `usedSkills[]` / `availableSkills[]`: реестр + резолв `SKILL.md` через `ops-web/scripts/build_content_index.mjs`.
 - `usedMcp[]` / `availableMcp[]` / `mcpServers[]`: `docs/agents/registry.yaml`.
 - `rulesApplied[]`: `docs/agents/registry.yaml` + fallback из `contextRefs[]`.
-- `operatingPlan`: `docs/agents/registry.yaml` (для `analyst-agent`) + стандарт `docs/subservices/oap/ANALYST_OPERATING_PLAN.md`.
+- `operatingPlan`: `docs/agents/registry.yaml` (для `analyst-agent`) + стандарт `docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md`.
 - `tasks` / `taskEvents`: `docs/agents/registry.yaml` (+ telemetry overlay для аналитики).
 - `memoryContext`:
   - краткосрочная: `currentTask`, `contextAnchors`, `retrieval`, `decisionUsage`, `economics`, `riskControl`, `nextActions`;

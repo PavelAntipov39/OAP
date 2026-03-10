@@ -89,12 +89,65 @@ export type AgentTaskOperationalMemoryItem = {
   updated_at: string | null;
 };
 
+export type AgentTaskCollaborationStrategy = "reuse_existing" | "create_new" | "mixed";
+
+export type AgentTaskCollaborationReuseCandidate = {
+  profile_id: string;
+  name: string;
+  score: number;
+  decision: string;
+  rationale: string;
+};
+
+export type AgentTaskCollaborationCreatedProfile = {
+  id: string;
+  name: string;
+  created_by_agent_id: string | null;
+  parent_template_id: string | null;
+  derived_from_agent_id: string | null;
+  specialization_scope: string;
+  lifecycle: string;
+  creation_reason: string | null;
+  capability_contract: Record<string, unknown> | null;
+};
+
+export type AgentTaskCollaborationSpawnedInstance = {
+  instance_id: string;
+  profile_id: string;
+  parent_instance_id: string | null;
+  root_agent_id: string;
+  task_id: string;
+  purpose: string;
+  depth: number;
+  allowed_skills: string[];
+  allowed_tools: string[];
+  allowed_mcp: string[];
+  applied_rules: string[];
+  input_refs: string[];
+  output_refs: string[];
+  status: string;
+  verify_status: string;
+};
+
+export type AgentTaskCollaborationBudget = {
+  max_instances: number;
+  max_tokens: number;
+  max_wall_clock_minutes: number;
+  max_no_progress_hops: number;
+};
+
 export type AgentTaskCollaborationPlan = {
   analysis_required: boolean;
   suggested_agents: string[];
   selected_agents: string[];
   rationale: string;
   reviewed_at: string | null;
+  strategy?: AgentTaskCollaborationStrategy;
+  reuse_candidates?: AgentTaskCollaborationReuseCandidate[];
+  created_profiles?: AgentTaskCollaborationCreatedProfile[];
+  spawned_instances?: AgentTaskCollaborationSpawnedInstance[];
+  orchestration_budget?: AgentTaskCollaborationBudget;
+  delegation_depth?: number;
 };
 
 export type AgentTaskAbTestPlan = {
@@ -211,6 +264,9 @@ export type AgentTaskTimelineEvent = {
   status_from: string | null;
   status_to: string | null;
   payload: Record<string, unknown>;
+  step_key: string | null;
+  step_label: string | null;
+  step_raw: string | null;
 };
 
 export type AgentTaskUsageItem = {
@@ -345,6 +401,165 @@ export type AgentRepository = {
   branch: string | null;
 };
 
+export type AgentCapabilityDecisionGuidance = {
+  purpose?: string | null;
+  useWhen?: string | null;
+  avoidWhen?: string | null;
+  requiredContext?: string[];
+  expectedOutput?: string | null;
+  failureModes?: string[];
+  fallbackTo?: string[];
+  examples?: string[];
+};
+
+export type AgentCapabilityQualitySignals = {
+  reviewStatus?: "draft" | "approved" | "stale" | null;
+  lastReviewedAt?: string | null;
+  descriptionCompletenessScore?: number | null;
+  verifyPassAfterUseRate?: number | null;
+  fallbackAfterUseRate?: number | null;
+  improvementHint?: string | null;
+  recommendation?: "rewrite_current" | "trial_alternative" | "keep_current" | "replace_after_trial" | null;
+};
+
+export type AgentSkillSourceRegistryEntry = {
+  id: string;
+  title: string;
+  url: string | null;
+  trust: "official" | "curated" | "rejected" | "discovery_only";
+  kind: "catalog_index" | "official_docs" | "official_repo" | "curated_repo";
+  description: string;
+  usagePolicy: string;
+};
+
+export type AgentExternalSkillTrialMetrics = {
+  taskSuccessRate?: number | null;
+  verificationPassRate?: number | null;
+  timeToSolutionDeltaPct?: number | null;
+  tokenCostDeltaPct?: number | null;
+  fallbackRate?: number | null;
+  humanCorrectionRate?: number | null;
+};
+
+export type AgentExternalSkillCandidate = {
+  id: string;
+  name: string;
+  sourceId: string;
+  sourceTitle: string;
+  sourceUrl?: string | null;
+  trust: "official" | "curated" | "rejected" | "discovery_only";
+  summary: string;
+  targetSkills: string[];
+  expectedEffect?: string | null;
+  decisionGuidance: AgentCapabilityDecisionGuidance;
+  qualitySignals: AgentCapabilityQualitySignals;
+  trialStatus: "not_started" | "scheduled" | "running" | "passed" | "failed";
+  promotionStatus: "human_review_required" | "approved" | "watchlist" | "rejected";
+  recommendation: "rewrite_current" | "trial_alternative" | "keep_current" | "replace_after_trial";
+  recommendationReason?: string | null;
+  trialMetrics?: AgentExternalSkillTrialMetrics | null;
+};
+
+export type AgentSkillShadowTrialArtifactTrial = {
+  trialId: string;
+  candidateId: string;
+  candidateName: string;
+  sourceTitle: string;
+  sourceUrl?: string | null;
+  sourceTrust: string;
+  baselineSkillName?: string | null;
+  baselineSkillState?: string | null;
+  baselineContractScore?: number | null;
+  baselineReviewStatus?: string | null;
+  candidateRecommendation?: string | null;
+  candidatePromotionStatus?: string | null;
+  candidateTrialStatus?: string | null;
+  representativeTasks: string[];
+  eligible: boolean;
+  blockReasons: string[];
+};
+
+export type AgentSkillShadowTrialArtifactComparison = {
+  metric: string;
+  status: string;
+  baseline?: number | null;
+  shadow?: number | null;
+  deltaPp?: number | null;
+  deltaPct?: number | null;
+};
+
+export type AgentSkillShadowTrialArtifactJudgement = {
+  trialId: string;
+  candidateId: string;
+  recommendation?: string | null;
+  humanApprovalRequired: boolean;
+  blockers: string[];
+  comparisons: AgentSkillShadowTrialArtifactComparison[];
+};
+
+export type AgentSkillShadowTrialArtifacts = {
+  planPath?: string | null;
+  judgementPath?: string | null;
+  planGeneratedAt?: string | null;
+  judgementGeneratedAt?: string | null;
+  trials: AgentSkillShadowTrialArtifactTrial[];
+  judgements: AgentSkillShadowTrialArtifactJudgement[];
+};
+
+export type AgentCapabilityOptimizationPolicy = {
+  enabled: boolean;
+  refreshMode: "on_run";
+  sourcePolicy: "official_first";
+  trialMode: "shadow";
+  promotionMode: "human_approve";
+  minShadowSampleSize: number;
+  staleAfterHours: number;
+};
+
+export type AgentCapabilitySnapshotRow = {
+  key: string;
+  type: "rule" | "tool" | "skill" | "mcp";
+  name: string;
+  stateLabel: string;
+  sourceLabel: string;
+  sourceUrl: string | null;
+  trustLabel: string;
+  decisionGuidance: AgentCapabilityDecisionGuidance | null;
+  qualitySignals: AgentCapabilityQualitySignals | null;
+  bestCandidate?: AgentExternalSkillCandidate | null;
+  planTrial?: AgentSkillShadowTrialArtifactTrial | null;
+  judgement?: AgentSkillShadowTrialArtifactJudgement | null;
+  decisionStatus: "rewrite_current" | "trial_alternative" | "keep_current" | "replace_after_trial";
+  decisionReason?: string | null;
+  decisionBlockedByStale: boolean;
+  decisionBlockReason?: string | null;
+};
+
+export type AgentCapabilitySnapshot = {
+  version: string;
+  agentId: string;
+  lastRefreshedAt: string | null;
+  lastRunId: string | null;
+  refreshMode: "on_run";
+  freshnessStatus: "fresh" | "stale" | "missing";
+  staleReason: string | null;
+  staleAfterHours: number;
+  sourceFingerprint: string | null;
+  planArtifactPath: string | null;
+  judgementArtifactPath: string | null;
+  snapshotArtifactPath: string | null;
+  tableRows: AgentCapabilitySnapshotRow[];
+  summary: {
+    rowsTotal: number;
+    externalCandidatesTotal: number;
+    judgedTotal: number;
+    blockedByPolicyTotal: number;
+    eligibleTrialsTotal: number;
+  };
+  staleBeforeRefresh?: boolean | null;
+  staleBeforeRefreshReason?: string | null;
+};
+
 export type AgentUsedSkill = {
   name: string;
   usage: string | null;
@@ -354,6 +569,8 @@ export type AgentUsedSkill = {
   skillFilePath?: string | null;
   skillFileText?: string | null;
   skillFileLoaded?: boolean | null;
+  decisionGuidance?: AgentCapabilityDecisionGuidance | null;
+  qualitySignals?: AgentCapabilityQualitySignals | null;
 };
 
 export type AgentAvailableSkill = {
@@ -364,6 +581,8 @@ export type AgentAvailableSkill = {
   fullText: string | null;
   practicalTasks: string[];
   link: string | null;
+  decisionGuidance?: AgentCapabilityDecisionGuidance | null;
+  qualitySignals?: AgentCapabilityQualitySignals | null;
 };
 
 export type AgentUsedTool = {
@@ -373,6 +592,8 @@ export type AgentUsedTool = {
   source: string;
   practicalTasks: string[];
   lastUsedAt?: string | null;
+  decisionGuidance?: AgentCapabilityDecisionGuidance | null;
+  qualitySignals?: AgentCapabilityQualitySignals | null;
 };
 
 export type AgentAvailableTool = {
@@ -383,6 +604,8 @@ export type AgentAvailableTool = {
   fullText: string;
   source: string;
   practicalTasks: string[];
+  decisionGuidance?: AgentCapabilityDecisionGuidance | null;
+  qualitySignals?: AgentCapabilityQualitySignals | null;
 };
 
 export type AgentUsedMcp = {
@@ -392,6 +615,8 @@ export type AgentUsedMcp = {
   impactInNumbers: string;
   practicalTasks: string[];
   lastUsedAt?: string | null;
+  decisionGuidance?: AgentCapabilityDecisionGuidance | null;
+  qualitySignals?: AgentCapabilityQualitySignals | null;
 };
 
 export type AgentAvailableMcp = {
@@ -404,6 +629,8 @@ export type AgentAvailableMcp = {
   practicalTasks: string[];
   link: string | null;
   installComplexity: string;
+  decisionGuidance?: AgentCapabilityDecisionGuidance | null;
+  qualitySignals?: AgentCapabilityQualitySignals | null;
 };
 
 export type AgentContextRef = {
@@ -511,6 +738,8 @@ export type AgentRuleApplied = {
   description: string | null;
   fullText: string | null;
   sourceUrl: string | null;
+  decisionGuidance?: AgentCapabilityDecisionGuidance | null;
+  qualitySignals?: AgentCapabilityQualitySignals | null;
 };
 
 export type AgentTaskEvent = {
@@ -576,6 +805,26 @@ export type AgentWorkflowPolicy = {
   autonomousBugfix: boolean;
 };
 
+export type AgentWorkflowBackboneRoleWindow = {
+  entryStep: string;
+  exitStep: string;
+  purpose: string;
+  internalSteps: string[];
+};
+
+export type AgentWorkflowBackboneStepExecutionPolicy = {
+  skippedStepsAllowed: boolean;
+  skippedStepStatus: "skipped";
+};
+
+export type AgentWorkflowBackbone = {
+  version: "universal_backbone_v1";
+  commonCoreSteps: string[];
+  roleWindow: AgentWorkflowBackboneRoleWindow;
+  stepExecutionPolicy: AgentWorkflowBackboneStepExecutionPolicy;
+  supportsDynamicInstances: boolean;
+};
+
 export type AgentLearningArtifacts = {
   todoPath: string;
   lessonsPath: string;
@@ -589,11 +838,29 @@ export type AgentDoneGatePolicy = {
   fallbackStatus: AgentTaskStatus;
 };
 
+export type AgentCapabilityContract = {
+  mission: string;
+  entryCriteria: string[];
+  doneCondition: string;
+  outputSchema: string;
+};
+
 export type AgentSummary = {
   id: string;
   name: string;
   role: string;
   status: "healthy" | "degraded" | "offline";
+  agentClass: "core" | "specialist";
+  origin: "manual" | "dynamic";
+  createdByAgentId: string | null;
+  parentTemplateId: string | null;
+  derivedFromAgentId: string | null;
+  specializationScope: string;
+  lifecycle: "active" | "retire_candidate" | "retired";
+  creationReason: string | null;
+  capabilityContract: AgentCapabilityContract;
+  auditDisposition: "keep" | "merge" | "retire_candidate";
+  auditNote: string | null;
   skills: string[];
   usedSkills: AgentUsedSkill[];
   availableSkills: AgentAvailableSkill[];
@@ -603,6 +870,11 @@ export type AgentSummary = {
   mcpServers: AgentMcpServer[];
   usedMcp: AgentUsedMcp[];
   availableMcp: AgentAvailableMcp[];
+  capabilityOptimization?: AgentCapabilityOptimizationPolicy | null;
+  skillSourceRegistry?: AgentSkillSourceRegistryEntry[];
+  externalSkillCandidates?: AgentExternalSkillCandidate[];
+  skillShadowTrial?: AgentSkillShadowTrialArtifacts | null;
+  capabilitySnapshot?: AgentCapabilitySnapshot | null;
   contextRefs: AgentContextRef[];
   memoryContext?: AgentMemoryContext | null;
   taskBoard?: AgentTaskBoardConfig | null;
@@ -613,6 +885,7 @@ export type AgentSummary = {
   improvements: AgentImprovement[];
   operatingPlan?: AgentOperatingPlan | null;
   workflowPolicy?: AgentWorkflowPolicy | null;
+  workflowBackbone?: AgentWorkflowBackbone | null;
   learningArtifacts?: AgentLearningArtifacts | null;
   workflowMetricsCatalog?: string[];
   doneGatePolicy?: AgentDoneGatePolicy | null;
@@ -638,24 +911,74 @@ export type AgentLatestCycleMetricMeta = {
   source: string;
 };
 
+export type AgentLatestCycleArtifactRef = {
+  path: string;
+  source_kind?: string;
+  semantic_layer?: string;
+  reason?: string;
+  label?: string;
+};
+
+export type AgentLatestCycleArtifactOperation = {
+  path: string;
+  op: "read" | "write" | "create" | "update" | "delete";
+  timestamp?: string;
+  step?: string;
+  task_id?: string;
+  run_id?: string;
+  source?: string;
+  source_kind?: string;
+  semantic_layer?: string;
+  reason?: string;
+  label?: string;
+};
+
 export type AgentLatestCycleTimelineEvent = {
   timestamp: string | null;
   step: string;
+  step_raw?: string;
+  step_label?: string;
   status: string;
   run_id: string;
   trace_id: string;
   recommendation_id: string;
   outcome: string;
-  artifacts_read: string[];
-  artifacts_written: string[];
+  tokens_in?: number;
+  tokens_out?: number;
+  artifacts_read: Array<string | AgentLatestCycleArtifactRef>;
+  artifacts_written: Array<string | AgentLatestCycleArtifactRef>;
+  artifact_operations?: AgentLatestCycleArtifactOperation[];
+  artifact_contract_version?: string;
+  artifact_ops_origin?: "explicit" | "mirrored_legacy" | "step_fallback" | "none";
   artifacts_source: "telemetry" | "fallback";
 };
 
 export type AgentLatestCycleFileTraceEdge = {
   step: string;
-  kind: "read" | "write";
+  step_label?: string;
+  kind: "read" | "write" | "delete";
   path: string;
+  source_kind?: string;
+  semantic_layer?: string;
+  reason?: string;
+  label?: string;
   source: "telemetry" | "fallback";
+};
+
+export type AgentLatestCycleCanonicalStage = {
+  step_key: string;
+  step_label: string;
+  executed: boolean;
+  events_total: number;
+  started_at: string | null;
+  last_event_at: string | null;
+  status: string | null;
+  tokens_in: number;
+  tokens_out: number;
+  tokens_total: number;
+  artifacts_read: Array<string | AgentLatestCycleArtifactRef>;
+  artifacts_written: Array<string | AgentLatestCycleArtifactRef>;
+  raw_steps: string[];
 };
 
 export type AgentLatestCycleSnapshot = {
@@ -687,6 +1010,8 @@ export type AgentLatestCycleSnapshot = {
     events_total: number;
   } | null;
   timeline: AgentLatestCycleTimelineEvent[];
+  canonical_stages: AgentLatestCycleCanonicalStage[];
+  out_of_canon: AgentLatestCycleTimelineEvent[];
   file_trace: {
     edges: AgentLatestCycleFileTraceEdge[];
     fallback_used: boolean;
@@ -847,6 +1172,8 @@ export function getAnalystLatestCycle(): AgentLatestCycleSnapshot {
     metric_meta: {},
     latest_cycle: null,
     timeline: [],
+    canonical_stages: [],
+    out_of_canon: [],
     file_trace: { edges: [], fallback_used: false },
   };
   const parsed = analystLatestCycle as unknown as Partial<AgentLatestCycleSnapshot>;

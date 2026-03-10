@@ -15,6 +15,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 
 import type { AgentSummary } from "../../lib/generatedData";
+import { SkillToolMcpTooltip } from "../skill-tooltip/SkillToolMcpTooltip";
 
 const STATUS_LABEL: Record<AgentSummary["status"], string> = {
   healthy: "Стабильно",
@@ -122,7 +123,7 @@ export function AgentDetailsDrawer({
                 <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
                   {agent.skills.length === 0 ? <Typography variant="body2">не зафиксировано</Typography> : null}
                   {agent.skills.map((item) => (
-                    <Chip key={item} size="small" variant="outlined" label={item} />
+                    <SkillToolMcpTooltip key={item} name={item} size="small" variant="outlined" />
                   ))}
                 </Stack>
                 <Divider />
@@ -157,7 +158,7 @@ export function AgentDetailsDrawer({
                 </Typography>
                 <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
                   {agent.mcpServers.map((server) => (
-                    <Chip key={server.name} size="small" label={`${server.name}: ${server.status}`} />
+                    <SkillToolMcpTooltip key={server.name} name={server.name} size="small" status={server.status} />
                   ))}
                 </Stack>
                 <Divider />

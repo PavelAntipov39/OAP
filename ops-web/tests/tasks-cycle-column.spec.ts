@@ -180,3 +180,19 @@ test("tasks page shows cycle provenance column and updated analyst cycle copy", 
   await page.getByRole("button", { name: "Задача с циклом" }).click();
   await expect(page.getByText("Цикл аналитика -> найден сигнал -> задача формализована -> выполнена -> проверена -> закрыта.")).toBeVisible();
 });
+
+test("session_id deeplink filters tasks by origin_cycle_id", async ({ page }) => {
+  await page.route("**/rest/v1/rpc/get_agent_tasks", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(tasksResponse),
+    });
+  });
+
+  await page.goto("/#/tasks?session_id=cycle-20260306-2");
+
+  const rows = page.locator("tbody tr");
+  await expect(rows).toHaveCount(1);
+  await expect(rows.nth(0).getByText("Задача с циклом")).toBeVisible();
+});

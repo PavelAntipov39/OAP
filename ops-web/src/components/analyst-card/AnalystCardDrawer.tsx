@@ -30,10 +30,12 @@ import type { AgentSummary } from "../../lib/generatedData";
 import { getAnalystCardData, type AnalystErrorEntry, type AnalystSession } from "../../lib/analystCardData";
 import { getAgentTasks, type AgentTaskRow } from "../../lib/tasksApi";
 import {
+  getBpmnManifest,
   getAgentBenchmarkSummary,
   getOapKbIndex,
   getOapKbRawLogs,
   getDocsIndex,
+  type BpmnDiagram,
   type AgentBenchmarkSummary,
   type OapKbDocument,
   type DocsDocument,
@@ -41,14 +43,16 @@ import {
 import { TextContentModal } from "../TextContentModal";
 import { TaskDetailsDrawer } from "../tasks/TaskDetailsDrawer";
 import { SectionBlock } from "./SectionBlock";
+import { SkillToolMcpTooltip } from "../skill-tooltip/SkillToolMcpTooltip";
+import type { AgentTabKey } from "../../lib/agentsRouteState";
 
 import { HeaderSection } from "./sections/HeaderSection";
 import { AgentProcessSection } from "./sections/AgentProcessSection";
 import { SkillsSection } from "./sections/SkillsSection";
-import { McpSection } from "./sections/McpSection";
 import { MemorySection } from "./sections/MemorySection";
 import { RisksSection } from "./sections/RisksSection";
 import { SessionsSection } from "./sections/SessionsSection";
+import { SessionDetailsDrawer } from "../sessionDrawer/SessionDetailsDrawer";
 
 type ModalState = {
   open: boolean;
@@ -62,6 +66,13 @@ const EMPTY_MODAL: ModalState = { open: false, title: "", content: "", path: nul
 const AGENT_LOG_PATH = ".logs/agents/analyst-agent.jsonl";
 const DEFAULT_LESSONS_PATH = "docs/subservices/oap/tasks/lessons/analyst-agent.md";
 const PRODUCT_DESIGNER_AGENT_ID = "designer-agent";
+const DEFAULT_RISKS_REPORT_PATH = "artifacts/agent_cycle_validation_report.json";
+const ANALYST_FLOW_HASH = "#/agent-flow";
+const DESIGNER_OPERATING_PLAN_PATH = "docs/subservices/oap/agents/designer-agent/OPERATING_PLAN.md";
+const DESIGNER_RULES_PATH = "docs/subservices/oap/DESIGN_RULES.md";
+const LEGACY_SKILL_TO_TOOL: Record<string, string> = {
+  "qmd-memory-retrieval": "QMD retrieval",
+};
 
 type AgentLogEvent = {
   id: string;
@@ -76,6 +87,7 @@ type AgentLogEvent = {
   outcome: string;
   process: string;
   mcpTools: string[];
+  tools: string[];
   skills: string[];
   artifactsRead: string[];
   artifactsWritten: string[];
@@ -93,6 +105,13 @@ type ParsedAgentLog = {
 type MemoryLinkEntry = {
   title: string;
   path: string;
+};
+
+type OpenableDoc = {
+  title: string;
+  path: string;
+  content: string;
+  updatedAt: string;
 };
 
 type MetricDefinition = {
@@ -113,8 +132,50 @@ function asString(value: unknown): string {
 function toStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value
-    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .map((item) => {
+      if (typeof item === "string") return item.trim();
+      if (item && typeof item === "object" && typeof (item as { path?: unknown }).path === "string") {
+        return String((item as { path?: string }).path || "").trim();
+      }
+      return "";
+    })
     .filter(Boolean);
+}
+
+function toArtifactPaths(value: unknown): string[] {
+  return toStringArray(value);
+}
+
+function normalizeTelemetryTaxonomy(rawTools: unknown, rawSkills: unknown): { tools: string[]; skills: string[] } {
+  const toolsSeen = new Set<string>();
+  const skillsSeen = new Set<string>();
+  const tools: string[] = [];
+  const skills: string[] = [];
+
+  for (const raw of toStringArray(rawTools)) {
+    const key = raw.toLowerCase();
+    if (toolsSeen.has(key)) continue;
+    toolsSeen.add(key);
+    tools.push(raw);
+  }
+
+  for (const raw of toStringArray(rawSkills)) {
+    const key = raw.toLowerCase();
+    const mappedTool = LEGACY_SKILL_TO_TOOL[key];
+    if (mappedTool) {
+      const mappedKey = mappedTool.toLowerCase();
+      if (!toolsSeen.has(mappedKey)) {
+        toolsSeen.add(mappedKey);
+        tools.push(mappedTool);
+      }
+      continue;
+    }
+    if (skillsSeen.has(key)) continue;
+    skillsSeen.add(key);
+    skills.push(raw);
+  }
+
+  return { tools, skills };
 }
 
 function asFiniteNumber(value: unknown): number | null {
@@ -197,7 +258,53 @@ function uniqueTasksById(tasks: AgentTaskRow[]): AgentTaskRow[] {
 }
 
 function normalizePath(value: string): string {
-  return value.trim().replace(/^\/+/, "");
+  return value
+    .trim()
+    .replace(/\\/g, "/")
+    .replace(/^\/+/, "")
+    .replace(/^\.\//, "");
+}
+
+function buildPathLookupKeys(path: string): string[] {
+  const raw = String(path || "").trim().replace(/\\/g, "/");
+  const keys = new Set<string>();
+  const add = (value: string) => {
+    const normalized = normalizePath(value);
+    if (normalized) keys.add(normalized);
+  };
+
+  add(raw);
+  const [withoutFragment] = raw.split("#");
+  add(withoutFragment);
+  const [withoutQuery] = withoutFragment.split("?");
+  add(withoutQuery);
+
+  const repoMarker = "/Downloads/VS Code/ОАП/";
+  const repoIdx = raw.indexOf(repoMarker);
+  if (repoIdx !== -1) {
+    const repoRelative = raw.slice(repoIdx + repoMarker.length);
+    add(repoRelative);
+    const [repoWithoutFragment] = repoRelative.split("#");
+    add(repoWithoutFragment);
+    const [repoWithoutQuery] = repoWithoutFragment.split("?");
+    add(repoWithoutQuery);
+  }
+
+  const codexMarker = "/.codex/";
+  const codexIdx = raw.indexOf(codexMarker);
+  if (codexIdx !== -1) {
+    const dotCodex = raw.slice(codexIdx + 1);
+    add(dotCodex);
+    add(dotCodex.replace(/^\./, ""));
+    const [codexWithoutFragment] = dotCodex.split("#");
+    add(codexWithoutFragment);
+    add(codexWithoutFragment.replace(/^\./, ""));
+    const [codexWithoutQuery] = codexWithoutFragment.split("?");
+    add(codexWithoutQuery);
+    add(codexWithoutQuery.replace(/^\./, ""));
+  }
+
+  return Array.from(keys);
 }
 
 function uniqueMemoryEntries(entries: MemoryLinkEntry[]): MemoryLinkEntry[] {
@@ -232,6 +339,7 @@ function parseAgentLog(content: string): ParsedAgentLog {
     try {
       const parsed = JSON.parse(line) as Record<string, unknown>;
       const metrics = parsed.metrics && typeof parsed.metrics === "object" ? (parsed.metrics as Record<string, unknown>) : null;
+      const taxonomy = normalizeTelemetryTaxonomy(parsed.tools, parsed.skills);
       events.push({
         id: asString(parsed.event_id) || `${index + 1}`,
         line: index + 1,
@@ -245,7 +353,8 @@ function parseAgentLog(content: string): ParsedAgentLog {
         outcome: asString(parsed.outcome),
         process: asString(parsed.process),
         mcpTools: toStringArray(parsed.mcp_tools),
-        skills: toStringArray(parsed.skills),
+        tools: taxonomy.tools,
+        skills: taxonomy.skills,
         artifactsRead: toStringArray(parsed.artifacts_read),
         artifactsWritten: toStringArray(parsed.artifacts_written),
         tokensIn: asFiniteNumber(metrics?.tokens_in),
@@ -332,6 +441,9 @@ function MetricTooltip({ metric }: { metric: MetricDefinition }) {
       title={(
         <Stack spacing={0.4} sx={{ maxWidth: 360 }}>
           <Typography variant="caption" sx={{ fontWeight: 700, color: "common.white" }}>
+            Как считается
+          </Typography>
+          <Typography variant="caption" sx={{ fontWeight: 700, color: "common.white" }}>
             {metric.label}
           </Typography>
           <Typography variant="caption" sx={{ color: "grey.300" }}>
@@ -349,7 +461,9 @@ function MetricTooltip({ metric }: { metric: MetricDefinition }) {
         </Stack>
       )}
     >
-      <InfoOutlinedIcon sx={{ fontSize: 15, color: "text.disabled", cursor: "help" }} />
+      <IconButton size="small" aria-label={`Как считается метрика ${metric.key}`} sx={{ p: 0.25 }}>
+        <InfoOutlinedIcon sx={{ fontSize: 15, color: "text.disabled", cursor: "help" }} />
+      </IconButton>
     </Tooltip>
   );
 }
@@ -449,9 +563,11 @@ function MetricsDialog({
 function ErrorEntryCard({
   entry,
   onOpenFile,
+  canOpenPath,
 }: {
   entry: AnalystErrorEntry;
   onOpenFile: (path: string) => void;
+  canOpenPath: (path: string) => boolean;
 }) {
   const severity = asString(entry.severity).toUpperCase();
   const chipColor = severity === "ERROR" ? "error" : severity === "WARNING" ? "warning" : "default";
@@ -508,7 +624,7 @@ function ErrorEntryCard({
           </Box>
         ) : null}
 
-        {entry.lessonRef ? (
+        {entry.lessonRef && canOpenPath(entry.lessonRef) ? (
           <Link
             component="button"
             type="button"
@@ -518,6 +634,10 @@ function ErrorEntryCard({
           >
             Открыть связанный урок: {entry.lessonRef}
           </Link>
+        ) : entry.lessonRef ? (
+          <Typography variant="caption" color="text.secondary">
+            Связанный урок не найден по пути: {entry.lessonRef}
+          </Typography>
         ) : null}
       </Stack>
     </Paper>
@@ -538,7 +658,7 @@ function formatArtifactSummary(event: AgentLogEvent): string {
   return `записано ${writeCount}`;
 }
 
-function AgentLogEventRow({ event }: { event: AgentLogEvent }) {
+function AgentLogEventRow({ event, onOpenFile }: { event: AgentLogEvent; onOpenFile: (path: string) => void }) {
   const meta = statusMeta(event.status);
   const hasArtifacts = event.artifactsRead.length > 0 || event.artifactsWritten.length > 0;
   const showProcessInTechDetails = !isDefaultAgentProcess(event.process);
@@ -624,14 +744,26 @@ function AgentLogEventRow({ event }: { event: AgentLogEvent }) {
             </Paper>
           ) : null}
 
-          {(event.mcpTools.length > 0 || event.skills.length > 0) ? (
+          {(event.mcpTools.length > 0 || event.tools.length > 0 || event.skills.length > 0) ? (
             <Paper variant="outlined" sx={{ p: 1.1 }}>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} useFlexGap>
                 {event.mcpTools.length > 0 ? (
                   <Box>
                     <Typography variant="caption" color="text.secondary" component="div">MCP</Typography>
                     <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 0.4 }}>
-                      {event.mcpTools.map((item) => <Chip key={`${event.id}-mcp-${item}`} size="small" variant="outlined" label={item} />)}
+                      {event.mcpTools.map((item) => (
+                        <SkillToolMcpTooltip key={`${event.id}-mcp-${item}`} name={item} size="small" variant="outlined" onOpenFile={onOpenFile} />
+                      ))}
+                    </Stack>
+                  </Box>
+                ) : null}
+                {event.tools.length > 0 ? (
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" component="div">Инструменты</Typography>
+                    <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 0.4 }}>
+                      {event.tools.map((item) => (
+                        <SkillToolMcpTooltip key={`${event.id}-tool-${item}`} name={item} size="small" variant="outlined" onOpenFile={onOpenFile} />
+                      ))}
                     </Stack>
                   </Box>
                 ) : null}
@@ -639,7 +771,9 @@ function AgentLogEventRow({ event }: { event: AgentLogEvent }) {
                   <Box>
                     <Typography variant="caption" color="text.secondary" component="div">Навыки</Typography>
                     <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 0.4 }}>
-                      {event.skills.map((item) => <Chip key={`${event.id}-skill-${item}`} size="small" variant="outlined" label={item} />)}
+                      {event.skills.map((item) => (
+                        <SkillToolMcpTooltip key={`${event.id}-skill-${item}`} name={item} size="small" variant="outlined" onOpenFile={onOpenFile} />
+                      ))}
                     </Stack>
                   </Box>
                 ) : null}
@@ -694,6 +828,9 @@ export function AnalystCardDrawer({
   open: boolean;
   agent: AgentSummary | null;
   onClose: () => void;
+  tabKey?: AgentTabKey;
+  onTabChange?: (tabKey: AgentTabKey) => void;
+  onCopyLink?: () => Promise<boolean>;
 }) {
   const [modal, setModal] = React.useState<ModalState>(EMPTY_MODAL);
   const [agentLogOpen, setAgentLogOpen] = React.useState(false);
@@ -709,13 +846,20 @@ export function AnalystCardDrawer({
   const [selectedSelfImprovementTaskId, setSelectedSelfImprovementTaskId] = React.useState<string | null>(null);
   const [createdTasksCount, setCreatedTasksCount] = React.useState<number | null>(null);
   const [createdTasksLoading, setCreatedTasksLoading] = React.useState(false);
+  const [cycleTasksMap, setCycleTasksMap] = React.useState<Map<string, number>>(new Map());
+  const [selectedSession, setSelectedSession] = React.useState<AnalystSession | null>(null);
 
-  const data = React.useMemo(() => getAnalystCardData(), []);
+  const requestedAgentId = agent?.id ?? null;
+  const data = React.useMemo(
+    () => (requestedAgentId === "analyst-agent" ? getAnalystCardData() : null),
+    [requestedAgentId],
+  );
   const benchmarkSummary = React.useMemo<AgentBenchmarkSummary>(() => getAgentBenchmarkSummary(), []);
+  const bpmnDocs = React.useMemo<BpmnDiagram[]>(() => getBpmnManifest(), []);
   const kbDocs = React.useMemo(() => getOapKbIndex(), []);
   const rawLogs = React.useMemo(() => getOapKbRawLogs(), []);
   const docsDocs = React.useMemo(() => getDocsIndex(), []);
-  const allIndexedDocs = React.useMemo(
+  const indexedDocs = React.useMemo<OpenableDoc[]>(
     () => [
       ...kbDocs.map((d: OapKbDocument) => ({ title: d.title, path: d.path, content: d.content, updatedAt: d.updatedAt })),
       ...rawLogs.map((d: OapKbDocument) => ({ title: d.title, path: d.path, content: d.content, updatedAt: d.updatedAt })),
@@ -723,30 +867,102 @@ export function AnalystCardDrawer({
     ],
     [kbDocs, rawLogs, docsDocs],
   );
-  const indexedPaths = React.useMemo(() => new Set(allIndexedDocs.map((doc) => normalizePath(doc.path))), [allIndexedDocs]);
 
   const effectiveAgent = data?.agent ?? agent;
   const effectiveAgentId = effectiveAgent?.id ?? null;
+  const isAnalystAgent = effectiveAgentId === "analyst-agent";
   const cycle = data?.cycle ?? null;
-  const sessions = data?.sessions ?? [];
-  const efficiency = data?.efficiency ?? null;
-  const keyMetrics = data?.keyMetrics ?? null;
+  const sessions = isAnalystAgent ? data?.sessions ?? [] : [];
+  const efficiency = isAnalystAgent ? data?.efficiency ?? null : null;
+  const keyMetrics = isAnalystAgent ? data?.keyMetrics ?? null : null;
   const lessonsPath = effectiveAgent?.learningArtifacts?.lessonsPath || DEFAULT_LESSONS_PATH;
+  const inlineAgentDocs = React.useMemo<OpenableDoc[]>(() => {
+    if (!effectiveAgent) return [];
+    const docs: OpenableDoc[] = [];
+    const updatedAt = effectiveAgent.updatedAt || new Date().toISOString();
+
+    for (const skill of effectiveAgent.usedSkills || []) {
+      const path = asString(skill.skillFilePath);
+      const content = asString(skill.skillFileText || skill.fullText);
+      if (!path || !content) continue;
+      docs.push({
+        title: `Навык ${asString(skill.name) || "SKILL"} (из карточки агента)`,
+        path,
+        content,
+        updatedAt,
+      });
+    }
+
+    for (const rule of effectiveAgent.rulesApplied || []) {
+      const path = asString(rule.location);
+      const content = asString(rule.fullText || rule.description);
+      if (!path || !content) continue;
+      docs.push({
+        title: asString(rule.title) || "Правило (из карточки агента)",
+        path,
+        content,
+        updatedAt,
+      });
+    }
+
+    return docs;
+  }, [effectiveAgent]);
+  const allOpenableDocs = React.useMemo<OpenableDoc[]>(
+    () => {
+      const ordered: OpenableDoc[] = [];
+      const seen = new Set<string>();
+      for (const doc of [...indexedDocs, ...inlineAgentDocs]) {
+        const key = normalizePath(doc.path);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        ordered.push(doc);
+      }
+      return ordered;
+    },
+    [indexedDocs, inlineAgentDocs],
+  );
+  const docsByLookupKey = React.useMemo(() => {
+    const map = new Map<string, OpenableDoc>();
+    for (const doc of allOpenableDocs) {
+      const keys = buildPathLookupKeys(doc.path);
+      for (const key of keys) {
+        if (!map.has(key)) map.set(key, doc);
+      }
+    }
+    return map;
+  }, [allOpenableDocs]);
+  const resolveDocByPath = React.useCallback(
+    (path: string): OpenableDoc | null => {
+      const keys = buildPathLookupKeys(path);
+      for (const key of keys) {
+        const doc = docsByLookupKey.get(key);
+        if (doc) return doc;
+      }
+      return null;
+    },
+    [docsByLookupKey],
+  );
+  const bpmnByLookupKey = React.useMemo(() => {
+    const map = new Map<string, BpmnDiagram>();
+    for (const diagram of bpmnDocs) {
+      for (const key of [...buildPathLookupKeys(diagram.sourcePath), ...buildPathLookupKeys(diagram.filePath)]) {
+        if (!map.has(key)) {
+          map.set(key, diagram);
+        }
+      }
+    }
+    return map;
+  }, [bpmnDocs]);
   const isOpenablePath = React.useCallback(
     (path: string) => {
-      const normalized = normalizePath(path);
-      if (!normalized) return false;
-      if (indexedPaths.has(normalized)) return true;
-      for (const knownPath of indexedPaths) {
-        if (knownPath.endsWith(normalized) || normalized.endsWith(knownPath)) return true;
-      }
-      return false;
+      if (resolveDocByPath(path)) return true;
+      return buildPathLookupKeys(path).some((key) => bpmnByLookupKey.has(key));
     },
-    [indexedPaths],
+    [bpmnByLookupKey, resolveDocByPath],
   );
   const operativeMemoryEntries = React.useMemo<MemoryLinkEntry[]>(() => {
     const fromCycle: MemoryLinkEntry[] = uniqueMemoryEntries(
-      uniqueOrdered((cycle?.timeline ?? []).flatMap((event) => event.artifacts_read || [])).map((path) => ({
+      uniqueOrdered((cycle?.timeline ?? []).flatMap((event) => toArtifactPaths(event.artifacts_read))).map((path) => ({
         title: "Контекст последнего цикла",
         path,
       })),
@@ -826,12 +1042,22 @@ export function AnalystCardDrawer({
           .sort((a, b) => toDateMs(b.updated_at) - toDateMs(a.updated_at));
         setSelfImprovementTasks(filtered);
         setCreatedTasksCount(createdTasks.length);
+
+        const ctMap = new Map<string, number>();
+        for (const task of createdTasks) {
+          const cycleId = task.task_brief?.origin_context?.origin_cycle_id;
+          if (cycleId) {
+            ctMap.set(cycleId, (ctMap.get(cycleId) ?? 0) + 1);
+          }
+        }
+        setCycleTasksMap(ctMap);
       } catch (error) {
         if (!active || controller.signal.aborted) return;
         const message = error instanceof Error ? error.message : "Не удалось загрузить задачи самоулучшения.";
         setSelfImprovementTasksError(message);
         setSelfImprovementTasks([]);
         setCreatedTasksCount(null);
+        setCycleTasksMap(new Map());
       } finally {
         if (active) {
           setSelfImprovementTasksLoading(false);
@@ -1043,13 +1269,56 @@ export function AnalystCardDrawer({
     },
   ], [benchmarkSummary, cycle?.metrics.lesson_capture_rate, cycle?.metrics.recommendation_action_rate, cycle?.metrics.review_error_rate, cycle?.metrics.verification_pass_rate]);
 
+  const genericTaskQualityMetrics = React.useMemo<MetricDefinition[]>(() => {
+    if (!effectiveAgent) return [];
+    return [
+      {
+        key: "tasks_in_work",
+        label: "Задач в работе",
+        valueLabel: String(effectiveAgent.tasks.in_work),
+        description: "Текущий объём задач, над которыми агент или связанный контур сейчас работает.",
+        formula: "tasks.in_work",
+        source: "docs/agents/registry.yaml -> agents[].tasks.in_work",
+        example: "Если в очереди активного исполнения 4 задачи, метрика покажет 4.",
+      },
+      {
+        key: "tasks_on_control",
+        label: "Задач на контроле",
+        valueLabel: String(effectiveAgent.tasks.on_control),
+        description: "Сколько задач ждут подтверждения, review или внешнего ответа.",
+        formula: "tasks.on_control",
+        source: "docs/agents/registry.yaml -> agents[].tasks.on_control",
+        example: "Если 2 задачи ждут согласования, метрика покажет 2.",
+      },
+      {
+        key: "tasks_overdue",
+        label: "Просроченные задачи",
+        valueLabel: String(effectiveAgent.tasks.overdue),
+        description: "Количество задач, вышедших за целевой срок исполнения.",
+        formula: "tasks.overdue",
+        source: "docs/agents/registry.yaml -> agents[].tasks.overdue",
+        example: "Если одна задача просрочена, метрика покажет 1.",
+      },
+    ];
+  }, [effectiveAgent]);
+
+  const operatingPlanPath = React.useMemo(() => {
+    if (effectiveAgentId === PRODUCT_DESIGNER_AGENT_ID) return "docs/subservices/oap/agents/designer-agent/OPERATING_PLAN.md";
+    if (isAnalystAgent) return "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md";
+    return asString(effectiveAgent?.runbook) || "docs/subservices/oap/README.md";
+  }, [effectiveAgent?.runbook, effectiveAgentId, isAnalystAgent]);
+  const flowPath = React.useMemo(() => (isAnalystAgent ? "docs/bpmn/analyst-agent-flow.bpmn" : null), [isAnalystAgent]);
+  const flowLinkHash = isAnalystAgent ? ANALYST_FLOW_HASH : null;
+  const agentLogPath = effectiveAgentId ? `.logs/agents/${effectiveAgentId}.jsonl` : AGENT_LOG_PATH;
+  const errorLogPath = effectiveAgentId ? `.logs/agents/${effectiveAgentId}-errors.jsonl` : ".logs/agents/analyst-agent-errors.jsonl";
+
   const agentLogDoc = React.useMemo(
     () =>
       rawLogs.find((doc) => {
         const docPath = normalizePath(doc.path);
-        return docPath === AGENT_LOG_PATH || docPath.endsWith(AGENT_LOG_PATH);
+        return docPath === agentLogPath || docPath.endsWith(agentLogPath);
       }) ?? null,
-    [rawLogs],
+    [agentLogPath, rawLogs],
   );
 
   const parsedAgentLog = React.useMemo(
@@ -1113,6 +1382,179 @@ export function AnalystCardDrawer({
     };
   }, [parsedAgentLog]);
 
+  const designerUxGateSignals = React.useMemo(() => {
+    if (!effectiveAgent || effectiveAgentId !== PRODUCT_DESIGNER_AGENT_ID) return null;
+
+    const overdue = effectiveAgent.tasks.overdue;
+    const onControl = effectiveAgent.tasks.on_control;
+    const eventsTotal = parsedAgentLog.events.length;
+    const errorRate = eventsTotal > 0 ? agentLogSummary.errorCount / eventsTotal : null;
+    const hasDesignerRules = isOpenablePath(DESIGNER_RULES_PATH);
+    const hasDesignerOperatingPlan = isOpenablePath(DESIGNER_OPERATING_PLAN_PATH);
+    const hasLessonsFile = isOpenablePath(lessonsPath);
+
+    const checks = [
+      {
+        key: "priority_first_screen",
+        title: "Приоритет первого экрана",
+        score: overdue === 0 ? 1 : overdue === 1 ? 0.5 : 0,
+        note: overdue === 0
+          ? "Просроченных задач нет."
+          : `Просроченных задач: ${overdue}.`,
+        impact: "Скорость выполнения задачи и доля задач без возврата на доуточнение.",
+      },
+      {
+        key: "action_clarity",
+        title: "Ясность действия",
+        score: onControl <= 1 ? 1 : onControl <= 2 ? 0.5 : 0,
+        note: onControl <= 1
+          ? "На контроле не более одной задачи."
+          : `На контроле: ${onControl}.`,
+        impact: "Качество выполнения задач и длительность цикла.",
+      },
+      {
+        key: "state_consistency",
+        title: "Консистентность состояний",
+        score: errorRate == null ? 0.5 : errorRate <= 0.03 ? 1 : errorRate <= 0.1 ? 0.5 : 0,
+        note: errorRate == null
+          ? "Сигналы ошибок по журналу не зафиксированы."
+          : `Доля fail/error событий: ${(errorRate * 100).toFixed(1)}%.`,
+        impact: "Количество ошибок проверки и стабильность процесса.",
+      },
+      {
+        key: "help_in_risky_points",
+        title: "Пояснения в точке риска",
+        score: hasDesignerRules && hasDesignerOperatingPlan ? 1 : hasDesignerRules || hasDesignerOperatingPlan ? 0.5 : 0,
+        note: hasDesignerRules && hasDesignerOperatingPlan
+          ? "Файлы правил и operating plan доступны в карточке."
+          : "Один или оба обязательных источника недоступны в индексируемых документах.",
+        impact: "Скорость старта задачи и снижение числа ручных уточнений.",
+      },
+      {
+        key: "safe_actions_guardrails",
+        title: "Защита рискованных действий",
+        score: selfImprovementTasksLoading
+          ? 0.5
+          : selfImprovementTasksError
+            ? 0
+            : selfImprovementTasks.length === 0
+              ? 1
+              : selfImprovementTasks.length <= 2
+                ? 0.5
+                : 0,
+        note: selfImprovementTasksLoading
+          ? "Список задач самоулучшения загружается."
+          : selfImprovementTasksError
+            ? `Список задач самоулучшения недоступен: ${selfImprovementTasksError}.`
+            : selfImprovementTasks.length === 0
+              ? "Активных задач самоулучшения нет."
+              : `Активных задач самоулучшения: ${selfImprovementTasks.length}.`,
+        impact: "Риск регрессий, время исправлений и скорость доставки изменений.",
+      },
+    ] as Array<{ key: string; title: string; score: number; note: string; impact: string }>;
+
+    const totalScore = Math.round((checks.reduce((sum, item) => sum + item.score, 0) / checks.length) * 100);
+    const atRiskCount = checks.filter((item) => item.score < 1).length;
+    const errorRatePct = errorRate == null ? null : Number((errorRate * 100).toFixed(1));
+    const passedChecks = checks.filter((item) => item.score >= 1).length;
+
+    return {
+      checks,
+      totalScore,
+      atRiskCount,
+      errorRatePct,
+      eventsTotal,
+      passedChecks,
+      hasLessonsFile,
+    };
+  }, [
+    agentLogSummary.errorCount,
+    effectiveAgent,
+    effectiveAgentId,
+    isOpenablePath,
+    lessonsPath,
+    parsedAgentLog.events.length,
+    selfImprovementTasks,
+    selfImprovementTasksError,
+    selfImprovementTasksLoading,
+  ]);
+
+  const openDesignerUxGateDetails = React.useCallback(() => {
+    if (!designerUxGateSignals) return;
+    const checkRows = designerUxGateSignals.checks.map((check, index) => {
+      const status = check.score >= 1 ? "пройдено" : check.score >= 0.5 ? "частично" : "требует исправления";
+      return [
+        `${index + 1}. ${check.title}`,
+        `- Статус: ${status}`,
+        `- Балл проверки: ${(check.score * 100).toFixed(0)}%`,
+        `- Текущий сигнал: ${check.note}`,
+        `- Влияние: ${check.impact}`,
+      ].join("\n");
+    });
+
+    setModal({
+      open: true,
+      title: "UX-гейт качества designer-agent",
+      path: DESIGNER_RULES_PATH,
+      updatedAt: null,
+      content: [
+        "# UX-гейт качества перед передачей в разработку",
+        "",
+        `- Итоговый балл: ${designerUxGateSignals.totalScore}%`,
+        `- Пройдено проверок: ${designerUxGateSignals.passedChecks} из ${designerUxGateSignals.checks.length}`,
+        `- Проверок с риском: ${designerUxGateSignals.atRiskCount}`,
+        `- Доля fail/error в журнале: ${designerUxGateSignals.errorRatePct == null ? "не зафиксировано" : `${designerUxGateSignals.errorRatePct.toFixed(1)}%`}`,
+        `- Lessons-файл доступен: ${designerUxGateSignals.hasLessonsFile ? "да" : "нет"}`,
+        "",
+        "## Формула",
+        "- `ux_gate_score = avg(5 проверок) * 100`",
+        "- Каждая проверка оценивается в шкале `0 / 0.5 / 1`.",
+        "",
+        "## Проверки",
+        ...checkRows,
+      ].join("\n\n"),
+    });
+  }, [designerUxGateSignals]);
+
+  const nonAnalystPrimaryMetrics = React.useMemo<MetricDefinition[]>(() => {
+    if (effectiveAgentId !== PRODUCT_DESIGNER_AGENT_ID || !designerUxGateSignals) {
+      return genericTaskQualityMetrics;
+    }
+
+    return [
+      {
+        key: "designer_ux_gate_score",
+        label: "UX-гейт: индекс готовности карточки",
+        valueLabel: `${designerUxGateSignals.totalScore}%`,
+        description: "Насколько карточка продакт-дизайнера готова к передаче в разработку без возвратов и правок.",
+        formula: "ux_gate_score = avg(5 проверок) * 100, где каждая проверка в шкале 0 / 0.5 / 1",
+        source: "tasks.overdue/on_control + .logs/agents/designer-agent.jsonl + docs/subservices/oap/*.md + getAgentTasks(origin_type=improvement)",
+        example: "Если 4 проверки пройдены и 1 частично, итоговый индекс = 90%.",
+        onClick: openDesignerUxGateDetails,
+      },
+      {
+        key: "designer_ux_gate_risk_checks",
+        label: "UX-гейт: проверки с риском",
+        valueLabel: String(designerUxGateSignals.atRiskCount),
+        description: "Сколько пунктов UX-гейта сейчас требуют внимания перед передачей решения в разработку.",
+        formula: "count(check where check_score < 1)",
+        source: "Расчет по 5 проверкам UX-гейта на данных текущей карточки.",
+        example: "Если полностью пройдены 3 из 5 проверок, метрика покажет 2.",
+        onClick: openDesignerUxGateDetails,
+      },
+      {
+        key: "designer_ux_gate_log_error_rate",
+        label: "UX-гейт: доля fail/error по журналу",
+        valueLabel: designerUxGateSignals.errorRatePct == null ? "не зафиксировано" : `${designerUxGateSignals.errorRatePct.toFixed(1)}%`,
+        description: "Операционный сигнал стабильности: какая доля событий в журнале завершилась fail/error.",
+        formula: "fail_error_events / all_logged_events * 100",
+        source: ".logs/agents/designer-agent.jsonl (поля status/error).",
+        example: "Если fail/error было 2 из 50 событий, метрика покажет 4.0%.",
+      },
+      ...genericTaskQualityMetrics,
+    ];
+  }, [designerUxGateSignals, effectiveAgentId, genericTaskQualityMetrics, openDesignerUxGateDetails]);
+
   const filteredAgentLogEvents = React.useMemo(() => {
     const q = normalizeLoose(agentLogSearch);
     if (!q) return parsedAgentLog.events;
@@ -1129,6 +1571,7 @@ export function AnalystCardDrawer({
         event.process,
         event.error || "",
         ...event.mcpTools,
+        ...event.tools,
         ...event.skills,
         ...event.artifactsRead,
         ...event.artifactsWritten,
@@ -1146,25 +1589,60 @@ export function AnalystCardDrawer({
 
   const handleOpenFile = React.useCallback(
     (path: string) => {
-      const normalizedPath = path.replace(/^\/+/, "");
-      const doc = allIndexedDocs.find((d) => {
-        const dp = d.path.replace(/^\/+/, "");
-        return dp === normalizedPath || dp.endsWith(normalizedPath) || normalizedPath.endsWith(dp);
-      });
+      const doc = resolveDocByPath(path);
 
       if (doc) {
         setModal({ open: true, title: doc.title, content: doc.content, path: doc.path, updatedAt: doc.updatedAt });
-      } else {
+        return;
+      }
+
+      const bpmnDiagram = buildPathLookupKeys(path)
+        .map((key) => bpmnByLookupKey.get(key) ?? null)
+        .find(Boolean);
+      if (bpmnDiagram) {
         setModal({
           open: true,
-          title: path.split("/").pop() ?? path,
-          content: `Содержимое файла \`${path}\` не найдено в индексе документов.`,
-          path,
-          updatedAt: null,
+          title: `BPMN: ${path.split("/").pop()?.replace(/\.bpmn$/i, "") || bpmnDiagram.id}`,
+          content: "Загрузка BPMN...",
+          path: bpmnDiagram.sourcePath,
+          updatedAt: bpmnDiagram.updatedAt,
         });
+
+        void fetch(bpmnDiagram.filePath, { cache: "no-store" })
+          .then(async (response) => {
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}`);
+            }
+            const content = await response.text();
+            setModal({
+              open: true,
+              title: `BPMN: ${path.split("/").pop()?.replace(/\.bpmn$/i, "") || bpmnDiagram.id}`,
+              content,
+              path: bpmnDiagram.sourcePath,
+              updatedAt: bpmnDiagram.updatedAt,
+            });
+          })
+          .catch(() => {
+            setModal({
+              open: true,
+              title: `BPMN: ${path.split("/").pop()?.replace(/\.bpmn$/i, "") || bpmnDiagram.id}`,
+              content: `Не удалось загрузить BPMN по пути \`${bpmnDiagram.filePath}\`.`,
+              path: bpmnDiagram.sourcePath,
+              updatedAt: bpmnDiagram.updatedAt,
+            });
+          });
+        return;
       }
+
+      setModal({
+        open: true,
+        title: path.split("/").pop() ?? path,
+        content: `Содержимое файла \`${path}\` не найдено в индексе документов.`,
+        path,
+        updatedAt: null,
+      });
     },
-    [allIndexedDocs],
+    [bpmnByLookupKey, resolveDocByPath],
   );
 
   const handleCloseAgentLog = React.useCallback(() => {
@@ -1231,34 +1709,38 @@ export function AnalystCardDrawer({
             </Box>
           ) : (
             <Stack spacing={2} sx={{ p: 2.5 }}>
-              <HeaderSection agent={effectiveAgent} lastRunAt={lastRunAt} />
-              <SectionBlock
-                title="Эффективность агента"
-                tooltip="Операционные показатели по циклам: средний расход токенов, ошибки и сколько задач аналитик создает за цикл."
-              >
-                <Stack spacing={1}>
-                  {efficiencyMetrics.map((metric) => (
-                    <AnalystMetricRow key={metric.key} metric={metric} />
-                  ))}
-                </Stack>
-                <Box>
-                  <Link
-                    component="button"
-                    type="button"
-                    underline="always"
-                    onClick={() => setAdditionalMetricsOpen(true)}
-                    sx={{ fontWeight: 600 }}
-                  >
-                    Посмотреть остальные метрики
-                  </Link>
-                </Box>
-              </SectionBlock>
+              <HeaderSection agent={effectiveAgent} lastRunAt={lastRunAt ?? effectiveAgent.updatedAt} />
+              {isAnalystAgent && efficiencyMetrics.length > 0 ? (
+                <SectionBlock
+                  title="Эффективность агента"
+                  tooltip="Операционные показатели по циклам: средний расход токенов, ошибки и сколько задач аналитик создает за цикл."
+                >
+                  <Stack spacing={1}>
+                    {efficiencyMetrics.map((metric) => (
+                      <AnalystMetricRow key={metric.key} metric={metric} />
+                    ))}
+                  </Stack>
+                  <Box>
+                    <Link
+                      component="button"
+                      type="button"
+                      underline="always"
+                      onClick={() => setAdditionalMetricsOpen(true)}
+                      sx={{ fontWeight: 600 }}
+                    >
+                      Посмотреть остальные метрики
+                    </Link>
+                  </Box>
+                </SectionBlock>
+              ) : null}
               <SectionBlock
                 title="Ключевые метрики агента"
-                tooltip="Основные KPI аналитика: объем созданных задач, ожидаемый прирост целевых метрик и качество рекомендаций."
+                tooltip={isAnalystAgent
+                  ? "Основные KPI аналитика: объем созданных задач, ожидаемый прирост целевых метрик и качество рекомендаций."
+                  : "Основные фактические показатели агента по текущей нагрузке и состоянию задач."}
               >
                 <Stack spacing={1}>
-                  {primaryKeyMetrics.map((metric) => (
+                  {(isAnalystAgent ? primaryKeyMetrics : nonAnalystPrimaryMetrics).map((metric) => (
                     <AnalystMetricRow key={metric.key} metric={metric} />
                   ))}
                 </Stack>
@@ -1269,6 +1751,13 @@ export function AnalystCardDrawer({
                 shortDescription={effectiveAgent.shortDescription}
                 learningArtifacts={effectiveAgent.learningArtifacts}
                 memoryContext={effectiveAgent.memoryContext}
+                operatingPlanPath={operatingPlanPath}
+                flowPath={flowPath}
+                flowLinkHash={flowLinkHash}
+                agentLogPath={agentLogPath}
+                errorLogPath={errorLogPath}
+                risksReportPath={DEFAULT_RISKS_REPORT_PATH}
+                hasSessions={sessions.length > 0}
                 onOpenFile={handleOpenFile}
                 onOpenModal={handleOpenContent}
                 onOpenAgentLog={() => setAgentLogOpen(true)}
@@ -1279,7 +1768,6 @@ export function AnalystCardDrawer({
                 latestSessionSkillNames={latestSessionSkillNames}
                 onOpenFile={handleOpenFile}
               />
-              <McpSection agent={effectiveAgent} onOpenFile={handleOpenFile} />
               <MemorySection
                 memoryContext={effectiveAgent.memoryContext}
                 onOpenFile={handleOpenFile}
@@ -1292,7 +1780,6 @@ export function AnalystCardDrawer({
                 onOpenSelfImprovementTasks={() => setSelfImprovementTasksOpen(true)}
               />
               <RisksSection memoryContext={effectiveAgent.memoryContext} />
-              <SessionsSection sessions={sessions} onOpenFile={handleOpenFile} />
             </Stack>
           )}
         </Box>
@@ -1317,7 +1804,7 @@ export function AnalystCardDrawer({
                 Журнал действий агента
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35 }}>
-                Лента телеметрии из <Box component="span" sx={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>{agentLogDoc?.path || AGENT_LOG_PATH}</Box>.
+                Лента телеметрии из <Box component="span" sx={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>{agentLogDoc?.path || agentLogPath}</Box>.
                 Здесь видно шаги цикла, токены, задействованные MCP/навыки, артефакты и ошибки.
               </Typography>
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.6 }}>
@@ -1384,7 +1871,7 @@ export function AnalystCardDrawer({
             ) : (
               <Stack spacing={1}>
                 {filteredAgentLogEvents.map((event) => (
-                  <AgentLogEventRow key={`${event.id}-${event.line}`} event={event} />
+                  <AgentLogEventRow key={`${event.id}-${event.line}`} event={event} onOpenFile={handleOpenFile} />
                 ))}
               </Stack>
             )}
@@ -1406,7 +1893,7 @@ export function AnalystCardDrawer({
                 Ошибки по циклам агента
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35 }}>
-                Список ошибок и предупреждений по циклам аналитика. Источник: <Box component="span" sx={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>.logs/agents/analyst-agent-errors.jsonl</Box> и telemetry event.error.
+                Список ошибок и предупреждений по циклам агента. Источник: <Box component="span" sx={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>{errorLogPath}</Box> и telemetry event.error.
               </Typography>
             </Box>
             <IconButton onClick={() => setAgentErrorsOpen(false)} aria-label="Закрыть модалку ошибок агента">
@@ -1432,7 +1919,7 @@ export function AnalystCardDrawer({
 
             {efficiency?.errorEntries.length ? (
               efficiency.errorEntries.map((entry) => (
-                <ErrorEntryCard key={entry.id} entry={entry} onOpenFile={handleOpenFile} />
+                <ErrorEntryCard key={entry.id} entry={entry} onOpenFile={handleOpenFile} canOpenPath={isOpenablePath} />
               ))
             ) : (
               <Paper variant="outlined" sx={{ p: 2 }}>
@@ -1499,7 +1986,7 @@ export function AnalystCardDrawer({
                         №{filteredSessions.length - index}
                       </Typography>
                       <Typography variant="body2">{formatDateTime(session.completedAt)}</Typography>
-                      <Chip size="small" variant="outlined" label={`${session.tasksTotal} задач`} />
+                      <Chip size="small" variant="outlined" label={`${cycleTasksMap.get(session.id) ?? 0} задач`} />
                       {session.errorsCount > 0 ? <Chip size="small" color="error" variant="outlined" label={`${session.errorsCount} ошибок`} /> : null}
                     </Stack>
                   </AccordionSummary>
@@ -1520,6 +2007,16 @@ export function AnalystCardDrawer({
                       <Typography variant="body2">
                         <strong>Риски:</strong> {session.risksCount}
                       </Typography>
+                      <Link
+                        component="button"
+                        type="button"
+                        underline="hover"
+                        variant="body2"
+                        sx={{ fontWeight: 600, alignSelf: "flex-start" }}
+                        onClick={() => setSelectedSession(session)}
+                      >
+                        Открыть детали сессии
+                      </Link>
                     </Stack>
                   </AccordionDetails>
                 </Accordion>
@@ -1615,6 +2112,15 @@ export function AnalystCardDrawer({
         taskId={selectedSelfImprovementTaskId}
         onClose={() => setSelectedSelfImprovementTaskId(null)}
         onOpenAgent={handleOpenAgentFromTaskDetails}
+        serviceMode={selfImprovementTasks.find((t) => t.id === selectedSelfImprovementTaskId)?.service_mode}
+      />
+
+      <SessionDetailsDrawer
+        open={!!selectedSession}
+        session={selectedSession}
+        onClose={() => setSelectedSession(null)}
+        onResolveFile={resolveDocByPath}
+        cycleTaskCount={selectedSession ? (cycleTasksMap.get(selectedSession.id) ?? 0) : null}
       />
 
       <TextContentModal

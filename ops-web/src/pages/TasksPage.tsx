@@ -28,6 +28,7 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import {
   type AgentTaskReadinessState,
   type AgentTaskRow,
+  type AgentTaskServiceMode,
   type AgentTaskStatus,
   type AgentTaskUiStage,
   TASK_UI_STAGE_META,
@@ -43,6 +44,12 @@ import { UnifiedAgentDrawer } from "./AgentsPage";
 type StatusFilter = AgentTaskStatus | "all";
 type ReadinessFilter = AgentTaskReadinessState | "all";
 type StageFilter = AgentTaskUiStage | "all";
+type TasksHashFilter = {
+  mcpName: string;
+  taskKeys: string[];
+  sessionId: string;
+  taskId: string;
+};
 const DAY_MS = 24 * 60 * 60 * 1000;
 const BACKLOG_STALE_DAYS = 30;
 const NEEDS_CLARIFICATION_STALE_DAYS = 14;
@@ -139,14 +146,18 @@ function normalizeLoose(value: string): string {
     .trim();
 }
 
-function parseTasksHashFilter(hashValue: string): { mcpName: string; taskKeys: string[] } {
+function parseTasksHashFilter(hashValue: string): TasksHashFilter {
   const rawHash = String(hashValue || "");
+  const route = rawHash.split("?")[0] || "";
+  if (route && route !== "#/tasks") return { mcpName: "", taskKeys: [], sessionId: "", taskId: "" };
   const queryIndex = rawHash.indexOf("?");
-  if (queryIndex === -1) return { mcpName: "", taskKeys: [] };
+  if (queryIndex === -1) return { mcpName: "", taskKeys: [], sessionId: "", taskId: "" };
 
   const params = new URLSearchParams(rawHash.slice(queryIndex + 1));
   const mcpName = String(params.get("mcp") || "").trim();
   const taskKeysRaw = String(params.get("task_keys") || "").trim();
+  const sessionId = String(params.get("session_id") || params.get("sessionId") || "").trim();
+  const taskId = String(params.get("task") || "").trim();
   const taskKeys = taskKeysRaw
     ? taskKeysRaw
         .split("|")
@@ -154,7 +165,17 @@ function parseTasksHashFilter(hashValue: string): { mcpName: string; taskKeys: s
         .filter(Boolean)
     : [];
 
-  return { mcpName, taskKeys };
+  return { mcpName, taskKeys, sessionId, taskId };
+}
+
+function buildTasksHash(state: TasksHashFilter): string {
+  const params = new URLSearchParams();
+  if (state.mcpName) params.set("mcp", state.mcpName);
+  if (state.taskKeys.length > 0) params.set("task_keys", state.taskKeys.join("|"));
+  if (state.sessionId) params.set("session_id", state.sessionId);
+  if (state.taskId) params.set("task", state.taskId);
+  const query = params.toString();
+  return query ? `#/tasks?${query}` : "#/tasks";
 }
 
 function matchesTaskHint(row: AgentTaskRow, hint: string): boolean {
@@ -191,7 +212,8 @@ export function TasksPage() {
   const [copiedKey, setCopiedKey] = React.useState<string>("");
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(25);
-  const [selectedTaskId, setSelectedTaskId] = React.useState<string | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = React.useState<string | null>(initialHashFilter.taskId || null);
+  const [selectedTaskServiceMode, setSelectedTaskServiceMode] = React.useState<AgentTaskServiceMode | undefined>(undefined);
   const [selectedAgentId, setSelectedAgentId] = React.useState<string | null>(null);
   const requestIdRef = React.useRef(0);
   const taskLookupCacheRef = React.useRef<Map<string, string | null>>(new Map());
@@ -204,16 +226,44 @@ export function TasksPage() {
     [agents, selectedAgentId],
   );
 
+  const applyRouteState = React.useCallback((next: TasksHashFilter) => {
+    setMcpScopedFilter(next);
+    setQuery(next.mcpName);
+    setSelectedTaskId(next.taskId || null);
+    setPage(0);
+
+    const nextHash = buildTasksHash(next);
+    if (window.location.hash !== nextHash) {
+      window.history.replaceState(window.history.state, "", nextHash);
+    }
+  }, []);
+
+  const openTaskDrawer = React.useCallback((taskId: string | null, serviceMode?: AgentTaskServiceMode) => {
+    if (!taskId) return;
+    setSelectedTaskServiceMode(serviceMode);
+    applyRouteState({
+      ...mcpScopedFilter,
+      taskId,
+    });
+  }, [applyRouteState, mcpScopedFilter]);
+
+  const closeTaskDrawer = React.useCallback(() => {
+    setSelectedTaskServiceMode(undefined);
+    applyRouteState({
+      ...mcpScopedFilter,
+      taskId: "",
+    });
+  }, [applyRouteState, mcpScopedFilter]);
+
   React.useEffect(() => {
     const onHashChange = () => {
       const next = parseTasksHashFilter(window.location.hash || "");
-      setMcpScopedFilter(next);
-      setQuery(next.mcpName);
-      setPage(0);
+      setSelectedTaskServiceMode(undefined);
+      applyRouteState(next);
     };
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
-  }, []);
+  }, [applyRouteState]);
 
   React.useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -301,6 +351,16 @@ export function TasksPage() {
       .map((item) => item.trim())
       .filter(Boolean);
 
+    if (mcpScopedFilter.sessionId) {
+      const scopedSessionId = mcpScopedFilter.sessionId.trim();
+      next = next.filter((row) =>
+        row.id === scopedSessionId ||
+        row.external_key === scopedSessionId ||
+        row.task_brief?.origin_context?.origin_cycle_id === scopedSessionId,
+      );
+      return next;
+    }
+
     if (scopedHints.length > 0) {
       next = next.filter((row) => scopedHints.some((hint) => matchesTaskHint(row, hint)));
       return next;
@@ -315,7 +375,7 @@ export function TasksPage() {
     }
 
     return next;
-  }, [mcpScopedFilter.mcpName, mcpScopedFilter.taskKeys, readiness]);
+  }, [mcpScopedFilter.mcpName, mcpScopedFilter.sessionId, mcpScopedFilter.taskKeys, readiness]);
 
   const insightRows = React.useMemo(() => buildClientFilteredRows(rows), [buildClientFilteredRows, rows]);
   const baseFilteredRows = React.useMemo(() => buildClientFilteredRows(stageRowsPool), [buildClientFilteredRows, stageRowsPool]);
@@ -381,7 +441,7 @@ export function TasksPage() {
   const handleShowOnlyManualTasks = React.useCallback(() => {
     setQuery("");
     setDebouncedQuery("");
-    setMcpScopedFilter({ mcpName: "", taskKeys: [] });
+    setMcpScopedFilter({ mcpName: "", taskKeys: [], sessionId: "", taskId: "" });
     setStageFilter("all");
     setStatus("all");
     setReadiness("all");
@@ -397,7 +457,7 @@ export function TasksPage() {
   }, []);
 
   const handleCopyStartCommand = React.useCallback(async (row: AgentTaskRow) => {
-    const command = `make agent-log AGENT=${row.executor_agent_id} TASK=${row.external_key} STEP=implement STATUS=started`;
+    const command = `make agent-log AGENT=${row.executor_agent_id} TASK=${row.external_key} STEP=implement STATUS=started ARTIFACT_OP=read:docs/agents/registry.yaml ARTIFACT_READ=docs/agents/registry.yaml`;
     await navigator.clipboard.writeText(command);
     setCopiedKey(row.id);
     window.setTimeout(() => setCopiedKey((value) => (value === row.id ? "" : value)), 1400);
@@ -410,7 +470,7 @@ export function TasksPage() {
 
       const cachedTaskId = taskLookupCacheRef.current.get(normalizedKey);
       if (cachedTaskId !== undefined) {
-        if (cachedTaskId) setSelectedTaskId(cachedTaskId);
+        if (cachedTaskId) openTaskDrawer(cachedTaskId);
         return;
       }
 
@@ -422,7 +482,7 @@ export function TasksPage() {
           null;
         if (exactMatch) {
           taskLookupCacheRef.current.set(normalizedKey, exactMatch.id);
-          setSelectedTaskId(exactMatch.id);
+          openTaskDrawer(exactMatch.id);
           return;
         }
 
@@ -431,7 +491,7 @@ export function TasksPage() {
         taskLookupCacheRef.current.set(normalizedKey, null);
       }
     },
-    [],
+    [openTaskDrawer],
   );
 
   return (
@@ -595,7 +655,7 @@ export function TasksPage() {
                     Показать все задачи
                   </Button>
                 ) : null}
-                <Button variant="text" onClick={() => setSelectedTaskId(demoHumanRows[0]?.id || null)} disabled={demoHumanRows.length === 0}>
+                <Button variant="text" onClick={() => openTaskDrawer(demoHumanRows[0]?.id || null)} disabled={demoHumanRows.length === 0}>
                   Открыть первую демо-задачу
                 </Button>
               </Stack>
@@ -610,7 +670,7 @@ export function TasksPage() {
                     <Paper key={row.id} variant="outlined" sx={{ p: 0.9 }}>
                       <Stack direction={{ xs: "column", md: "row" }} spacing={1} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }}>
                         <Box>
-                          <Link component="button" type="button" underline="hover" sx={{ fontWeight: 600 }} onClick={() => setSelectedTaskId(row.id)}>
+                          <Link component="button" type="button" underline="hover" sx={{ fontWeight: 600 }} onClick={() => openTaskDrawer(row.id, row.service_mode)}>
                             {row.title}
                           </Link>
                           <Typography variant="caption" color="text.secondary" display="block">
@@ -620,7 +680,7 @@ export function TasksPage() {
                             Что дальше: {row.next_step_label}
                           </Typography>
                         </Box>
-                        <Button size="small" variant="outlined" color="warning" onClick={() => setSelectedTaskId(row.id)}>
+                        <Button size="small" variant="outlined" color="warning" onClick={() => openTaskDrawer(row.id, row.service_mode)}>
                           Открыть для решения
                         </Button>
                       </Stack>
@@ -656,7 +716,7 @@ export function TasksPage() {
                           {row.external_key} • сценарий human-gate • {formatDateTime(row.updated_at)}
                         </Typography>
                       </Box>
-                      <Button size="small" variant="outlined" onClick={() => setSelectedTaskId(row.id)}>
+                      <Button size="small" variant="outlined" onClick={() => openTaskDrawer(row.id, row.service_mode)}>
                         Открыть демо
                       </Button>
                     </Stack>
@@ -745,7 +805,7 @@ export function TasksPage() {
             </Alert>
           ) : null}
 
-          {mcpScopedFilter.mcpName || mcpScopedFilter.taskKeys.length > 0 ? (
+          {mcpScopedFilter.mcpName || mcpScopedFilter.taskKeys.length > 0 || mcpScopedFilter.sessionId ? (
             <Alert
               severity="info"
               action={
@@ -753,7 +813,7 @@ export function TasksPage() {
                   color="inherit"
                   size="small"
                   onClick={() => {
-                    setMcpScopedFilter({ mcpName: "", taskKeys: [] });
+                    setMcpScopedFilter({ mcpName: "", taskKeys: [], sessionId: "", taskId: "" });
                     setQuery("");
                     setPage(0);
                   }}
@@ -762,10 +822,13 @@ export function TasksPage() {
                 </Button>
               }
             >
-              Применен фильтр MCP: {mcpScopedFilter.mcpName || "unknown"}.{" "}
-              {mcpScopedFilter.taskKeys.length > 0
-                ? `Показываются задачи из переданного списка (${mcpScopedFilter.taskKeys.length}).`
-                : "Показываются задачи по текстовому совпадению."}
+              {mcpScopedFilter.sessionId
+                ? `Применен фильтр по ID сессии: ${mcpScopedFilter.sessionId}. Показывается связанная задача.`
+                : `Применен фильтр MCP: ${mcpScopedFilter.mcpName || "unknown"}. ${
+                    mcpScopedFilter.taskKeys.length > 0
+                      ? `Показываются задачи из переданного списка (${mcpScopedFilter.taskKeys.length}).`
+                      : "Показываются задачи по текстовому совпадению."
+                  }`}
             </Alert>
           ) : null}
 
@@ -814,7 +877,7 @@ export function TasksPage() {
                           type="button"
                           underline="hover"
                           sx={{ fontWeight: 600 }}
-                          onClick={() => setSelectedTaskId(row.id)}
+                          onClick={() => openTaskDrawer(row.id, row.service_mode)}
                         >
                           {row.title}
                         </Link>
@@ -887,7 +950,7 @@ export function TasksPage() {
                       </TableCell>
                       <TableCell align="right">
                         {row.service_mode === "waiting_human" ? (
-                          <Button size="small" variant="contained" color="warning" onClick={() => setSelectedTaskId(row.id)}>
+                          <Button size="small" variant="contained" color="warning" onClick={() => openTaskDrawer(row.id, row.service_mode)}>
                             Открыть для решения
                           </Button>
                         ) : (
@@ -924,8 +987,9 @@ export function TasksPage() {
       <TaskDetailsDrawer
         open={Boolean(selectedTaskId)}
         taskId={selectedTaskId}
-        onClose={() => setSelectedTaskId(null)}
+        onClose={closeTaskDrawer}
         onOpenAgent={(agentId) => setSelectedAgentId(agentId)}
+        serviceMode={selectedTaskServiceMode}
       />
 
       <UnifiedAgentDrawer

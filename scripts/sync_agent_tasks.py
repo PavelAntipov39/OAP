@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -40,6 +41,9 @@ DEFAULT_AB_GUARDRAILS = [
     "lesson_capture_rate",
 ]
 DEFAULT_AB_TARGET_METRIC = "recommendation_action_rate"
+DEFAULT_DB_SCHEMA = "oap"
+LEGACY_DB_SCHEMA = "bible"
+ALLOWED_DB_SCHEMAS = {DEFAULT_DB_SCHEMA, LEGACY_DB_SCHEMA}
 
 COLLABORATION_KEYWORDS: dict[str, tuple[str, ...]] = {
     "analyst-agent": ("telemetry", "metric", "quality", "review", "risk", "benchmark", "аналит"),
@@ -68,6 +72,19 @@ DEFAULT_MANDATORY_RULES = [
 ]
 
 
+def _load_orchestration_module():
+    module_path = Path(__file__).resolve().with_name("agent_orchestration.py")
+    spec = importlib.util.spec_from_file_location("agent_orchestration", module_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Cannot load orchestration module from {module_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)  # type: ignore[attr-defined]
+    return module
+
+
+ORCHESTRATION = _load_orchestration_module()
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Sync OAP task board from agents registry and telemetry logs.",
@@ -83,10 +100,22 @@ def parse_args() -> argparse.Namespace:
     sync_parser.add_argument("--registry", default="docs/agents/registry.yaml")
     sync_parser.add_argument("--logs-dir", default=".logs/agents")
     sync_parser.add_argument("--executor-agent-id", default="analyst-agent")
+    sync_parser.add_argument(
+        "--db-schema",
+        default=DEFAULT_DB_SCHEMA,
+        choices=sorted(ALLOWED_DB_SCHEMAS),
+        help="Runtime DB schema. Default: oap. Use bible only for explicit legacy compatibility.",
+    )
     sync_parser.add_argument("--out-json", default="artifacts/agent_tasks_sync_report.json")
     sync_parser.add_argument("--dry-run", action="store_true")
 
     report_parser = subparsers.add_parser("report", help="Build status summary report from DB.")
+    report_parser.add_argument(
+        "--db-schema",
+        default=DEFAULT_DB_SCHEMA,
+        choices=sorted(ALLOWED_DB_SCHEMAS),
+        help="Runtime DB schema. Default: oap. Use bible only for explicit legacy compatibility.",
+    )
     report_parser.add_argument("--out-json", default="artifacts/agent_tasks_report.json")
 
     return parser.parse_args()
@@ -126,6 +155,14 @@ def parse_registry(path: Path) -> dict[str, Any]:
     if not isinstance(parsed, dict):
         raise ValueError(f"Invalid registry root at {path}: expected object.")
     return parsed
+
+
+def write_registry(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
 
 
 def slugify(value: str) -> str:
@@ -194,6 +231,26 @@ def normalize_event_status(status: str | None, outcome: str | None = None, step:
 
 def safe_str(value: Any) -> str:
     return str(value).strip() if value is not None else ""
+
+
+def build_db_schema_candidates(preferred: str | None) -> list[str]:
+    normalized = safe_str(preferred).lower() or DEFAULT_DB_SCHEMA
+    if normalized not in ALLOWED_DB_SCHEMAS:
+        raise ValueError(
+            f"Unsupported db schema `{normalized}`. Allowed: {', '.join(sorted(ALLOWED_DB_SCHEMAS))}."
+        )
+    return [normalized]
+
+
+def resolve_db_schema(conn, preferred: str | None = None) -> str:
+    candidates = build_db_schema_candidates(preferred)
+    for candidate in candidates:
+        row = conn.execute("select to_regnamespace(%s)::text as schema_name", (candidate,)).fetchone()
+        if safe_str((row or {}).get("schema_name")).lower() == candidate:
+            return candidate
+    raise ValueError(
+        f"DB schema is not available. Checked candidates: {', '.join(candidates)}."
+    )
 
 
 def safe_list_str(value: Any) -> list[str]:
@@ -540,16 +597,61 @@ def build_operational_memory_entries(
 
 def build_collaboration_plan(
     *,
+    task_id: str,
+    root_agent_id: str,
+    hint_text: str,
     suggested_agents: list[str],
     rationale: str,
+    registry: dict[str, Any],
+    target_metric: str = "",
+    owner_section: str = "",
+    linked_snapshot: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    return {
-        "analysis_required": True,
-        "suggested_agents": suggested_agents,
-        "selected_agents": [],
-        "rationale": safe_str(rationale) or "Анализ выполнен автоматически на основе ownerSection/promptPath/targetMetric.",
-        "reviewed_at": None,
+    created_profiles: list[dict[str, Any]] = []
+    try:
+        orchestration_plan, created_profiles = ORCHESTRATION.build_collaboration_plan(
+            task_id=task_id,
+            root_agent_id=root_agent_id,
+            purpose=safe_str(rationale) or "Task collaboration planning",
+            hint_text=hint_text,
+            registry=registry,
+            suggested_agents=suggested_agents,
+            target_metric=target_metric,
+            owner_section=owner_section,
+            linked_snapshot=linked_snapshot,
+        )
+        if created_profiles and hasattr(ORCHESTRATION, "append_created_profiles_to_registry"):
+            ORCHESTRATION.append_created_profiles_to_registry(
+                registry=registry,
+                created_profiles=created_profiles,
+            )
+    except Exception:
+        orchestration_plan = {}
+
+    base_rationale = safe_str(rationale) or "Анализ выполнен автоматически на основе ownerSection/promptPath/targetMetric."
+    if not isinstance(orchestration_plan, dict):
+        orchestration_plan = {}
+    plan = {
+        "analysis_required": bool(orchestration_plan.get("analysis_required", True)),
+        "suggested_agents": safe_list_str(orchestration_plan.get("suggested_agents")) or suggested_agents,
+        "selected_agents": safe_list_str(orchestration_plan.get("selected_agents")),
+        "rationale": safe_str(orchestration_plan.get("rationale")) or base_rationale,
+        "reviewed_at": orchestration_plan.get("reviewed_at"),
+        "strategy": safe_str(orchestration_plan.get("strategy")) or "reuse_existing",
+        "reuse_candidates": orchestration_plan.get("reuse_candidates") if isinstance(orchestration_plan.get("reuse_candidates"), list) else [],
+        "created_profiles": orchestration_plan.get("created_profiles") if isinstance(orchestration_plan.get("created_profiles"), list) else [],
+        "spawned_instances": orchestration_plan.get("spawned_instances") if isinstance(orchestration_plan.get("spawned_instances"), list) else [],
+        "orchestration_budget": orchestration_plan.get("orchestration_budget")
+        if isinstance(orchestration_plan.get("orchestration_budget"), dict)
+        else {
+            "max_instances": 7,
+            "max_tokens": 120000,
+            "max_wall_clock_minutes": 45,
+            "max_no_progress_hops": 2,
+        },
+        "delegation_depth": int(orchestration_plan.get("delegation_depth", 0) or 0),
     }
+    return plan
 
 
 def build_ab_test_plan(
@@ -613,6 +715,7 @@ def build_context_package(
 
 def build_task_brief_for_improvement(
     *,
+    registry: dict[str, Any],
     source_agent_id: str,
     executor_agent_id: str,
     available_agent_ids: set[str],
@@ -672,8 +775,15 @@ def build_task_brief_for_improvement(
         hint_text=hint_text,
     )
     collaboration_plan = build_collaboration_plan(
+        task_id=f"imp:{source_agent_id}:{improvement_id}",
+        root_agent_id=executor_agent_id,
+        hint_text=hint_text,
         suggested_agents=suggested_agents,
         rationale=f"Подбор соисполнителей выполнен по ownerSection/targetMetric/promptPath: {safe_str(item.get('ownerSection')) or 'не задано'}.",
+        registry=registry,
+        target_metric=target_metric,
+        owner_section=safe_str(item.get("ownerSection")),
+        linked_snapshot=snapshot,
     )
     operational_memory = build_operational_memory_entries(
         goal=safe_str(item.get("title")),
@@ -746,6 +856,7 @@ def build_task_brief_for_improvement(
 
 def build_task_brief_for_recommendation(
     *,
+    registry: dict[str, Any],
     source_agent_id: str,
     executor_agent_id: str,
     available_agent_ids: set[str],
@@ -845,8 +956,15 @@ def build_task_brief_for_recommendation(
         linked_snapshot=linked_snapshot,
     )
     collaboration_plan = build_collaboration_plan(
+        task_id=f"rec:{source_agent_id}:{recommendation_id}",
+        root_agent_id=executor_agent_id,
+        hint_text=hint_text,
         suggested_agents=suggested_agents,
         rationale="Соисполнители подобраны по тексту рекомендации и связанной точке роста.",
+        registry=registry,
+        target_metric=target_metric,
+        owner_section=safe_str(linked_snapshot.get("ownerSection")) if linked_snapshot else "",
+        linked_snapshot=linked_snapshot,
     )
     operational_memory = build_operational_memory_entries(
         goal=rec_text,
@@ -948,6 +1066,7 @@ def build_seed_tasks(registry: dict[str, Any], executor_agent_id: str) -> list[d
                 if prompt_path:
                     evidence.append(prompt_path)
                 task_brief = build_task_brief_for_improvement(
+                    registry=registry,
                     source_agent_id=source_agent_id,
                     executor_agent_id=executor_agent_id,
                     available_agent_ids=available_agent_ids,
@@ -1011,6 +1130,7 @@ def build_seed_tasks(registry: dict[str, Any], executor_agent_id: str) -> list[d
                         "origin_ref": origin_ref,
                         "evidence_refs": [],
                         "task_brief": build_task_brief_for_recommendation(
+                            registry=registry,
                             source_agent_id=source_agent_id,
                             executor_agent_id=executor_agent_id,
                             available_agent_ids=available_agent_ids,
@@ -1066,28 +1186,28 @@ def load_telemetry_events(log_dir: Path) -> list[dict[str, Any]]:
     return events
 
 
-def fetch_tasks_by_external_key(conn) -> dict[str, dict[str, Any]]:
+def fetch_tasks_by_external_key(conn, *, db_schema: str) -> dict[str, dict[str, Any]]:
     rows = conn.execute(
-        """
+        f"""
         select id, external_key, status
-        from bible.agent_tasks
+        from {db_schema}.agent_tasks
         """
     ).fetchall()
     return {row["external_key"]: row for row in rows}
 
 
-def fetch_existing_telemetry_event_ids(conn) -> set[UUID]:
+def fetch_existing_telemetry_event_ids(conn, *, db_schema: str) -> set[UUID]:
     rows = conn.execute(
-        """
+        f"""
         select telemetry_event_id
-        from bible.agent_task_events
+        from {db_schema}.agent_task_events
         where telemetry_event_id is not null
         """
     ).fetchall()
     return {row["telemetry_event_id"] for row in rows if row.get("telemetry_event_id")}
 
 
-def upsert_seed_task(conn, task: dict[str, Any]) -> None:
+def upsert_seed_task(conn, task: dict[str, Any], *, db_schema: str) -> None:
     priority = task.get("priority")
     if priority not in VALID_PRIORITIES:
         priority = "medium"
@@ -1096,8 +1216,8 @@ def upsert_seed_task(conn, task: dict[str, Any]) -> None:
         status = STATUS_READY
 
     conn.execute(
-        """
-        insert into bible.agent_tasks(
+        f"""
+        insert into {db_schema}.agent_tasks(
           external_key,
           title,
           source_agent_id,
@@ -1121,17 +1241,17 @@ def upsert_seed_task(conn, task: dict[str, Any]) -> None:
           origin_ref = excluded.origin_ref,
           evidence_refs = excluded.evidence_refs,
           task_brief = case
-            when nullif(bible.agent_tasks.task_brief #>> '{origin_context,origin_cycle_id}', '') is not null then jsonb_set(
+            when nullif({db_schema}.agent_tasks.task_brief #>> '{{origin_context,origin_cycle_id}}', '') is not null then jsonb_set(
               excluded.task_brief,
-              '{origin_context}',
-              coalesce(excluded.task_brief -> 'origin_context', '{}'::jsonb) ||
-                jsonb_build_object('origin_cycle_id', bible.agent_tasks.task_brief #>> '{origin_context,origin_cycle_id}'),
+              '{{origin_context}}',
+              coalesce(excluded.task_brief -> 'origin_context', '{{}}'::jsonb) ||
+                jsonb_build_object('origin_cycle_id', {db_schema}.agent_tasks.task_brief #>> '{{origin_context,origin_cycle_id}}'),
               true
             )
-            when nullif(excluded.task_brief #>> '{origin_context,origin_cycle_id}', '') is not null then jsonb_set(
+            when nullif(excluded.task_brief #>> '{{origin_context,origin_cycle_id}}', '') is not null then jsonb_set(
               excluded.task_brief,
-              '{origin_context}',
-              coalesce(excluded.task_brief -> 'origin_context', '{}'::jsonb) - 'origin_cycle_id',
+              '{{origin_context}}',
+              coalesce(excluded.task_brief -> 'origin_context', '{{}}'::jsonb) - 'origin_cycle_id',
               true
             )
             else excluded.task_brief
@@ -1157,9 +1277,10 @@ def apply_telemetry_projection(
     conn,
     *,
     events: list[dict[str, Any]],
+    db_schema: str,
 ) -> dict[str, int]:
-    tasks = fetch_tasks_by_external_key(conn)
-    existing_event_ids = fetch_existing_telemetry_event_ids(conn)
+    tasks = fetch_tasks_by_external_key(conn, db_schema=db_schema)
+    existing_event_ids = fetch_existing_telemetry_event_ids(conn, db_schema=db_schema)
 
     counters = {
         "events_total": len(events),
@@ -1190,8 +1311,8 @@ def apply_telemetry_projection(
         payload = event.get("payload") if isinstance(event.get("payload"), dict) else {}
 
         inserted = conn.execute(
-            """
-            insert into bible.agent_task_events(
+            f"""
+            insert into {db_schema}.agent_task_events(
               task_id,
               actor_agent_id,
               event_time,
@@ -1227,8 +1348,8 @@ def apply_telemetry_projection(
 
         if next_status:
             conn.execute(
-                """
-                update bible.agent_tasks
+                f"""
+                update {db_schema}.agent_tasks
                 set status = %s,
                     last_event_at = %s,
                     updated_at = now()
@@ -1240,8 +1361,8 @@ def apply_telemetry_projection(
             task_row["status"] = next_status
         else:
             conn.execute(
-                """
-                update bible.agent_tasks
+                f"""
+                update {db_schema}.agent_tasks
                 set last_event_at = %s,
                     updated_at = now()
                 where id = %s
@@ -1253,11 +1374,11 @@ def apply_telemetry_projection(
     return counters
 
 
-def build_status_report(conn) -> dict[str, Any]:
+def build_status_report(conn, *, db_schema: str) -> dict[str, Any]:
     status_rows = conn.execute(
-        """
+        f"""
         select status, count(*)::bigint as total
-        from bible.agent_tasks
+        from {db_schema}.agent_tasks
         group by status
         order by status
         """
@@ -1265,9 +1386,9 @@ def build_status_report(conn) -> dict[str, Any]:
     by_status = {row["status"]: int(row["total"]) for row in status_rows}
     total_tasks = sum(by_status.values())
     latest = conn.execute(
-        """
+        f"""
         select external_key, title, status, source_agent_id, executor_agent_id, updated_at
-        from bible.agent_tasks
+        from {db_schema}.agent_tasks
         order by coalesce(last_event_at, updated_at, created_at) desc
         limit 20
         """
@@ -1281,22 +1402,52 @@ def build_status_report(conn) -> dict[str, Any]:
 
 
 def run_sync(args: argparse.Namespace) -> int:
-    registry = parse_registry(Path(args.registry))
+    registry_path = Path(args.registry)
+    registry = parse_registry(registry_path)
+    agents_before = registry.get("agents") if isinstance(registry.get("agents"), list) else []
+    known_agent_ids = {
+        safe_str(item.get("id"))
+        for item in agents_before
+        if isinstance(item, dict) and safe_str(item.get("id"))
+    }
     events = load_telemetry_events(Path(args.logs_dir))
     executor_agent_id = safe_str(args.executor_agent_id) or "analyst-agent"
     seeds = build_seed_tasks(registry, executor_agent_id)
+    agents_after = registry.get("agents") if isinstance(registry.get("agents"), list) else []
+    promoted_profiles: list[dict[str, Any]] = []
+    for item in agents_after:
+        if not isinstance(item, dict):
+            continue
+        profile_id = safe_str(item.get("id"))
+        if not profile_id or profile_id in known_agent_ids:
+            continue
+        promoted_profiles.append(
+            {
+                "id": profile_id,
+                "name": safe_str(item.get("name")) or profile_id,
+                "agentClass": safe_str(item.get("agentClass")) or "specialist",
+                "origin": safe_str(item.get("origin")) or "dynamic",
+                "specializationScope": safe_str(item.get("specializationScope")),
+            }
+        )
 
     report: dict[str, Any] = {
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z"),
-        "registry_path": str(args.registry),
+        "registry_path": str(registry_path),
         "logs_dir": str(args.logs_dir),
         "seed_tasks": len(seeds),
         "dry_run": bool(args.dry_run),
+        "promoted_profiles_total": len(promoted_profiles),
+        "promoted_profile_ids": [item["id"] for item in promoted_profiles],
     }
 
     with connect(args.db) as conn:
+        db_schema = resolve_db_schema(conn, getattr(args, "db_schema", DEFAULT_DB_SCHEMA))
+        report["resolved_db_schema"] = db_schema
         with conn.cursor() as cur:
-            before_total = cur.execute("select count(*)::bigint as total from bible.agent_tasks").fetchone()["total"]
+            before_total = cur.execute(
+                f"select count(*)::bigint as total from {db_schema}.agent_tasks"
+            ).fetchone()["total"]
         report["tasks_before"] = int(before_total)
 
         if args.dry_run:
@@ -1310,15 +1461,17 @@ def run_sync(args: argparse.Namespace) -> int:
             }
         else:
             for task in seeds:
-                upsert_seed_task(conn, task)
-            projection = apply_telemetry_projection(conn, events=events)
+                upsert_seed_task(conn, task, db_schema=db_schema)
+            projection = apply_telemetry_projection(conn, events=events, db_schema=db_schema)
 
         with conn.cursor() as cur:
-            after_total = cur.execute("select count(*)::bigint as total from bible.agent_tasks").fetchone()["total"]
+            after_total = cur.execute(
+                f"select count(*)::bigint as total from {db_schema}.agent_tasks"
+            ).fetchone()["total"]
             row = cur.execute(
-                """
+                f"""
                 select count(*)::bigint as total
-                from bible.agent_task_events
+                from {db_schema}.agent_task_events
                 """
             ).fetchone()
             events_total_db = int(row["total"])
@@ -1328,12 +1481,18 @@ def run_sync(args: argparse.Namespace) -> int:
         else:
             conn.commit()
 
+    registry_updated = False
+    if not args.dry_run and promoted_profiles:
+        write_registry(registry_path, registry)
+        registry_updated = True
+
     report.update(
         {
             "tasks_after": int(after_total),
             "tasks_delta": int(after_total) - int(before_total),
             "task_events_total_db": events_total_db,
             "projection": projection,
+            "registry_updated": registry_updated,
         }
     )
 
@@ -1349,7 +1508,9 @@ def run_sync(args: argparse.Namespace) -> int:
 
 def run_report(args: argparse.Namespace) -> int:
     with connect(args.db) as conn:
-        report = build_status_report(conn)
+        db_schema = resolve_db_schema(conn, getattr(args, "db_schema", DEFAULT_DB_SCHEMA))
+        report = build_status_report(conn, db_schema=db_schema)
+        report["resolved_db_schema"] = db_schema
     out_path = Path(args.out_json)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(

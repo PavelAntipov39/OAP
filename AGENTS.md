@@ -32,6 +32,29 @@
 4. `docs/*` (должны соответствовать спеке)
 5. `AGENTS.md`
 
+## Cross-Tool Assistant Governance (Mandatory)
+- Правила принятия решений и стиль коммуникации в этом репозитории tool-agnostic:
+  одинаково обязательны для `Codex`, `GitHub Copilot`, `Claude` и любых других assistants.
+- Канонический policy-layer:
+  1. `/.specify/specs/001-oap/spec.md`
+  2. `AGENTS.md`
+  3. tool-specific assistant entry files (`.github/copilot-instructions.md`, `CLAUDE.md`, другие assistant entry files).
+- Tool-specific assistant entry files не являются самостоятельным source-of-truth:
+  они короткие, генерируемые и не могут задавать противоречащие правила.
+- Machine-readable contract assistants:
+  `/.specify/specs/001-oap/contracts/assistant-governance.json`
+  (`canonical_file`, `supported_assistants[]`, `entry_file`, `entry_strategy=generated_pointer`, `template_version`).
+- Любое изменение repo-wide правил общения, decision policy или assistant-behavior делается синхронно:
+  - в `spec.md`, если меняется каноническое поведение;
+  - в `AGENTS.md`, если меняется operating/gateway layer;
+  - через регенерацию tool-specific assistant entry files.
+- Во всех assistants ответы должны быть:
+  - краткими и фактическими;
+  - evidence-first;
+  - с явным разделением `факт` / `интерпретация`;
+  - без ссылок на UI-секции или workflow, которые не подтверждены текущим runtime/code;
+  - с использованием semantic `section_id` как внутреннего якоря и lookup текущего label из `ops-web/src/generated/ui-section-contract.json`.
+
 ## Architecture Governance (Mandatory)
 - Архитектура фиксируется через C4/LikeC4 с обязательным разделением уровней:
   - C1 (System Context) отдельно,
@@ -103,6 +126,21 @@
   - canonical `tab-key` values: `overview`, `mcp`, `skills_rules`, `tasks_quality`, `memory_context`, `improvements`;
   - for legacy agents, `tab=mcp` must canonicalize to `tab=overview`;
   - tab switches must use `replaceState` (avoid history spam).
+- Modal deep-link contract is mandatory for OAP:
+  - each user-facing modal/drawer with meaningful business context (docs, logs, metrics, comparison, task details) must have its own canonical URL state;
+  - modal state must be shareable and restorable from URL;
+  - opening/closing modal updates URL via `replaceState`, without history spam;
+  - transient UI (`toast`, simple confirm/cancel, tooltip/popover helper text) may stay without dedicated URL.
+- Capability optimization is mandatory for every OAP agent profile and runner:
+  - each agent profile must define `capabilityOptimization` with `enabled`, `refreshMode=on_run`, `sourcePolicy=official_first`, `trialMode=shadow`, `promotionMode=human_approve`, `minShadowSampleSize`, `staleAfterHours`;
+  - each production-like agent run must refresh the per-agent capability snapshot in `artifacts/capability_trials/<agent-id>/capability_snapshot.json`;
+  - UI comparison tables must read the per-agent capability snapshot as canonical source, not raw telemetry logs;
+  - if the snapshot is stale or fingerprint-drifted, promotion/replace decisions must stay blocked until the next agent run refreshes it.
+- Universal workflow backbone is mandatory for every OAP agent profile and spawned specialist instance:
+  - each profile must define `workflowBackbone` with `version=universal_backbone_v1`, `commonCoreSteps[]`, `roleWindow`, `stepExecutionPolicy`, `supportsDynamicInstances`;
+  - all agent-specific logic must live inside one bounded `roleWindow`; do not spread domain-specific steps across the shared backbone;
+  - if a backbone step is not used by a given agent or instance, mark it as `skipped` instead of removing it from the canonical cycle;
+  - `analyst-agent` remains the reference implementation for `common backbone + role window`, but its internal branch steps are not universalized for other agents.
 
 ## BPMN Process Map (Pilot)
 - For tasks that change business logic, read the BPMN view in `web` route `#/bpmn` before proposing or implementing changes.
@@ -127,9 +165,14 @@
 - Если ссылка невалидна, сначала отправлять DSL (источник истины), затем уже новый проверенный share-link.
 
 ## Correction Log Rules
+- Consistency sync rule (mandatory): если один и тот же operational fact повторяется в нескольких артефактах (spec, runbook, CI, manual table, machine-readable contract, README, generated index), все связанные источники должны обновляться в рамках одной задачи.
+- Для дублируемой истины действует правило: один canonical source + обязательная синхронизация dependent-артефактов.
+- Если human-readable и machine-readable версии одного контракта существуют одновременно, для них должен быть parity-check в локальном pipeline или CI; без этого дублирование считается временным и рискованным.
+- Универсальную семантическую консистентность для всех файлов автоматически не обещать; автоматизировать только проверяемые инварианты с низким уровнем ложных срабатываний.
 - Патчи файлов в Codex выполнять только через инструмент `apply_patch`; не запускать `apply_patch` через `exec_command`.
 - Internal engineering tools (like BPMN viewers, debug panels, migration dashboards) must not be visible in end-user navigation by default; expose them only via dev/admin-only entry points.
 - Для задач AI-агентов обязательно фиксировать telemetry-события по шагам задачи (`agent-log`) и собирать агрегированный отчет (`agent-telemetry-report`) перед итоговой сдачей.
+- В ОАП для блока `Использованные файлы` источник истины: session file trace (`read/write/delete`, dedupe по path); `Оперативная память` пересчитывается по trace на конец сессии, где `read` не понижает `write`, а `delete` удаляет путь из активного набора.
 - В ОАП блок `Целевые метрики` для `analyst-agent` размещать в разделе `Задачи и качество`; в разделе `Навыки и правила` этот блок не показывать.
 - Метрики в ОАП показывать фактическими значениями (процент/число/время), а не тегами (`Chip`).
 - Для каждой метрики обязателен tooltip `Как считается`: формула + источник данных + человеко-понятное описание.
@@ -143,10 +186,16 @@
 - Для candidate-flow явно разделять intake и decision: если решение принимает n8n Code-узел, нельзя утверждать, что анализ выполнен моделью Codex/GPT; model-driven режим допускается только когда решения формируются в цикле агента.
 - Для новой сущности входящих практик использовать канонический термин `candidate`; не смешивать в одном контексте `candidat` и `hypothesis`.
 - Если пользователь явно указывает целевого агента для изменения карточки, запрещено менять карточки других агентов в этой задаче.
+- Если пользователь просит изменения по дизайну/UI/UX, вызов соответствующих профильных агентов обязателен:
+  - `designer-agent` для визуала/компоновки/UX;
+  - `analyst-agent` для валидации KPI/impact и трассировки формул;
+  - выполнять задачу без такого вызова запрещено.
 - Для `analyst-agent` тип карточки (legacy `AnalystCardDrawer` vs unified drawer) меняется только по явному запросу пользователя; при запросе на возврат предыдущего UI обязателен rollback роутинга.
 - В legacy-карточке `analyst-agent` ссылки на BPMN-файлы не открывать через текстовую модалку; путь `docs/bpmn/*.bpmn` должен вести в валидный BPMN/agent-flow viewer, а не в пустой fallback.
 - В карточке `analyst-agent` секция `Используемые навыки` обязана содержать: пункт `Навыки` (теги навыков, задействованных за последний цикл сессии) и подпункт `Путь к файлу Skills`.
 - Карточка `analyst-agent` считается эталонной: без явного запроса пользователя запрещено менять её роутинг, тип drawer, базовую структуру секций и переносить её на другой UI-контракт.
+- В governance-документах и assistant entry-files запрещено фиксировать display-label UI-секции как канон; использовать только semantic `section_id` и брать label из актуального section-contract/runtime.
+- Если в проекте используется assistant-specific instruction file (`.github/copilot-instructions.md`, `CLAUDE.md` и т.п.), он должен быть автогенерируемой короткой точкой входа на `AGENTS.md`; ручное локальное расширение правил запрещено.
 
 ## Agent Telemetry Logging (Mandatory)
 - Логирование ведется в формате OTel-first: у события должны быть `agent_id`, `task_id`, `step`, `status`, `run_id`, `trace_id`.

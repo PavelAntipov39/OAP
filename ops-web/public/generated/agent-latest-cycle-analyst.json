@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-06T22:04:24.991460Z",
+  "generated_at": "2026-03-10T07:24:10.033710Z",
   "version": "agent_latest_cycle_analyst.v1",
   "agent_id": "analyst-agent",
   "available": true,
@@ -9,13 +9,13 @@
     "log_dir": ".logs/agents"
   },
   "metrics": {
-    "verification_pass_rate": 100,
-    "lesson_capture_rate": 100,
+    "verification_pass_rate": 118.18,
+    "lesson_capture_rate": 84.62,
     "review_error_rate": 0,
     "recommendation_action_rate": null,
-    "replan_rate": null,
+    "replan_rate": 0,
     "decision_time_avg_ms": null,
-    "time_to_solution_min": 69
+    "time_to_solution_min": 13
   },
   "metric_meta": {
     "verification_pass_rate": {
@@ -62,146 +62,538 @@
     }
   },
   "latest_cycle": {
-    "task_id": "cycle-20260303-2",
-    "first_event_at": "2026-03-03T09:00:00Z",
-    "last_event_at": "2026-03-03T10:09:00Z",
+    "task_id": "task-card-waiting-human-rollout-20260310",
+    "first_event_at": "2026-03-10T14:00:00Z",
+    "last_event_at": "2026-03-10T14:13:00Z",
     "latest_final_status": "completed",
     "final_scope": "latest",
-    "events_total": 9
+    "events_total": 5
   },
   "timeline": [
     {
-      "timestamp": "2026-03-03T09:00:00Z",
-      "step": "plan",
+      "timestamp": "2026-03-10T14:00:00Z",
+      "step": "step_1_start",
+      "step_raw": "started",
+      "step_label": "1) started",
       "status": "started",
-      "run_id": "run-1772497559-2",
-      "trace_id": "f78e9c34bab6465d9d914d8f36a67e9c",
+      "run_id": "run-task-card-wh-20260310",
+      "trace_id": "trace-task-card-wh-20260310",
       "recommendation_id": "",
-      "outcome": "Новый цикл: план сформирован на основе вчерашних данных",
+      "outcome": "task card routing expansion for waiting_human service_mode",
+      "tokens_in": 0,
+      "tokens_out": 0,
       "artifacts_read": [
-        "docs/subservices/oap/ANALYST_OPERATING_PLAN.md",
-        "docs/agents/registry.yaml"
+        {
+          "path": "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
+          "source_kind": "operating_plan",
+          "semantic_layer": "unknown",
+          "reason": "unknown",
+          "label": "Операционный стандарт агента"
+        },
+        {
+          "path": "docs/agents/registry.yaml",
+          "source_kind": "registry",
+          "semantic_layer": "unknown",
+          "reason": "unknown",
+          "label": "Реестр агентов"
+        }
       ],
-      "artifacts_written": [],
-      "artifacts_source": "telemetry"
-    },
-    {
-      "timestamp": "2026-03-03T09:09:00Z",
-      "step": "health_check",
-      "status": "started",
-      "run_id": "run-1772497559-2",
-      "trace_id": "522331850cc64f4bba508ca548c6e066",
-      "recommendation_id": "",
-      "outcome": "Health-check: context7 MCP деградирует второй день, создана задача на подключение",
-      "artifacts_read": [
-        "docs/agents/registry.yaml"
-      ],
-      "artifacts_written": [],
-      "artifacts_source": "telemetry"
-    },
-    {
-      "timestamp": "2026-03-03T09:20:00Z",
-      "step": "knowledge_base_check",
-      "status": "started",
-      "run_id": "run-1772497559-2",
-      "trace_id": "326bd4e1444c4439a00cbe970d699889",
-      "recommendation_id": "",
-      "outcome": "Проверка правил: добавлен раздел про MCP lifecycle — актуально",
-      "artifacts_read": [
-        "docs/subservices/oap/ANALYST_OPERATING_PLAN.md"
-      ],
-      "artifacts_written": [],
-      "artifacts_source": "telemetry"
-    },
-    {
-      "timestamp": "2026-03-03T09:35:00Z",
-      "step": "improvements_list",
-      "status": "started",
-      "run_id": "run-1772497559-2",
-      "trace_id": "555b9cead526423eb892746254c9739f",
-      "recommendation_id": "imp-analyst-recommendation-outcome",
-      "outcome": "Рекомендация про recommendation_action_rate — приоритет Средний, отложена до следующего окна",
-      "artifacts_read": [
-        "docs/agents/registry.yaml"
-      ],
-      "artifacts_written": [],
-      "artifacts_source": "telemetry"
-    },
-    {
-      "timestamp": "2026-03-03T09:48:00Z",
-      "step": "execute",
-      "status": "started",
-      "run_id": "run-1772497559-2",
-      "trace_id": "2482d62899fe4fcbbe60fac712068e7b",
-      "recommendation_id": "",
-      "outcome": "Обновлены usedSkills: добавлен практический пример для qmd-memory-retrieval",
-      "artifacts_read": [],
       "artifacts_written": [
-        "docs/agents/registry.yaml"
+        {
+          "path": ".logs/agents/analyst-agent.jsonl",
+          "source_kind": "telemetry_log",
+          "semantic_layer": "telemetry",
+          "reason": "unknown",
+          "label": "Telemetry log: analyst-agent"
+        }
       ],
-      "artifacts_source": "telemetry"
+      "artifacts_source": "fallback"
     },
     {
-      "timestamp": "2026-03-03T09:58:00Z",
-      "step": "verify",
+      "timestamp": "2026-03-10T14:10:00Z",
+      "step": "verify_started",
+      "step_raw": "verify_started",
+      "step_label": "verify_started",
       "status": "verify_started",
-      "run_id": "run-1772497559-2",
-      "trace_id": "55d188f5ade346ab981b4acc85dd7798",
+      "run_id": "run-task-card-wh-20260310",
+      "trace_id": "trace-task-card-wh-20260310",
       "recommendation_id": "",
-      "outcome": "Верификация внедрённых изменений",
+      "outcome": "tsc --noEmit passed, playwright 3/3 passed, npm run check passed",
+      "tokens_in": 0,
+      "tokens_out": 0,
       "artifacts_read": [
-        ".logs/agents/analyst-agent.jsonl",
-        "artifacts/agent_telemetry_summary.json"
+        {
+          "path": "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
+          "source_kind": "operating_plan",
+          "semantic_layer": "unknown",
+          "reason": "unknown",
+          "label": "Операционный стандарт агента"
+        },
+        {
+          "path": "docs/agents/registry.yaml",
+          "source_kind": "registry",
+          "semantic_layer": "unknown",
+          "reason": "unknown",
+          "label": "Реестр агентов"
+        }
       ],
       "artifacts_written": [
-        "artifacts/agent_cycle_validation_report.json"
+        {
+          "path": ".logs/agents/analyst-agent.jsonl",
+          "source_kind": "telemetry_log",
+          "semantic_layer": "telemetry",
+          "reason": "unknown",
+          "label": "Telemetry log: analyst-agent"
+        }
       ],
       "artifacts_source": "fallback"
     },
     {
-      "timestamp": "2026-03-03T10:01:00Z",
-      "step": "verify",
+      "timestamp": "2026-03-10T14:11:00Z",
+      "step": "verify_passed",
+      "step_raw": "verify_passed",
+      "step_label": "verify_passed",
       "status": "verify_passed",
-      "run_id": "run-1772497559-2",
-      "trace_id": "1cd4d88848724bac8f833aa770261ffa",
+      "run_id": "run-task-card-wh-20260310",
+      "trace_id": "trace-task-card-wh-20260310",
       "recommendation_id": "",
-      "outcome": "Изменения корректны, регрессий нет, usedSkills прошёл schema check",
+      "outcome": "all checks passed: tsc 0 errors, playwright 3/3, build ok",
+      "tokens_in": 0,
+      "tokens_out": 0,
       "artifacts_read": [
-        ".logs/agents/analyst-agent.jsonl",
-        "artifacts/agent_telemetry_summary.json"
+        {
+          "path": ".logs/agents/analyst-agent.jsonl",
+          "source_kind": "telemetry_log",
+          "semantic_layer": "telemetry",
+          "reason": "unknown",
+          "label": "Telemetry log: analyst-agent"
+        },
+        {
+          "path": "artifacts/agent_telemetry_summary.json",
+          "source_kind": "generated_artifact",
+          "semantic_layer": "telemetry",
+          "reason": "unknown",
+          "label": "Telemetry summary"
+        }
       ],
       "artifacts_written": [
-        "artifacts/agent_cycle_validation_report.json"
+        {
+          "path": "artifacts/agent_cycle_validation_report.json",
+          "source_kind": "generated_artifact",
+          "semantic_layer": "telemetry",
+          "reason": "unknown",
+          "label": "Cycle validation report"
+        },
+        {
+          "path": ".logs/agents/analyst-agent.jsonl",
+          "source_kind": "telemetry_log",
+          "semantic_layer": "telemetry",
+          "reason": "unknown",
+          "label": "Telemetry log: analyst-agent"
+        }
       ],
       "artifacts_source": "fallback"
     },
     {
-      "timestamp": "2026-03-03T10:04:00Z",
-      "step": "learn",
+      "timestamp": "2026-03-10T14:12:00Z",
+      "step": "lesson_captured",
+      "step_raw": "lesson_captured",
+      "step_label": "lesson_captured",
       "status": "lesson_captured",
-      "run_id": "run-1772497559-2",
-      "trace_id": "eb6f2c641d0e40e5b863552c1b9780c6",
+      "run_id": "run-task-card-wh-20260310",
+      "trace_id": "trace-task-card-wh-20260310",
       "recommendation_id": "",
-      "outcome": "Урок: MCP деградация требует создания задачи в первый же день обнаружения",
+      "outcome": "lesson task-card-routing-by-service-mode added to lessons.global.md and analyst-agent.md",
+      "tokens_in": 0,
+      "tokens_out": 0,
       "artifacts_read": [],
       "artifacts_written": [
-        "docs/subservices/oap/tasks/lessons/analyst-agent.md"
+        {
+          "path": "docs/subservices/oap/tasks/lessons.global.md",
+          "source_kind": "unknown",
+          "semantic_layer": "memory",
+          "reason": "unknown",
+          "label": "lessons.global.md"
+        },
+        {
+          "path": "docs/subservices/oap/tasks/lessons/analyst-agent.md",
+          "source_kind": "unknown",
+          "semantic_layer": "memory",
+          "reason": "unknown",
+          "label": "analyst-agent.md"
+        }
       ],
       "artifacts_source": "telemetry"
     },
     {
-      "timestamp": "2026-03-03T10:09:00Z",
-      "step": "finalize",
+      "timestamp": "2026-03-10T14:13:00Z",
+      "step": "completed",
+      "step_raw": "completed",
+      "step_label": "completed",
       "status": "completed",
-      "run_id": "run-1772497559-2",
-      "trace_id": "2894015918cf4a13bf969e7d8c21bd09",
+      "run_id": "run-task-card-wh-20260310",
+      "trace_id": "trace-task-card-wh-20260310",
       "recommendation_id": "",
-      "outcome": "Цикл завершён. Здоровье агентов: стабильно. MCP context7: задача создана",
+      "outcome": "task card routing expanded: waiting_human tasks now route to experimental drawer. 5 files changed, 1 new test, lessons captured.",
+      "tokens_in": 0,
+      "tokens_out": 0,
       "artifacts_read": [],
       "artifacts_written": [
-        "artifacts/agent_telemetry_summary.json",
-        "artifacts/agent_telemetry_summary.md",
-        "artifacts/agent_latest_cycle_analyst.json"
+        {
+          "path": "docs/subservices/oap/tasks/todo.md",
+          "source_kind": "unknown",
+          "semantic_layer": "unknown",
+          "reason": "unknown",
+          "label": "todo.md"
+        }
+      ],
+      "artifacts_source": "telemetry"
+    }
+  ],
+  "canonical_stages": [
+    {
+      "step_key": "step_0_intake",
+      "step_label": "0) task-intake/sync",
+      "executed": false,
+      "events_total": 0,
+      "started_at": null,
+      "last_event_at": null,
+      "status": null,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "tokens_total": 0,
+      "artifacts_read": [],
+      "artifacts_written": [],
+      "raw_steps": []
+    },
+    {
+      "step_key": "step_1_start",
+      "step_label": "1) started",
+      "executed": true,
+      "events_total": 1,
+      "started_at": "2026-03-10T14:00:00Z",
+      "last_event_at": "2026-03-10T14:00:00Z",
+      "status": "started",
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "tokens_total": 0,
+      "artifacts_read": [
+        {
+          "path": "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
+          "source_kind": "operating_plan",
+          "semantic_layer": "unknown",
+          "reason": "unknown",
+          "label": "Операционный стандарт агента"
+        },
+        {
+          "path": "docs/agents/registry.yaml",
+          "source_kind": "registry",
+          "semantic_layer": "unknown",
+          "reason": "unknown",
+          "label": "Реестр агентов"
+        }
+      ],
+      "artifacts_written": [
+        {
+          "path": ".logs/agents/analyst-agent.jsonl",
+          "source_kind": "telemetry_log",
+          "semantic_layer": "telemetry",
+          "reason": "unknown",
+          "label": "Telemetry log: analyst-agent"
+        }
+      ],
+      "raw_steps": [
+        "started"
+      ]
+    },
+    {
+      "step_key": "step_2_preflight",
+      "step_label": "2) preflight health-check",
+      "executed": false,
+      "events_total": 0,
+      "started_at": null,
+      "last_event_at": null,
+      "status": null,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "tokens_total": 0,
+      "artifacts_read": [],
+      "artifacts_written": [],
+      "raw_steps": []
+    },
+    {
+      "step_key": "step_3_orchestration",
+      "step_label": "3) orchestration (reuse-first)",
+      "executed": false,
+      "events_total": 0,
+      "started_at": null,
+      "last_event_at": null,
+      "status": null,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "tokens_total": 0,
+      "artifacts_read": [],
+      "artifacts_written": [],
+      "raw_steps": []
+    },
+    {
+      "step_key": "step_4_context_sync",
+      "step_label": "4) context / evidence sync",
+      "executed": false,
+      "events_total": 0,
+      "started_at": null,
+      "last_event_at": null,
+      "status": null,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "tokens_total": 0,
+      "artifacts_read": [],
+      "artifacts_written": [],
+      "raw_steps": []
+    },
+    {
+      "step_key": "step_5_role_window",
+      "step_label": "5) role window",
+      "executed": false,
+      "events_total": 0,
+      "started_at": null,
+      "last_event_at": null,
+      "status": null,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "tokens_total": 0,
+      "artifacts_read": [],
+      "artifacts_written": [],
+      "raw_steps": []
+    },
+    {
+      "step_key": "step_6_role_exit_decision",
+      "step_label": "6) role exit decision",
+      "executed": false,
+      "events_total": 0,
+      "started_at": null,
+      "last_event_at": null,
+      "status": null,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "tokens_total": 0,
+      "artifacts_read": [],
+      "artifacts_written": [],
+      "raw_steps": []
+    },
+    {
+      "step_key": "step_7_apply_or_publish",
+      "step_label": "7) apply / publish",
+      "executed": false,
+      "events_total": 0,
+      "started_at": null,
+      "last_event_at": null,
+      "status": null,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "tokens_total": 0,
+      "artifacts_read": [],
+      "artifacts_written": [],
+      "raw_steps": []
+    },
+    {
+      "step_key": "step_7_contract_gate",
+      "step_label": "7.1) contract gate",
+      "executed": false,
+      "events_total": 0,
+      "started_at": null,
+      "last_event_at": null,
+      "status": null,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "tokens_total": 0,
+      "artifacts_read": [],
+      "artifacts_written": [],
+      "raw_steps": []
+    },
+    {
+      "step_key": "step_8_verify",
+      "step_label": "8) verify",
+      "executed": false,
+      "events_total": 0,
+      "started_at": null,
+      "last_event_at": null,
+      "status": null,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "tokens_total": 0,
+      "artifacts_read": [],
+      "artifacts_written": [],
+      "raw_steps": []
+    },
+    {
+      "step_key": "step_8_error_channel",
+      "step_label": "8.1) error channel",
+      "executed": false,
+      "events_total": 0,
+      "started_at": null,
+      "last_event_at": null,
+      "status": null,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "tokens_total": 0,
+      "artifacts_read": [],
+      "artifacts_written": [],
+      "raw_steps": []
+    },
+    {
+      "step_key": "step_9_finalize",
+      "step_label": "9) learn + finalize",
+      "executed": false,
+      "events_total": 0,
+      "started_at": null,
+      "last_event_at": null,
+      "status": null,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "tokens_total": 0,
+      "artifacts_read": [],
+      "artifacts_written": [],
+      "raw_steps": []
+    },
+    {
+      "step_key": "step_9_publish_snapshots",
+      "step_label": "9.1) publish snapshots",
+      "executed": false,
+      "events_total": 0,
+      "started_at": null,
+      "last_event_at": null,
+      "status": null,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "tokens_total": 0,
+      "artifacts_read": [],
+      "artifacts_written": [],
+      "raw_steps": []
+    }
+  ],
+  "out_of_canon": [
+    {
+      "timestamp": "2026-03-10T14:10:00Z",
+      "step": "verify_started",
+      "step_raw": "verify_started",
+      "step_label": "verify_started",
+      "status": "verify_started",
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "artifacts_read": [
+        {
+          "path": "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
+          "source_kind": "operating_plan",
+          "semantic_layer": "unknown",
+          "reason": "unknown",
+          "label": "Операционный стандарт агента"
+        },
+        {
+          "path": "docs/agents/registry.yaml",
+          "source_kind": "registry",
+          "semantic_layer": "unknown",
+          "reason": "unknown",
+          "label": "Реестр агентов"
+        }
+      ],
+      "artifacts_written": [
+        {
+          "path": ".logs/agents/analyst-agent.jsonl",
+          "source_kind": "telemetry_log",
+          "semantic_layer": "telemetry",
+          "reason": "unknown",
+          "label": "Telemetry log: analyst-agent"
+        }
+      ],
+      "artifacts_source": "fallback"
+    },
+    {
+      "timestamp": "2026-03-10T14:11:00Z",
+      "step": "verify_passed",
+      "step_raw": "verify_passed",
+      "step_label": "verify_passed",
+      "status": "verify_passed",
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "artifacts_read": [
+        {
+          "path": ".logs/agents/analyst-agent.jsonl",
+          "source_kind": "telemetry_log",
+          "semantic_layer": "telemetry",
+          "reason": "unknown",
+          "label": "Telemetry log: analyst-agent"
+        },
+        {
+          "path": "artifacts/agent_telemetry_summary.json",
+          "source_kind": "generated_artifact",
+          "semantic_layer": "telemetry",
+          "reason": "unknown",
+          "label": "Telemetry summary"
+        }
+      ],
+      "artifacts_written": [
+        {
+          "path": "artifacts/agent_cycle_validation_report.json",
+          "source_kind": "generated_artifact",
+          "semantic_layer": "telemetry",
+          "reason": "unknown",
+          "label": "Cycle validation report"
+        },
+        {
+          "path": ".logs/agents/analyst-agent.jsonl",
+          "source_kind": "telemetry_log",
+          "semantic_layer": "telemetry",
+          "reason": "unknown",
+          "label": "Telemetry log: analyst-agent"
+        }
+      ],
+      "artifacts_source": "fallback"
+    },
+    {
+      "timestamp": "2026-03-10T14:12:00Z",
+      "step": "lesson_captured",
+      "step_raw": "lesson_captured",
+      "step_label": "lesson_captured",
+      "status": "lesson_captured",
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "artifacts_read": [],
+      "artifacts_written": [
+        {
+          "path": "docs/subservices/oap/tasks/lessons.global.md",
+          "source_kind": "unknown",
+          "semantic_layer": "memory",
+          "reason": "unknown",
+          "label": "lessons.global.md"
+        },
+        {
+          "path": "docs/subservices/oap/tasks/lessons/analyst-agent.md",
+          "source_kind": "unknown",
+          "semantic_layer": "memory",
+          "reason": "unknown",
+          "label": "analyst-agent.md"
+        }
+      ],
+      "artifacts_source": "telemetry"
+    },
+    {
+      "timestamp": "2026-03-10T14:13:00Z",
+      "step": "completed",
+      "step_raw": "completed",
+      "step_label": "completed",
+      "status": "completed",
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "artifacts_read": [],
+      "artifacts_written": [
+        {
+          "path": "docs/subservices/oap/tasks/todo.md",
+          "source_kind": "unknown",
+          "semantic_layer": "unknown",
+          "reason": "unknown",
+          "label": "todo.md"
+        }
       ],
       "artifacts_source": "telemetry"
     }
@@ -209,99 +601,146 @@
   "file_trace": {
     "edges": [
       {
-        "step": "plan",
+        "step": "step_1_start",
+        "step_label": "1) started",
         "kind": "read",
-        "path": "docs/subservices/oap/ANALYST_OPERATING_PLAN.md",
-        "source": "telemetry"
+        "path": "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
+        "source_kind": "operating_plan",
+        "semantic_layer": "unknown",
+        "reason": "unknown",
+        "label": "Операционный стандарт агента",
+        "source": "fallback"
       },
       {
-        "step": "plan",
-        "kind": "read",
-        "path": "docs/agents/registry.yaml",
-        "source": "telemetry"
-      },
-      {
-        "step": "health_check",
-        "kind": "read",
-        "path": "docs/agents/registry.yaml",
-        "source": "telemetry"
-      },
-      {
-        "step": "knowledge_base_check",
-        "kind": "read",
-        "path": "docs/subservices/oap/ANALYST_OPERATING_PLAN.md",
-        "source": "telemetry"
-      },
-      {
-        "step": "improvements_list",
+        "step": "step_1_start",
+        "step_label": "1) started",
         "kind": "read",
         "path": "docs/agents/registry.yaml",
-        "source": "telemetry"
+        "source_kind": "registry",
+        "semantic_layer": "unknown",
+        "reason": "unknown",
+        "label": "Реестр агентов",
+        "source": "fallback"
       },
       {
-        "step": "execute",
+        "step": "step_1_start",
+        "step_label": "1) started",
         "kind": "write",
-        "path": "docs/agents/registry.yaml",
-        "source": "telemetry"
+        "path": ".logs/agents/analyst-agent.jsonl",
+        "source_kind": "telemetry_log",
+        "semantic_layer": "telemetry",
+        "reason": "unknown",
+        "label": "Telemetry log: analyst-agent",
+        "source": "fallback"
       },
       {
-        "step": "verify",
+        "step": "verify_started",
+        "step_label": "verify_started",
+        "kind": "read",
+        "path": "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
+        "source_kind": "operating_plan",
+        "semantic_layer": "unknown",
+        "reason": "unknown",
+        "label": "Операционный стандарт агента",
+        "source": "fallback"
+      },
+      {
+        "step": "verify_started",
+        "step_label": "verify_started",
+        "kind": "read",
+        "path": "docs/agents/registry.yaml",
+        "source_kind": "registry",
+        "semantic_layer": "unknown",
+        "reason": "unknown",
+        "label": "Реестр агентов",
+        "source": "fallback"
+      },
+      {
+        "step": "verify_started",
+        "step_label": "verify_started",
+        "kind": "write",
+        "path": ".logs/agents/analyst-agent.jsonl",
+        "source_kind": "telemetry_log",
+        "semantic_layer": "telemetry",
+        "reason": "unknown",
+        "label": "Telemetry log: analyst-agent",
+        "source": "fallback"
+      },
+      {
+        "step": "verify_passed",
+        "step_label": "verify_passed",
         "kind": "read",
         "path": ".logs/agents/analyst-agent.jsonl",
+        "source_kind": "telemetry_log",
+        "semantic_layer": "telemetry",
+        "reason": "unknown",
+        "label": "Telemetry log: analyst-agent",
         "source": "fallback"
       },
       {
-        "step": "verify",
+        "step": "verify_passed",
+        "step_label": "verify_passed",
         "kind": "read",
         "path": "artifacts/agent_telemetry_summary.json",
+        "source_kind": "generated_artifact",
+        "semantic_layer": "telemetry",
+        "reason": "unknown",
+        "label": "Telemetry summary",
         "source": "fallback"
       },
       {
-        "step": "verify",
+        "step": "verify_passed",
+        "step_label": "verify_passed",
         "kind": "write",
         "path": "artifacts/agent_cycle_validation_report.json",
+        "source_kind": "generated_artifact",
+        "semantic_layer": "telemetry",
+        "reason": "unknown",
+        "label": "Cycle validation report",
         "source": "fallback"
       },
       {
-        "step": "verify",
-        "kind": "read",
+        "step": "verify_passed",
+        "step_label": "verify_passed",
+        "kind": "write",
         "path": ".logs/agents/analyst-agent.jsonl",
+        "source_kind": "telemetry_log",
+        "semantic_layer": "telemetry",
+        "reason": "unknown",
+        "label": "Telemetry log: analyst-agent",
         "source": "fallback"
       },
       {
-        "step": "verify",
-        "kind": "read",
-        "path": "artifacts/agent_telemetry_summary.json",
-        "source": "fallback"
-      },
-      {
-        "step": "verify",
+        "step": "lesson_captured",
+        "step_label": "lesson_captured",
         "kind": "write",
-        "path": "artifacts/agent_cycle_validation_report.json",
-        "source": "fallback"
+        "path": "docs/subservices/oap/tasks/lessons.global.md",
+        "source_kind": "unknown",
+        "semantic_layer": "memory",
+        "reason": "unknown",
+        "label": "lessons.global.md",
+        "source": "telemetry"
       },
       {
-        "step": "learn",
+        "step": "lesson_captured",
+        "step_label": "lesson_captured",
         "kind": "write",
         "path": "docs/subservices/oap/tasks/lessons/analyst-agent.md",
+        "source_kind": "unknown",
+        "semantic_layer": "memory",
+        "reason": "unknown",
+        "label": "analyst-agent.md",
         "source": "telemetry"
       },
       {
-        "step": "finalize",
+        "step": "completed",
+        "step_label": "completed",
         "kind": "write",
-        "path": "artifacts/agent_telemetry_summary.json",
-        "source": "telemetry"
-      },
-      {
-        "step": "finalize",
-        "kind": "write",
-        "path": "artifacts/agent_telemetry_summary.md",
-        "source": "telemetry"
-      },
-      {
-        "step": "finalize",
-        "kind": "write",
-        "path": "artifacts/agent_latest_cycle_analyst.json",
+        "path": "docs/subservices/oap/tasks/todo.md",
+        "source_kind": "unknown",
+        "semantic_layer": "unknown",
+        "reason": "unknown",
+        "label": "todo.md",
         "source": "telemetry"
       }
     ],

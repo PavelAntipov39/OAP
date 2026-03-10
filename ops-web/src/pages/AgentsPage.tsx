@@ -47,17 +47,20 @@ import {
   type AgentSummary,
   type DocsDocument,
 } from "../lib/generatedData";
-import { getAgentTasks } from "../lib/tasksApi";
+import { getAgentTasks, type AgentTaskServiceMode } from "../lib/tasksApi";
 import { TextContentModal } from "../components/TextContentModal";
 import { MemoryContextPanel } from "../components/agent-memory/MemoryContextPanel";
 import { TaskDetailsDrawer } from "../components/tasks/TaskDetailsDrawer";
 import { AnalystCardDrawer } from "../components/analyst-card/AnalystCardDrawer";
+import { CapabilityComparisonModal } from "../components/agents/CapabilityComparisonModal";
+import { SkillToolMcpTooltip } from "../components/skill-tooltip/SkillToolMcpTooltip";
 import {
   LEGACY_TAB_KEYS,
   MODERN_TAB_KEYS,
   buildAgentsHash,
   canonicalizeState,
   parseAgentsHash,
+  type AgentsModalKey,
   type AgentTabKey,
 } from "../lib/agentsRouteState";
 
@@ -275,8 +278,8 @@ type ParsedAgentLogTimeline = {
 };
 const MODERN_AGENT_IDS = new Set(["analyst-agent", "designer-agent"]);
 const OPERATING_PLAN_PATH_FALLBACKS: Record<string, string> = {
-  "analyst-agent": "docs/subservices/oap/ANALYST_OPERATING_PLAN.md",
-  "designer-agent": "docs/subservices/oap/DESIGNER_OPERATING_PLAN.md",
+  "analyst-agent": "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
+  "designer-agent": "docs/subservices/oap/agents/designer-agent/OPERATING_PLAN.md",
 };
 
 function isModernAgent(agentId: string): boolean {
@@ -301,6 +304,22 @@ const usedMcpStatusMeta: Record<UsedMcpStatus, { label: string; color: "success"
   reauth_required: { label: "Требуется повторное подключение (Re-auth required)", color: "warning" },
   degraded: { label: "Ограничено (Degraded)", color: "warning" },
   offline: { label: "Недоступно (Offline)", color: "error" },
+};
+
+const AGENT_CLASS_META: Record<AgentSummary["agentClass"], { label: string; color: "primary" | "info" }> = {
+  core: { label: "Core", color: "primary" },
+  specialist: { label: "Specialist", color: "info" },
+};
+
+const AGENT_ORIGIN_META: Record<AgentSummary["origin"], { label: string; color: "default" | "secondary" }> = {
+  manual: { label: "Manual", color: "default" },
+  dynamic: { label: "Dynamic", color: "secondary" },
+};
+
+const AGENT_LIFECYCLE_META: Record<AgentSummary["lifecycle"], { label: string; color: "success" | "warning" | "default" }> = {
+  active: { label: "active", color: "success" },
+  retire_candidate: { label: "retire_candidate", color: "warning" },
+  retired: { label: "retired", color: "default" },
 };
 
 const statusLegend: Array<{ title: string; description: string }> = [
@@ -364,6 +383,52 @@ function formatDateTimeCompactRu(value: string): string {
     hour: "2-digit",
     minute: "2-digit",
   }).replace(",", "");
+}
+
+const WORKFLOW_STEP_LABELS: Record<string, string> = {
+  step_0_intake: "0. Intake: принять задачу и зафиксировать scope",
+  step_1_start: "1. Start: открыть run и trace",
+  step_2_preflight: "2. Preflight: проверить блокеры и доступность контекста",
+  step_3_orchestration: "3. Orchestration: определить reuse-first стратегию и allowlists",
+  step_4_context_sync: "4. Context sync: собрать evidence, память и контракты",
+  step_5_role_window: "5. Role window: войти в доменную ветку агента",
+  step_6_role_exit_decision: "6. Role exit decision: вернуть нормализованный result package",
+  step_7_apply_or_publish: "7. Apply / publish: применить решение или выпустить артефакт",
+  step_7_contract_gate: "7.1 Contract gate: проверить schema и output contract",
+  step_8_verify: "8. Verify: проверить качество и регрессии",
+  step_8_error_channel: "8.1 Error channel: зафиксировать ошибки и next action",
+  step_9_finalize: "9. Finalize: закрыть цикл learning core",
+  step_9_publish_snapshots: "9.1 Publish snapshots: обновить UI и telemetry snapshots",
+  role_collect_quality_signals: "Собрать quality signals и evidence",
+  role_score_candidates: "Сделать scoring кандидатов",
+  role_select_priority: "Выбрать приоритетный action",
+  role_review_ui_kit: "Проверить UI kit и системные паттерны",
+  role_review_clarity: "Проверить ясность UX и copy",
+  role_prepare_design_actions: "Подготовить пакет дизайн-действий",
+  role_collect_sources: "Собрать релевантные источники",
+  role_synthesize_answer: "Синтезировать ответ по контексту",
+  role_check_coverage: "Проверить полноту покрытия",
+  role_check_dataset_quality: "Проверить качество датасета",
+  role_analyze_drift: "Проанализировать drift и отклонения",
+  role_prepare_data_action: "Подготовить data-action package",
+  role_triage_operation: "Разобрать операционный инцидент или запрос",
+  role_select_runbook_action: "Выбрать runbook-based действие",
+  role_prepare_ops_resolution: "Подготовить пакет операционного решения",
+  role_analyze_domain_task: "Разобрать доменную задачу",
+  role_execute_domain_logic: "Выполнить доменную логику",
+  role_prepare_result_package: "Подготовить result package",
+};
+
+function formatWorkflowStepLabel(value: string): string {
+  const step = asString(value);
+  if (!step) return "не зафиксировано";
+  if (WORKFLOW_STEP_LABELS[step]) return WORKFLOW_STEP_LABELS[step];
+  const normalized = step
+    .replace(/^role_/, "")
+    .replace(/^step_/, "")
+    .replace(/_/g, " ")
+    .trim();
+  return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : step;
 }
 
 function formatDateInput(value: string): string {
@@ -877,6 +942,7 @@ function AgentDetailsModern({
   const status = statusMeta[agent.status];
   const operatingPlan = agent.operatingPlan || null;
   const workflowPolicy = agent.workflowPolicy || null;
+  const workflowBackbone = agent.workflowBackbone || null;
   const learningArtifacts = agent.learningArtifacts || null;
   const doneGatePolicy = agent.doneGatePolicy || null;
   const workflowMetricsCatalog = Array.isArray(agent.workflowMetricsCatalog) ? agent.workflowMetricsCatalog : [];
@@ -919,7 +985,7 @@ function AgentDetailsModern({
   const operatingPlanSource = React.useMemo(() => {
     const ruleCandidate = rulesApplied.find((rule) => /OPERATING_PLAN\.md$/i.test(asString(rule.location)));
     const contextCandidate = contextRefs.find((entry) => /OPERATING_PLAN\.md$/i.test(asString(entry.filePath)));
-    const fallbackPath = OPERATING_PLAN_PATH_FALLBACKS[agent.id] || "docs/subservices/oap/ANALYST_OPERATING_PLAN.md";
+    const fallbackPath = OPERATING_PLAN_PATH_FALLBACKS[agent.id] || "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md";
     const path = asString(ruleCandidate?.location) || asString(contextCandidate?.filePath) || fallbackPath;
     const title = asString(contextCandidate?.title) || asString(ruleCandidate?.title) || "Операционный стандарт агента";
     const pathHint = asString(contextCandidate?.pathHint) || asString(ruleCandidate?.description)
@@ -2073,7 +2139,7 @@ function AgentDetailsModern({
       "",
       "## Обязательная синхронизация изменений (contract-first)",
       "- При изменении логики раздела одновременно обновляются: UI, data-contract/schema, OAP docs, модалка `Правила работы раздела`.",
-      "- Эталон внедрения workflow хранится в `docs/subservices/oap/AGENT_WORKFLOW_PROMPT.md` и используется как базовый промт для analyst/designer карточек.",
+      "- Эталон operating rules хранится в `docs/subservices/oap/AGENT_OPERATIONS_RULES.md` и используется как канонический contract для analyst/designer карточек.",
       "- Нетривиальные изменения выполняются по циклу: Plan -> Execute -> Verify -> Learn.",
       "- Любая пользовательская correction фиксируется в lessons-loop как preventive rule.",
       "",
@@ -2647,6 +2713,46 @@ function AgentDetailsModern({
                     </Stack>
                   </Box>
 
+                  {workflowBackbone ? (
+                    <>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" component="div" sx={{ mb: 0.4 }}>
+                          Единый backbone для всех агентов
+                        </Typography>
+                        <Stack spacing={0.35}>
+                          {workflowBackbone.commonCoreSteps.map((step, index) => (
+                            <Typography key={`workflow-core-${step}`} variant="body2">{`${index + 1}. ${formatWorkflowStepLabel(step)}`}</Typography>
+                          ))}
+                        </Stack>
+                      </Box>
+
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" component="div" sx={{ mb: 0.4 }}>
+                          Уникальная ветка этого агента
+                        </Typography>
+                        <Typography variant="body2">{workflowBackbone.roleWindow.purpose}</Typography>
+                        <Stack spacing={0.35} sx={{ mt: 0.55 }}>
+                          {workflowBackbone.roleWindow.internalSteps.map((step, index) => (
+                            <Typography key={`workflow-role-${step}`} variant="body2">{`${index + 1}. ${formatWorkflowStepLabel(step)}`}</Typography>
+                          ))}
+                        </Stack>
+                        <Typography variant="caption" color="text.secondary" component="div" sx={{ mt: 0.6 }}>
+                          Вход в ветку: {formatWorkflowStepLabel(workflowBackbone.roleWindow.entryStep)}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" component="div">
+                          Выход из ветки: {formatWorkflowStepLabel(workflowBackbone.roleWindow.exitStep)}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" component="div">
+                          Неиспользованные этапы не удаляются из схемы и фиксируются как{" "}
+                          <strong>{workflowBackbone.stepExecutionPolicy.skippedStepStatus}</strong>.
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" component="div">
+                          Dynamic specialist instances: {workflowBackbone.supportsDynamicInstances ? "поддерживаются" : "не поддерживаются"}.
+                        </Typography>
+                      </Box>
+                    </>
+                  ) : null}
+
                   <Box>
                     <Typography variant="caption" color="text.secondary" component="div">
                       Путь
@@ -2755,7 +2861,7 @@ function AgentDetailsModern({
                   <Button
                     size="small"
                     variant="outlined"
-                    onClick={() => openArtifactText("docs/subservices/oap/AGENT_WORKFLOW_PROMPT.md", "OAP Workflow Prompt")}
+                    onClick={() => openArtifactText("docs/subservices/oap/AGENT_OPERATIONS_RULES.md", "OAP Agent Operations Rules")}
                   >
                     Открыть workflow prompt
                   </Button>
@@ -2934,7 +3040,7 @@ function AgentDetailsModern({
                   Правила
                 </Typography>
                 {rulesApplied.length > 0 ? (
-                  <Stack spacing={1}>
+                  <Stack spacing={0.75} divider={<Divider flexItem />}>
                     {rulesApplied.map((rule, index) => {
                       const rulePath = asString(rule.location);
                       const doc = rulePath ? docsByPath.get(normalizePath(rulePath)) : null;
@@ -2960,41 +3066,12 @@ function AgentDetailsModern({
                         .join("\n");
 
                       return (
-                        <Paper key={`${agent.id}-rule-${index}`} variant="outlined" sx={{ p: 1.1 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                            Источник: {modalTitle}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary" component="div">
-                            Файл: {rulePath || "не зафиксирован"}
-                          </Typography>
-                          {focusHint ? (
-                            <Typography variant="caption" color="text.secondary" component="div">
-                              Фокус: {focusHint}
-                            </Typography>
-                          ) : null}
-                          <Typography variant="caption" color="text.secondary" component="div" sx={{ mt: 0.45 }}>
-                            Релевантный фрагмент:
-                          </Typography>
-                          <Box
-                            sx={{
-                              mt: 0.4,
-                              border: "1px solid",
-                              borderColor: "divider",
-                              borderRadius: 1.5,
-                              p: 0.9,
-                              bgcolor: "grey.50",
-                              maxHeight: 180,
-                              overflow: "auto",
-                              whiteSpace: "pre-wrap",
-                              fontSize: 12,
-                              fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-                            }}
-                          >
-                            {fragment.content || ruleFullText}
-                          </Box>
-                          <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 0.6 }}>
-                            <Button
+                        <Box key={`${agent.id}-rule-${index}`}>
+                          <Stack direction="row" spacing={0.75} alignItems="center" useFlexGap flexWrap="wrap">
+                            <Chip
                               size="small"
+                              variant="outlined"
+                              label={modalTitle}
                               onClick={() =>
                                 openTextModal({
                                   title: modalTitle,
@@ -3004,16 +3081,48 @@ function AgentDetailsModern({
                                   sourceUrl: ruleSourceUrl || null,
                                 })
                               }
-                            >
-                              Открыть фрагмент в модалке
-                            </Button>
-                            {ruleSourceUrl ? (
-                              <Button size="small" component={Link} href={ruleSourceUrl} target="_blank" rel="noopener noreferrer">
-                                Открыть source-файл
-                              </Button>
-                            ) : null}
+                              sx={{ cursor: "pointer" }}
+                            />
+                            {rulePath ? (
+                              <Link
+                                component="a"
+                                href="#"
+                                underline="hover"
+                                variant="caption"
+                                sx={{
+                                  fontSize: "0.75rem",
+                                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                                  userSelect: "text",
+                                  WebkitUserSelect: "text",
+                                  MozUserSelect: "text",
+                                  lineBreak: "anywhere",
+                                }}
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  if (isTextSelectionActive()) return;
+                                  openTextModal({
+                                    title: modalTitle,
+                                    content: modalContent,
+                                    path: rulePath,
+                                    updatedAt: doc?.updatedAt || null,
+                                    sourceUrl: ruleSourceUrl || null,
+                                  });
+                                }}
+                              >
+                                {rulePath}
+                              </Link>
+                            ) : (
+                              <Typography variant="caption" color="text.secondary">
+                                Путь не зафиксирован
+                              </Typography>
+                            )}
                           </Stack>
-                        </Paper>
+                          {focusHint ? (
+                            <Typography variant="caption" color="text.secondary" component="div" sx={{ mt: 0.35 }}>
+                              Фокус: {focusHint}
+                            </Typography>
+                          ) : null}
+                        </Box>
                       );
                     })}
                   </Stack>
@@ -3615,7 +3724,7 @@ function AgentDetailsLegacy({
               {usedSkills.map((skill) => (
                 <Box key={`${agent.id}-used-skill-${skill.name}`}>
                   <Stack direction="row" spacing={0.75} alignItems="center" useFlexGap flexWrap="wrap">
-                    <Chip size="small" variant="outlined" label={skill.name} />
+                    <SkillToolMcpTooltip name={skill.name} size="small" variant="outlined" />
                   </Stack>
                   {skill.usage ? (
                     <Typography variant="caption" color="text.secondary">
@@ -3644,7 +3753,7 @@ function AgentDetailsLegacy({
               <Stack spacing={0.75} divider={<Divider flexItem />}>
                 {(agent.availableSkills || []).map((skill) => (
                   <Box key={`${agent.id}-available-skill-${skill.name}`}>
-                    <Chip size="small" variant="outlined" label={skill.name} />
+                    <SkillToolMcpTooltip name={skill.name} size="small" variant="outlined" />
                     {skill.benefit ? (
                       <Typography variant="caption" color="text.secondary" component="div" sx={{ mt: 0.25 }}>
                         {skill.benefit}
@@ -3819,99 +3928,15 @@ export function UnifiedAgentDrawer({
   onTabChange?: (tabKey: AgentTabKey) => void;
   onCopyLink?: () => Promise<boolean>;
 }) {
-  const fallbackDocsByPath = React.useMemo(() => buildDocsByPath(getAgentModalDocs()), []);
-  const resolvedDocsByPath = docsByPath || fallbackDocsByPath;
-  const selectedAgent = React.useMemo<AgentMeta | null>(() => {
-    if (!agent) return null;
-    return asMeta(agent as AgentSummary);
-  }, [agent]);
-  const selectedStatus = selectedAgent ? statusMeta[selectedAgent.status] : null;
-  const handleOpenTask = React.useCallback(
-    (taskKey: string, source: TaskLookupSource) => {
-      if (!onOpenTask) return;
-      onOpenTask(taskKey, source);
-    },
-    [onOpenTask],
-  );
-  const [copiedLink, setCopiedLink] = React.useState(false);
-  const copyTimeoutRef = React.useRef<number | null>(null);
-  const handleCopyLink = React.useCallback(async () => {
-    if (!onCopyLink) return;
-    const copied = await onCopyLink();
-    setCopiedLink(copied);
-    if (copyTimeoutRef.current !== null) {
-      window.clearTimeout(copyTimeoutRef.current);
-    }
-    copyTimeoutRef.current = window.setTimeout(() => {
-      setCopiedLink(false);
-      copyTimeoutRef.current = null;
-    }, 1500);
-  }, [onCopyLink]);
-
-  React.useEffect(() => {
-    setCopiedLink(false);
-  }, [selectedAgent?.id, tabKey]);
-
-  const resolvedTabKey = tabKey || "overview";
-  const resolvedOnTabChange = onTabChange || (() => {});
-
-  React.useEffect(() => {
-    return () => {
-      if (copyTimeoutRef.current !== null) {
-        window.clearTimeout(copyTimeoutRef.current);
-      }
-    };
-  }, []);
-
   return (
-    <Drawer
-      anchor="right"
+    <AnalystCardDrawer
       open={open}
+      agent={agent as AgentSummary | null}
       onClose={onClose}
-      PaperProps={{ sx: { width: { xs: "100vw", sm: 660 }, maxWidth: "100vw", bgcolor: "background.default" } }}
-    >
-      <Box sx={{ pt: 1.5 }}>
-        {selectedAgent ? (
-          <>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 2.25, pb: 1.2 }}>
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                  {selectedAgent.name}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {selectedAgent.role}
-                </Typography>
-                {selectedStatus ? <Chip size="small" label={selectedStatus.label} color={selectedStatus.color} sx={{ mt: 0.75 }} /> : null}
-              </Box>
-              <Button size="small" variant="outlined" onClick={() => { void handleCopyLink(); }}>
-                {copiedLink ? "Ссылка скопирована" : "Скопировать ссылку"}
-              </Button>
-              <IconButton onClick={onClose} aria-label="Закрыть">
-                <CloseIcon />
-              </IconButton>
-            </Stack>
-            <Divider />
-            {isModernAgent(selectedAgent.id) ? (
-              <AgentDetailsModern
-                agent={selectedAgent}
-                docsByPath={resolvedDocsByPath}
-                onOpenTask={handleOpenTask}
-                tabKey={resolvedTabKey}
-                onTabChange={resolvedOnTabChange}
-              />
-            ) : (
-              <AgentDetailsLegacy
-                agent={selectedAgent}
-                docsByPath={resolvedDocsByPath}
-                onOpenTask={handleOpenTask}
-                tabKey={resolvedTabKey}
-                onTabChange={resolvedOnTabChange}
-              />
-            )}
-          </>
-        ) : null}
-      </Box>
-    </Drawer>
+      tabKey={tabKey || "overview"}
+      onTabChange={onTabChange}
+      onCopyLink={onCopyLink}
+    />
   );
 }
 
@@ -3926,8 +3951,12 @@ export function AgentsPage() {
   const [selectedAgentId, setSelectedAgentId] = React.useState<string | null>(null);
   const [selectedTabKey, setSelectedTabKey] = React.useState<AgentTabKey>("overview");
   const [selectedTaskId, setSelectedTaskId] = React.useState<string | null>(null);
+  const [selectedTaskServiceMode, setSelectedTaskServiceMode] = React.useState<AgentTaskServiceMode | undefined>(undefined);
   const [taskLookupModal, setTaskLookupModal] = React.useState<TextModalPayload | null>(null);
+  const [comparisonModalOpen, setComparisonModalOpen] = React.useState(false);
+  const [comparisonJournalKey, setComparisonJournalKey] = React.useState<string | null>(null);
   const taskLookupCacheRef = React.useRef<Map<string, string | null>>(new Map());
+  const taskServiceModeCacheRef = React.useRef<Map<string, AgentTaskServiceMode>>(new Map());
 
   const agents = React.useMemo(() => manifest.agents.map(asMeta), [manifest.agents]);
   const knownAgentIds = React.useMemo(() => new Set(agents.map((agent) => agent.id)), [agents]);
@@ -3935,10 +3964,18 @@ export function AgentsPage() {
     const found = agents.find((agent) => agent.id === agentId);
     return found ? isModernAgent(found.id) : null;
   }, [agents]);
-  const applyRouteState = React.useCallback((state: { agentId: string | null; tabKey: string | null | undefined }) => {
+  const applyRouteState = React.useCallback((state: {
+    agentId: string | null;
+    tabKey: string | null | undefined;
+    modalKey?: AgentsModalKey | null;
+    modalEntityKey?: string | null;
+  }) => {
     const canonical = canonicalizeState(state, knownAgentIds, resolveAgentKind);
     setSelectedAgentId(canonical.agentId);
     setSelectedTabKey(canonical.tabKey);
+    const isComparisonModalVisible = canonical.modalKey === "capability_comparison" || canonical.modalKey === "capability_journal";
+    setComparisonModalOpen(isComparisonModalVisible);
+    setComparisonJournalKey(canonical.modalKey === "capability_journal" ? canonical.modalEntityKey : null);
     const nextHash = buildAgentsHash(canonical);
     if (window.location.hash !== nextHash) {
       window.history.replaceState(window.history.state, "", nextHash);
@@ -3955,17 +3992,49 @@ export function AgentsPage() {
     if (!selectedAgentId) return;
     applyRouteState({ agentId: selectedAgentId, tabKey });
   }, [applyRouteState, selectedAgentId]);
+  const openComparisonModal = React.useCallback(() => {
+    applyRouteState({
+      agentId: selectedAgentId,
+      tabKey: selectedTabKey,
+      modalKey: "capability_comparison",
+      modalEntityKey: null,
+    });
+  }, [applyRouteState, selectedAgentId, selectedTabKey]);
+  const closeComparisonModal = React.useCallback(() => {
+    applyRouteState({
+      agentId: selectedAgentId,
+      tabKey: selectedTabKey,
+      modalKey: null,
+      modalEntityKey: null,
+    });
+  }, [applyRouteState, selectedAgentId, selectedTabKey]);
+  const handleComparisonJournalRouteChange = React.useCallback((rowKey: string | null) => {
+    applyRouteState({
+      agentId: selectedAgentId,
+      tabKey: selectedTabKey,
+      modalKey: rowKey ? "capability_journal" : "capability_comparison",
+      modalEntityKey: rowKey,
+    });
+  }, [applyRouteState, selectedAgentId, selectedTabKey]);
   const handleCopyLink = React.useCallback(async () => {
     if (!selectedAgentId) return false;
+    const modalKey: AgentsModalKey | null = comparisonModalOpen
+      ? (comparisonJournalKey ? "capability_journal" : "capability_comparison")
+      : null;
     const canonical = canonicalizeState(
-      { agentId: selectedAgentId, tabKey: selectedTabKey },
+      {
+        agentId: selectedAgentId,
+        tabKey: selectedTabKey,
+        modalKey,
+        modalEntityKey: comparisonJournalKey,
+      },
       knownAgentIds,
       resolveAgentKind,
     );
     const hash = buildAgentsHash(canonical);
     const deepLink = `${window.location.origin}${window.location.pathname}${hash}`;
     return copyTextToClipboard(deepLink);
-  }, [knownAgentIds, resolveAgentKind, selectedAgentId, selectedTabKey]);
+  }, [comparisonJournalKey, comparisonModalOpen, knownAgentIds, resolveAgentKind, selectedAgentId, selectedTabKey]);
 
   React.useEffect(() => {
     applyRouteState(parseAgentsHash(window.location.hash, resolveAgentKind));
@@ -4063,6 +4132,7 @@ export function AgentsPage() {
       if (cachedTaskId !== undefined) {
         if (cachedTaskId) {
           setSelectedTaskId(cachedTaskId);
+          setSelectedTaskServiceMode(taskServiceModeCacheRef.current.get(normalizedKey));
           return;
         }
         openTaskLookupFallback(normalizedKey, source);
@@ -4087,7 +4157,9 @@ export function AgentsPage() {
 
         if (exactMatch) {
           taskLookupCacheRef.current.set(normalizedKey, exactMatch.id);
+          taskServiceModeCacheRef.current.set(normalizedKey, exactMatch.service_mode);
           setSelectedTaskId(exactMatch.id);
+          setSelectedTaskServiceMode(exactMatch.service_mode);
           return;
         }
 
@@ -4117,6 +4189,16 @@ export function AgentsPage() {
           <Typography variant="body2" color="text.secondary">
             Мониторинг нагрузки, статусов и инструментов агентов по единому реестру.
           </Typography>
+          <Box>
+            <Button
+              variant="text"
+              size="small"
+              onClick={openComparisonModal}
+              sx={{ px: 0, minWidth: 0, justifyContent: "flex-start", textTransform: "none", fontWeight: 600 }}
+            >
+              Сравнительная таблица Rules, Tools, Skills, MCP
+            </Button>
+          </Box>
         </Stack>
 
         <Box
@@ -4261,6 +4343,9 @@ export function AgentsPage() {
                           </Typography>
                           <Chip size="small" label={statusMeta[agent.status].label} color={statusMeta[agent.status].color} />
                           <Chip size="small" variant="outlined" label={`MCP: ${agent.mcpServers.length}`} />
+                          <Chip size="small" variant="outlined" color={AGENT_CLASS_META[agent.agentClass].color} label={AGENT_CLASS_META[agent.agentClass].label} />
+                          <Chip size="small" variant="outlined" color={AGENT_ORIGIN_META[agent.origin].color} label={AGENT_ORIGIN_META[agent.origin].label} />
+                          <Chip size="small" variant="outlined" color={AGENT_LIFECYCLE_META[agent.lifecycle].color} label={AGENT_LIFECYCLE_META[agent.lifecycle].label} />
                         </Stack>
 
                         <Typography variant="body2" color="text.secondary">
@@ -4297,7 +4382,7 @@ export function AgentsPage() {
 
                         <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
                           {previewSkills.slice(0, 5).map((item) => (
-                            <Chip key={`${agent.id}-skill-${item}`} size="small" variant="outlined" label={item} />
+                            <SkillToolMcpTooltip key={`${agent.id}-skill-${item}`} name={item} size="small" variant="outlined" />
                           ))}
                           {previewSkills.length > 5 ? (
                             <Chip size="small" variant="outlined" label={`+${previewSkills.length - 5} навыков`} />
@@ -4326,11 +4411,11 @@ export function AgentsPage() {
 
                         <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
                           {agent.mcpServers.map((server) => (
-                            <Chip
+                            <SkillToolMcpTooltip
                               key={`${agent.id}-mcp-${server.name}`}
+                              name={server.name}
                               size="small"
-                              color={mcpStatusMeta[server.status].color}
-                              label={`${server.name}: ${mcpStatusMeta[server.status].label}`}
+                              status={server.status}
                             />
                           ))}
                         </Stack>
@@ -4352,30 +4437,31 @@ export function AgentsPage() {
         )}
       </Stack>
 
-      {selectedAgentId === "analyst-agent" ? (
-        <AnalystCardDrawer
-          open={Boolean(selectedAgent)}
-          agent={selectedAgent}
-          onClose={closeAgentDrawer}
-        />
-      ) : (
-        <UnifiedAgentDrawer
-          open={Boolean(selectedAgent)}
-          agent={selectedAgent}
-          onClose={closeAgentDrawer}
-          onOpenTask={openTaskByKey}
-          docsByPath={docsByPath}
-          tabKey={selectedTabKey}
-          onTabChange={handleTabChange}
-          onCopyLink={handleCopyLink}
-        />
-      )}
+      <UnifiedAgentDrawer
+        open={Boolean(selectedAgent)}
+        agent={selectedAgent}
+        onClose={closeAgentDrawer}
+        onOpenTask={openTaskByKey}
+        docsByPath={docsByPath}
+        tabKey={selectedTabKey}
+        onTabChange={handleTabChange}
+        onCopyLink={handleCopyLink}
+      />
+
+      <CapabilityComparisonModal
+        open={comparisonModalOpen}
+        onClose={closeComparisonModal}
+        journalRowKey={comparisonJournalKey}
+        onJournalRowKeyChange={handleComparisonJournalRouteChange}
+        agents={agents}
+      />
 
       <TaskDetailsDrawer
         open={Boolean(selectedTaskId)}
         taskId={selectedTaskId}
-        onClose={() => setSelectedTaskId(null)}
+        onClose={() => { setSelectedTaskId(null); setSelectedTaskServiceMode(undefined); }}
         onOpenAgent={(agentId) => openAgentByRoute(agentId)}
+        serviceMode={selectedTaskServiceMode}
       />
 
       <TextContentModal

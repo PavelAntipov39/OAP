@@ -1,20 +1,9 @@
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import { Chip, Stack, Tooltip, Typography } from "@mui/material";
+import { Stack, Tooltip, Typography } from "@mui/material";
 import type { AgentSummary } from "../../../lib/generatedData";
+import type { ToolMcpMetadata } from "../../../lib/toolsMcpRegistry";
 import { SectionBlock } from "../SectionBlock";
-import { FilePathLink } from "../FilePathLink";
-
-function displayPath(path: string): string {
-  const value = String(path || "").trim();
-  if (!value) return value;
-  const repoMarker = "/Downloads/VS Code/ОАП/";
-  const codexMarker = "/.codex/";
-  const repoIdx = value.indexOf(repoMarker);
-  if (repoIdx !== -1) return value.slice(repoIdx + repoMarker.length);
-  const codexIdx = value.indexOf(codexMarker);
-  if (codexIdx !== -1) return value.slice(codexIdx + 1);
-  return value;
-}
+import { SkillToolMcpTooltip } from "../../skill-tooltip/SkillToolMcpTooltip";
 
 function SectionTitle({ title, tooltip }: { title: string; tooltip: string }) {
   return (
@@ -51,13 +40,6 @@ export function SkillsSection({
     normalizedLatestSkills.length > 0
       ? normalizedLatestSkills
       : Array.from(new Set(effectiveUsedSkills.map((item) => item?.name || "").filter(Boolean)));
-  const skillPaths = Array.from(
-    new Set(
-      effectiveUsedSkills
-        .map((item) => String(item?.skillFilePath || "").trim())
-        .filter(Boolean),
-    ),
-  );
   const usedTools = Array.isArray(agent.usedTools) ? agent.usedTools : [];
   const availableTools = Array.isArray(agent.availableTools) ? agent.availableTools : [];
   const usedMcp = Array.isArray(agent.usedMcp) ? agent.usedMcp : [];
@@ -81,17 +63,10 @@ export function SkillsSection({
           ) : (
             <Stack direction="row" spacing={0.7} useFlexGap flexWrap="wrap">
               {skillNamesToRender.map((name) => (
-                <Chip key={`work-contour-skill-${name}`} size="small" variant="outlined" label={name} />
+                <SkillToolMcpTooltip key={`work-contour-skill-${name}`} name={name} variant="outlined" size="small" onOpenFile={onOpenFile} />
               ))}
             </Stack>
           )}
-          {skillPaths.length > 0 ? (
-            <Stack spacing={0.35}>
-              {skillPaths.map((path) => (
-                <FilePathLink key={`work-contour-skill-path-${path}`} path={path} label={displayPath(path)} onClick={onOpenFile} />
-              ))}
-            </Stack>
-          ) : null}
         </Stack>
 
         <Stack spacing={0.6}>
@@ -103,10 +78,7 @@ export function SkillsSection({
             <Stack spacing={0.5}>
               {usedTools.map((tool) => (
                 <Stack key={`work-contour-tool-${tool.name}`} direction="row" spacing={0.75} alignItems="center" useFlexGap flexWrap="wrap">
-                  <Chip size="small" variant="outlined" label={tool.name} />
-                  <Typography variant="caption" color="text.secondary">
-                    {tool.usage}
-                  </Typography>
+                  <SkillToolMcpTooltip name={tool.name} variant="outlined" size="small" onOpenFile={onOpenFile} />
                 </Stack>
               ))}
             </Stack>
@@ -130,7 +102,7 @@ export function SkillsSection({
           {usedMcp.length > 0 ? (
             <Stack direction="row" spacing={0.7} useFlexGap flexWrap="wrap">
               {usedMcp.map((item) => (
-                <Chip key={`work-contour-mcp-${item.name}`} size="small" variant="outlined" label={`${item.name} (${item.status})`} />
+                <SkillToolMcpTooltip key={`work-contour-mcp-${item.name}`} name={item.name} status={item.status} variant="outlined" size="small" onOpenFile={onOpenFile} />
               ))}
             </Stack>
           ) : (
@@ -146,23 +118,33 @@ export function SkillsSection({
             tooltip="Операционные планы и policy-документы, которыми агент руководствуется в задачах."
           />
           {rulesApplied.length > 0 ? (
-            <Stack spacing={0.4}>
+            <Stack direction="row" spacing={0.7} useFlexGap flexWrap="wrap">
               {rulesApplied.map((rule, index) => {
                 const ruleTitle = String(rule?.title || "").trim() || `Правило ${index + 1}`;
+                const ruleDescription = String(rule?.description || "").trim();
+                const firstRuleLine = String(rule?.fullText || "")
+                  .split("\n")
+                  .map((line) => line.trim())
+                  .find(Boolean);
                 const rulePath = String(rule?.location || "").trim();
+
+                const metadataOverride: ToolMcpMetadata = {
+                  name: ruleTitle,
+                  type: "rule",
+                  description: ruleDescription || firstRuleLine || "Описание правила не зафиксировано.",
+                  filePath: rulePath || undefined,
+                };
+
                 return (
-                  <Stack key={`work-contour-rule-${index}`} spacing={0.15}>
-                    <Typography variant="caption" sx={{ fontWeight: 700 }}>
-                      {ruleTitle}
-                    </Typography>
-                    {rulePath ? (
-                      <FilePathLink path={rulePath} label={displayPath(rulePath)} onClick={onOpenFile} />
-                    ) : (
-                      <Typography variant="caption" color="text.secondary">
-                        путь не зафиксирован
-                      </Typography>
-                    )}
-                  </Stack>
+                  <SkillToolMcpTooltip
+                    key={`work-contour-rule-${index}`}
+                    name={ruleTitle}
+                    label={ruleTitle}
+                    variant="outlined"
+                    size="small"
+                    onOpenFile={onOpenFile}
+                    metadataOverride={metadataOverride}
+                  />
                 );
               })}
             </Stack>

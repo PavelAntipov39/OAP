@@ -22,6 +22,15 @@ sync = _load_module()
 
 
 class SyncAgentTasksTests(unittest.TestCase):
+    def test_build_db_schema_candidates_requires_explicit_legacy_schema(self):
+        self.assertEqual(sync.build_db_schema_candidates("oap"), ["oap"])
+        self.assertEqual(sync.build_db_schema_candidates("bible"), ["bible"])
+        self.assertEqual(sync.build_db_schema_candidates(None), ["oap"])
+
+    def test_build_db_schema_candidates_rejects_unknown_schema(self):
+        with self.assertRaises(ValueError):
+            sync.build_db_schema_candidates("unknown")
+
     def test_slugify_falls_back_to_hash_for_non_ascii(self):
         slug = sync.slugify("Авто-проверка локализации статусов")
         self.assertTrue(slug.startswith("name-"))
@@ -79,6 +88,9 @@ class SyncAgentTasksTests(unittest.TestCase):
         self.assertIn("operational_memory", context_package)
         self.assertIn("collaboration_plan", context_package)
         self.assertIn("ab_test_plan", context_package)
+        self.assertIn("strategy", context_package["collaboration_plan"])
+        self.assertIn("spawned_instances", context_package["collaboration_plan"])
+        self.assertIn("orchestration_budget", context_package["collaboration_plan"])
         self.assertEqual(context_package["ab_test_plan"]["pass_rule"], "target_plus_guardrails")
         self.assertGreaterEqual(context_package["ab_test_plan"]["sessions_required"], 3)
         self.assertLessEqual(context_package["ab_test_plan"]["sessions_required"], 8)
@@ -91,6 +103,8 @@ class SyncAgentTasksTests(unittest.TestCase):
         self.assertIn("operational_memory", rec_context)
         self.assertIn("collaboration_plan", rec_context)
         self.assertIn("ab_test_plan", rec_context)
+        self.assertIn("reuse_candidates", rec_context["collaboration_plan"])
+        self.assertIn("created_profiles", rec_context["collaboration_plan"])
 
     def test_recommendation_object_links_improvement_explicitly(self):
         registry = {
@@ -145,6 +159,46 @@ class SyncAgentTasksTests(unittest.TestCase):
         self.assertIn("linked_elements", brief)
         self.assertTrue(any(item.get("type") == "improvement" for item in brief["linked_elements"]))
         self.assertGreaterEqual(len(brief["acceptance_criteria"]), 1)
+
+    def test_collaboration_plan_immediate_promotion_appends_registry_profile(self):
+        registry = {
+            "agents": [
+                {
+                    "id": "analyst-agent",
+                    "role": "analyst",
+                }
+            ]
+        }
+
+        first_plan = sync.build_collaboration_plan(
+            task_id="imp:reader:retrieval-audit",
+            root_agent_id="analyst-agent",
+            hint_text="retrieval evidence qmd context audit",
+            suggested_agents=[],
+            rationale="Need specialist retrieval audit.",
+            registry=registry,
+            target_metric="evidence_link_coverage",
+            owner_section="memory_context",
+            linked_snapshot=None,
+        )
+
+        self.assertGreaterEqual(len(first_plan["created_profiles"]), 1)
+        created_profile_id = first_plan["created_profiles"][0]["id"]
+        self.assertTrue(any(item.get("id") == created_profile_id for item in registry["agents"]))
+
+        second_plan = sync.build_collaboration_plan(
+            task_id="imp:reader:retrieval-audit-second",
+            root_agent_id="analyst-agent",
+            hint_text="retrieval evidence qmd context audit",
+            suggested_agents=[],
+            rationale="Need specialist retrieval audit.",
+            registry=registry,
+            target_metric="evidence_link_coverage",
+            owner_section="memory_context",
+            linked_snapshot=None,
+        )
+
+        self.assertEqual(second_plan["created_profiles"], [])
 
     def test_seed_tasks_keep_explicit_origin_cycle_id_only_when_provided(self):
         registry = {
@@ -251,6 +305,9 @@ class SyncAgentTasksTests(unittest.TestCase):
         self.assertIn("operational_memory", payload)
         self.assertIn("collaboration_plan", payload)
         self.assertIn("ab_test_plan", payload)
+        self.assertIn("strategy", payload["collaboration_plan"])
+        self.assertIn("spawned_instances", payload["collaboration_plan"])
+        self.assertIn("orchestration_budget", payload["collaboration_plan"])
         self.assertEqual(payload["ab_test_plan"]["pass_rule"], "target_plus_guardrails")
         self.assertGreaterEqual(int(payload["ab_test_plan"]["sessions_required"]), 3)
         self.assertLessEqual(int(payload["ab_test_plan"]["sessions_required"]), 8)

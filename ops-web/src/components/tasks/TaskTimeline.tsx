@@ -30,13 +30,19 @@ export function TaskTimeline({ events }: { events: AgentTaskTimelineEvent[] }) {
               primary={
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }} useFlexGap>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {event.event_type || "не зафиксировано"}
+                    {event.step_label || event.event_type || "не зафиксировано"}
                   </Typography>
+                  {event.step_key ? <Chip size="small" variant="outlined" label={event.step_key} /> : null}
                   {event.status_to ? <Chip size="small" label={event.status_to} /> : null}
                 </Stack>
               }
               secondary={
                 <Stack spacing={0.2} sx={{ mt: 0.4 }}>
+                  {event.step_raw && event.step_raw !== event.step_key ? (
+                    <Typography variant="caption" color="text.secondary">
+                      Источник шага: {event.step_raw}
+                    </Typography>
+                  ) : null}
                   <Typography variant="caption" color="text.secondary">
                     Агент: {event.actor_agent_id || "не зафиксировано"}
                   </Typography>

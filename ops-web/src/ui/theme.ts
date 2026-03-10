@@ -104,6 +104,18 @@ export const opsTheme = createTheme({
           textTransform: "none",
           borderRadius: 10,
           fontWeight: 600,
+          WebkitUserSelect: "text",
+          userSelect: "text",
+        },
+      },
+    },
+    MuiLink: {
+      styleOverrides: {
+        root: {
+          "&.MuiLink-button": {
+            WebkitUserSelect: "text",
+            userSelect: "text",
+          },
         },
       },
     },
