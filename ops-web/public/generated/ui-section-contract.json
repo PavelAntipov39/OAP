@@ -1,0 +1,142 @@
+{
+  "version": "ui_section_contract_v1",
+  "generated_at": "2026-03-10T13:18:03.696Z",
+  "sections": [
+    {
+      "section_id": "agents.modern.tab.overview",
+      "current_label": "Обзор",
+      "container_type": "tab",
+      "card_type": "modern_agent_drawer",
+      "visibility": "default",
+      "source_file": "ops-web/src/pages/AgentsPage.tsx"
+    },
+    {
+      "section_id": "agents.modern.tab.mcp",
+      "current_label": "MCP",
+      "container_type": "tab",
+      "card_type": "modern_agent_drawer",
+      "visibility": "default",
+      "source_file": "ops-web/src/pages/AgentsPage.tsx"
+    },
+    {
+      "section_id": "agents.modern.tab.skills_rules",
+      "current_label": "Навыки и Правила",
+      "container_type": "tab",
+      "card_type": "modern_agent_drawer",
+      "visibility": "default",
+      "source_file": "ops-web/src/pages/AgentsPage.tsx"
+    },
+    {
+      "section_id": "agents.modern.tab.tasks_quality",
+      "current_label": "Задачи и качество",
+      "container_type": "tab",
+      "card_type": "modern_agent_drawer",
+      "visibility": "default",
+      "source_file": "ops-web/src/pages/AgentsPage.tsx"
+    },
+    {
+      "section_id": "agents.modern.tab.memory_context",
+      "current_label": "Память и контекст",
+      "container_type": "tab",
+      "card_type": "modern_agent_drawer",
+      "visibility": "default",
+      "source_file": "ops-web/src/pages/AgentsPage.tsx"
+    },
+    {
+      "section_id": "agents.modern.tab.improvements",
+      "current_label": "Улучшения",
+      "container_type": "tab",
+      "card_type": "modern_agent_drawer",
+      "visibility": "default",
+      "source_file": "ops-web/src/pages/AgentsPage.tsx"
+    },
+    {
+      "section_id": "agents.legacy.tab.overview",
+      "current_label": "Обзор",
+      "container_type": "tab",
+      "card_type": "legacy_agent_drawer",
+      "visibility": "default",
+      "source_file": "ops-web/src/pages/AgentsPage.tsx"
+    },
+    {
+      "section_id": "agents.legacy.tab.skills_rules",
+      "current_label": "Навыки / Skills",
+      "container_type": "tab",
+      "card_type": "legacy_agent_drawer",
+      "visibility": "default",
+      "source_file": "ops-web/src/pages/AgentsPage.tsx"
+    },
+    {
+      "section_id": "agents.legacy.tab.tasks_quality",
+      "current_label": "Задачи",
+      "container_type": "tab",
+      "card_type": "legacy_agent_drawer",
+      "visibility": "default",
+      "source_file": "ops-web/src/pages/AgentsPage.tsx"
+    },
+    {
+      "section_id": "agents.legacy.tab.memory_context",
+      "current_label": "Память и контекст",
+      "container_type": "tab",
+      "card_type": "legacy_agent_drawer",
+      "visibility": "default",
+      "source_file": "ops-web/src/pages/AgentsPage.tsx"
+    },
+    {
+      "section_id": "agents.legacy.tab.improvements",
+      "current_label": "Улучшения",
+      "container_type": "tab",
+      "card_type": "legacy_agent_drawer",
+      "visibility": "default",
+      "source_file": "ops-web/src/pages/AgentsPage.tsx"
+    },
+    {
+      "section_id": "agents.legacy.analyst.drawer.how_it_works",
+      "current_label": "Как работает ИИ агент",
+      "container_type": "drawer_block",
+      "card_type": "legacy_analyst_drawer",
+      "visibility": "default",
+      "source_file": "ops-web/src/components/analyst-card/sections/AgentProcessSection.tsx"
+    },
+    {
+      "section_id": "agents.legacy.analyst.drawer.work_contour",
+      "current_label": "Рабочий контур агента",
+      "container_type": "drawer_block",
+      "card_type": "legacy_analyst_drawer",
+      "visibility": "default",
+      "source_file": "ops-web/src/components/analyst-card/sections/SkillsSection.tsx"
+    },
+    {
+      "section_id": "agents.legacy.analyst.drawer.memory",
+      "current_label": "Память",
+      "container_type": "drawer_block",
+      "card_type": "legacy_analyst_drawer",
+      "visibility": "default",
+      "source_file": "ops-web/src/components/analyst-card/sections/MemorySection.tsx"
+    },
+    {
+      "section_id": "agents.legacy.analyst.drawer.risks",
+      "current_label": "Риски",
+      "container_type": "drawer_block",
+      "card_type": "legacy_analyst_drawer",
+      "visibility": "default",
+      "source_file": "ops-web/src/components/analyst-card/sections/RisksSection.tsx"
+    },
+    {
+      "section_id": "agents.legacy.analyst.drawer.sessions",
+      "current_label": "Сессии",
+      "container_type": "drawer_block",
+      "card_type": "legacy_analyst_drawer",
+      "visibility": "default",
+      "source_file": "ops-web/src/components/analyst-card/sections/SessionsSection.tsx"
+    },
+    {
+      "section_id": "agents.legacy.analyst.drawer.self_improvement",
+      "current_label": "Самоулучшение агента (Self-improvement loop)",
+      "container_type": "drawer_block",
+      "card_type": "legacy_analyst_drawer",
+      "visibility": "default",
+      "source_file": "ops-web/src/components/analyst-card/sections/SelfImprovementSection.tsx"
+    }
+  ]
+}

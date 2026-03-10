@@ -1,0 +1,214 @@
+{
+  "updatedAt": "2026-03-07T00:00:00Z",
+  "source": "oap-template-catalog",
+  "version": "v1",
+  "templates": [
+    {
+      "id": "retrieval-audit",
+      "name": "Retrieval Audit Specialist",
+      "specializationScope": "Audit retrieval quality, evidence coverage, and source consistency for decision-making tasks.",
+      "defaultSkills": [
+        "doc"
+      ],
+      "defaultTools": [
+        "QMD retrieval"
+      ],
+      "defaultMcp": [
+        "qmd"
+      ],
+      "defaultRules": [
+        "QMD Retrieval Policy",
+        "Source of truth: спецификация проекта"
+      ],
+      "capabilityOptimization": {
+        "enabled": true,
+        "refreshMode": "on_run",
+        "sourcePolicy": "official_first",
+        "trialMode": "shadow",
+        "promotionMode": "human_approve",
+        "minShadowSampleSize": 3,
+        "staleAfterHours": 168
+      },
+      "workflowBackbone": {
+        "version": "universal_backbone_v1",
+        "commonCoreSteps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize",
+          "step_9_publish_snapshots"
+        ],
+        "roleWindow": {
+          "entryStep": "step_5_role_window",
+          "exitStep": "step_6_role_exit_decision",
+          "purpose": "Выполнить узкую specialist-проверку в bounded role window и вернуть нормализованный result package.",
+          "internalSteps": [
+            "role_analyze_domain_task",
+            "role_execute_domain_logic",
+            "role_prepare_result_package"
+          ]
+        },
+        "stepExecutionPolicy": {
+          "skippedStepsAllowed": true,
+          "skippedStepStatus": "skipped"
+        },
+        "supportsDynamicInstances": true
+      },
+      "capabilityContract": {
+        "mission": "Verify that conclusions are backed by relevant, fresh, and auditable evidence.",
+        "entryCriteria": [
+          "Task includes retrieval-heavy context or evidence-based requirements.",
+          "Source set spans multiple docs/contracts/policies."
+        ],
+        "doneCondition": "Evidence map is complete, contradictions resolved, and missing anchors explicitly reported.",
+        "outputSchema": "retrieval_audit_report.v1"
+      }
+    },
+    {
+      "id": "ui-verification",
+      "name": "UI Verification Specialist",
+      "specializationScope": "Validate frontend behavior with browser automation, reproducible interaction steps, and visual/content checks.",
+      "defaultSkills": [
+        "playwright"
+      ],
+      "defaultTools": [
+        "Browser verification"
+      ],
+      "defaultMcp": [
+        "playwright"
+      ],
+      "defaultRules": [
+        "OAP Design Rule",
+        "BPMN Process Map (Pilot)"
+      ],
+      "capabilityOptimization": {
+        "enabled": true,
+        "refreshMode": "on_run",
+        "sourcePolicy": "official_first",
+        "trialMode": "shadow",
+        "promotionMode": "human_approve",
+        "minShadowSampleSize": 3,
+        "staleAfterHours": 168
+      },
+      "workflowBackbone": {
+        "version": "universal_backbone_v1",
+        "commonCoreSteps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize",
+          "step_9_publish_snapshots"
+        ],
+        "roleWindow": {
+          "entryStep": "step_5_role_window",
+          "exitStep": "step_6_role_exit_decision",
+          "purpose": "Выполнить узкую specialist-проверку в bounded role window и вернуть нормализованный result package.",
+          "internalSteps": [
+            "role_analyze_domain_task",
+            "role_execute_domain_logic",
+            "role_prepare_result_package"
+          ]
+        },
+        "stepExecutionPolicy": {
+          "skippedStepsAllowed": true,
+          "skippedStepStatus": "skipped"
+        },
+        "supportsDynamicInstances": true
+      },
+      "capabilityContract": {
+        "mission": "Prevent UI regressions by proving runtime behavior in a real browser.",
+        "entryCriteria": [
+          "Task changes UI behavior, content, routing, or interactions.",
+          "A deterministic verification scenario can be executed."
+        ],
+        "doneCondition": "Critical flows pass in browser checks and deviations are documented with exact repro steps.",
+        "outputSchema": "ui_verification_report.v1"
+      }
+    },
+    {
+      "id": "telemetry-audit",
+      "name": "Telemetry Audit Specialist",
+      "specializationScope": "Validate telemetry semantics, event completeness, and KPI correctness for orchestrated agent workflows.",
+      "defaultSkills": [
+        "agent-telemetry"
+      ],
+      "defaultTools": [
+        "Telemetry report builder"
+      ],
+      "defaultMcp": [
+        "none"
+      ],
+      "defaultRules": [
+        "Agent Telemetry Logging",
+        "Universal Self-Improvement Loop"
+      ],
+      "capabilityOptimization": {
+        "enabled": true,
+        "refreshMode": "on_run",
+        "sourcePolicy": "official_first",
+        "trialMode": "shadow",
+        "promotionMode": "human_approve",
+        "minShadowSampleSize": 3,
+        "staleAfterHours": 168
+      },
+      "workflowBackbone": {
+        "version": "universal_backbone_v1",
+        "commonCoreSteps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize",
+          "step_9_publish_snapshots"
+        ],
+        "roleWindow": {
+          "entryStep": "step_5_role_window",
+          "exitStep": "step_6_role_exit_decision",
+          "purpose": "Выполнить узкую specialist-проверку в bounded role window и вернуть нормализованный result package.",
+          "internalSteps": [
+            "role_analyze_domain_task",
+            "role_execute_domain_logic",
+            "role_prepare_result_package"
+          ]
+        },
+        "stepExecutionPolicy": {
+          "skippedStepsAllowed": true,
+          "skippedStepStatus": "skipped"
+        },
+        "supportsDynamicInstances": true
+      },
+      "capabilityContract": {
+        "mission": "Ensure orchestration telemetry is complete enough to reconstruct execution and compute KPIs.",
+        "entryCriteria": [
+          "Task introduces or changes agent lifecycle, delegation, or metrics.",
+          "Events are expected to contain run/trace/task linkage."
+        ],
+        "doneCondition": "Telemetry report passes consistency checks and KPI formulas resolve without manual prompt inspection.",
+        "outputSchema": "telemetry_audit_report.v1"
+      }
+    }
+  ]
+}

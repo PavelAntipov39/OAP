@@ -1,0 +1,31 @@
+# Секреты — НИКОГДА не коммитить
+.env.local
+.env.*.local
+*.env
+
+# Runtime артефакты
+.logs/
+artifacts/
+
+# Node.js
+node_modules/
+ops-web/node_modules/
+ops-web/dist/
+ops-web/src/generated/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# Playwright test artifacts
+test-results/
+.playwright-cli/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# MCP config (содержит API-ключи)
+.vscode/mcp.json

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  id="Definitions_CharacterProfile"
+  targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="Process_CharacterProfile" name="Карточка персонажа" isExecutable="false">
+    <bpmn:startEvent id="StartEvent_1" name="Открыт персонаж" />
+    <bpmn:task id="Task_Reader" name="Reader: открыть карточку" />
+    <bpmn:task id="Task_RPC" name="RPC: получить профиль" />
+    <bpmn:exclusiveGateway id="Gateway_Data" name="Данные доступны?" />
+    <bpmn:task id="Task_ShowProfile" name="Показать карточку" />
+    <bpmn:task id="Task_ShowFallback" name="Показать fallback / ошибку" />
+    <bpmn:endEvent id="EndEvent_1" name="Готово" />
+
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_Reader" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_Reader" targetRef="Task_RPC" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_RPC" targetRef="Gateway_Data" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Gateway_Data" targetRef="Task_ShowProfile" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Gateway_Data" targetRef="Task_ShowFallback" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_ShowProfile" targetRef="EndEvent_1" />
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="Task_ShowFallback" targetRef="EndEvent_1" />
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_CharacterProfile">
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="120" y="130" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Reader_di" bpmnElement="Task_Reader">
+        <dc:Bounds x="200" y="108" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_RPC_di" bpmnElement="Task_RPC">
+        <dc:Bounds x="390" y="108" width="160" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Data_di" bpmnElement="Gateway_Data" isMarkerVisible="true">
+        <dc:Bounds x="590" y="122" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ShowProfile_di" bpmnElement="Task_ShowProfile">
+        <dc:Bounds x="690" y="48" width="170" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ShowFallback_di" bpmnElement="Task_ShowFallback">
+        <dc:Bounds x="690" y="190" width="170" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_1_di" bpmnElement="EndEvent_1">
+        <dc:Bounds x="910" y="130" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint xmlns:di="http://www.omg.org/spec/DD/20100524/DI" x="156" y="148" />
+        <di:waypoint xmlns:di="http://www.omg.org/spec/DD/20100524/DI" x="200" y="148" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint xmlns:di="http://www.omg.org/spec/DD/20100524/DI" x="350" y="148" />
+        <di:waypoint xmlns:di="http://www.omg.org/spec/DD/20100524/DI" x="390" y="148" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint xmlns:di="http://www.omg.org/spec/DD/20100524/DI" x="550" y="148" />
+        <di:waypoint xmlns:di="http://www.omg.org/spec/DD/20100524/DI" x="590" y="148" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint xmlns:di="http://www.omg.org/spec/DD/20100524/DI" x="640" y="148" />
+        <di:waypoint xmlns:di="http://www.omg.org/spec/DD/20100524/DI" x="690" y="88" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint xmlns:di="http://www.omg.org/spec/DD/20100524/DI" x="640" y="148" />
+        <di:waypoint xmlns:di="http://www.omg.org/spec/DD/20100524/DI" x="690" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint xmlns:di="http://www.omg.org/spec/DD/20100524/DI" x="860" y="88" />
+        <di:waypoint xmlns:di="http://www.omg.org/spec/DD/20100524/DI" x="928" y="148" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7">
+        <di:waypoint xmlns:di="http://www.omg.org/spec/DD/20100524/DI" x="860" y="230" />
+        <di:waypoint xmlns:di="http://www.omg.org/spec/DD/20100524/DI" x="928" y="148" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

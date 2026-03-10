@@ -1,0 +1,69 @@
+{
+  "operational_memory": [
+    {
+      "key": "goal",
+      "title": "Цель задачи",
+      "value": "Проверить эффект candidate-практики в A/B",
+      "source_ref": "docs/agents/registry.yaml"
+    },
+    {
+      "key": "target_metric",
+      "title": "Целевая метрика",
+      "value": "recommendation_action_rate",
+      "source_ref": "artifacts/agent_telemetry_summary.json"
+    }
+  ],
+  "collaboration_plan": {
+    "analysis_required": true,
+    "suggested_agents": ["designer-agent", "ops-agent"],
+    "selected_agents": [],
+    "rationale": "Нужны UI и release проверки для candidate-практики.",
+    "reviewed_at": null,
+    "strategy": "reuse_existing",
+    "reuse_candidates": [
+      {
+        "profile_id": "designer-agent",
+        "name": "Продуктовый дизайнер",
+        "score": 0.72,
+        "decision": "accepted",
+        "rationale": "Strong fit by specialization scope and capability overlap."
+      }
+    ],
+    "created_profiles": [],
+    "spawned_instances": [
+      {
+        "instance_id": "inst-001",
+        "profile_id": "designer-agent",
+        "parent_instance_id": null,
+        "root_agent_id": "analyst-agent",
+        "task_id": "rec:analyst-agent:rec-001",
+        "purpose": "UI verification for candidate task",
+        "depth": 0,
+        "allowed_skills": ["playwright"],
+        "allowed_tools": ["Browser verification"],
+        "allowed_mcp": ["playwright"],
+        "applied_rules": ["OAP Design Rule"],
+        "input_refs": [".specify/specs/001-oap/spec.md"],
+        "output_refs": [],
+        "status": "planned",
+        "verify_status": "pending"
+      }
+    ],
+    "orchestration_budget": {
+      "max_instances": 7,
+      "max_tokens": 120000,
+      "max_wall_clock_minutes": 45,
+      "max_no_progress_hops": 2
+    },
+    "delegation_depth": 0
+  },
+  "ab_test_plan": {
+    "enabled": true,
+    "sessions_required": 5,
+    "pass_rule": "target_plus_guardrails",
+    "target_metric": "recommendation_action_rate",
+    "expected_delta_pct": 8.0,
+    "guardrails": ["review_error_rate", "verification_pass_rate"],
+    "rollback_on_fail": true
+  }
+}

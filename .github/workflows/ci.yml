@@ -1,0 +1,43 @@
+name: OAP CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ops-web/package-lock.json
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install ops-web dependencies
+        run: npm --prefix ops-web ci
+
+      - name: Install Playwright Chromium
+        run: npm --prefix ops-web exec playwright install --with-deps chromium
+
+      - name: Run frontend and routing checks
+        run: npm --prefix ops-web run check
+
+      - name: Run Playwright smoke test
+        run: npm --prefix ops-web run test:e2e:smoke
+
+      - name: Run Python unit tests
+        run: python3 -m unittest discover -s scripts/tests -p 'test_*.py'
+
+      - name: Run Python compile checks
+        run: python3 -m py_compile scripts/agent_telemetry.py scripts/sync_agent_tasks.py scripts/agent_orchestration.py scripts/validate_request_router.py scripts/validate_agent_operating_plans.py scripts/validate_verification_contract.py

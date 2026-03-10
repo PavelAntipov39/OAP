@@ -1,0 +1,11 @@
+{
+  "version": "1.0.0",
+  "updatedAt": "2026-03-08",
+  "description": "Canonical verification contract for local checks and CI merge-gate.",
+  "commands": [
+    "npm --prefix ops-web run check",
+    "npm --prefix ops-web run test:e2e:smoke",
+    "python3 -m unittest discover -s scripts/tests -p 'test_*.py'",
+    "python3 -m py_compile scripts/agent_telemetry.py scripts/sync_agent_tasks.py scripts/agent_orchestration.py scripts/validate_request_router.py scripts/validate_agent_operating_plans.py scripts/validate_verification_contract.py"
+  ]
+}

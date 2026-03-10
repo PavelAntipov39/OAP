@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OAP Ops Hub</title>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+  <script>
+    (function triggerFigmaCaptureFromHashRoute() {
+      const hash = window.location.hash || "";
+      const questionIdx = hash.indexOf("?");
+      if (!hash.startsWith("#/") || questionIdx === -1) return;
+
+      const params = new URLSearchParams(hash.slice(questionIdx + 1));
+      const captureId = params.get("figmacapture");
+      const endpoint = params.get("figmaendpoint");
+      if (!captureId || !endpoint) return;
+
+      const selector = params.get("figmaselector") || "body";
+      const delayMs = Number(params.get("figmadelay") || "1000");
+      const run = () => {
+        if (!window.figma || typeof window.figma.captureForDesign !== "function") return false;
+        window.figma.captureForDesign({
+          captureId,
+          endpoint,
+          selector,
+          delayMs: Number.isFinite(delayMs) ? delayMs : 1000,
+        });
+        return true;
+      };
+
+      if (run()) return;
+      const timer = window.setInterval(() => {
+        if (!run()) return;
+        window.clearInterval(timer);
+      }, 200);
+      window.setTimeout(() => window.clearInterval(timer), 10000);
+    })();
+  </script>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>

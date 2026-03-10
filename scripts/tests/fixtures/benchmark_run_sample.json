@@ -1,0 +1,39 @@
+{
+  "run_id": "bench-2026-03-05-01",
+  "agent_id": "analyst-agent",
+  "target_k": 5,
+  "judge_model": "gpt-4.1-mini",
+  "judge_rubric_version": "analyst-rubric.v1",
+  "started_at": "2026-03-05T09:00:00Z",
+  "finished_at": "2026-03-05T09:35:00Z",
+  "cases": [
+    {
+      "case_id": "prod-001",
+      "attempts": [
+        { "attempt_index": 1, "passed": true, "fact_coverage": 0.92, "schema_valid": true, "trajectory_compliant": true, "latency_ms": 1800, "cost_usd": 0.024, "critical_violation": false },
+        { "attempt_index": 2, "passed": false, "fact_coverage": 0.70, "schema_valid": true, "trajectory_compliant": false, "latency_ms": 2100, "cost_usd": 0.025, "critical_violation": false },
+        { "attempt_index": 3, "passed": true, "fact_coverage": 0.89, "schema_valid": true, "trajectory_compliant": true, "latency_ms": 1950, "cost_usd": 0.023, "critical_violation": false },
+        { "attempt_index": 4, "passed": true, "fact_coverage": 0.90, "schema_valid": true, "trajectory_compliant": true, "latency_ms": 1850, "cost_usd": 0.024, "critical_violation": false },
+        { "attempt_index": 5, "passed": true, "fact_coverage": 0.94, "schema_valid": true, "trajectory_compliant": true, "latency_ms": 1760, "cost_usd": 0.024, "critical_violation": false }
+      ],
+      "human_validation": { "checked": true, "judge_agreed": true }
+    },
+    {
+      "case_id": "feedback-001",
+      "attempts": [
+        { "attempt_index": 1, "passed": false, "fact_coverage": 0.76, "schema_valid": true, "trajectory_compliant": true, "latency_ms": 2200, "cost_usd": 0.026, "critical_violation": false },
+        { "attempt_index": 2, "passed": false, "fact_coverage": 0.74, "schema_valid": false, "trajectory_compliant": false, "latency_ms": 2400, "cost_usd": 0.026, "critical_violation": false },
+        { "attempt_index": 3, "passed": true, "fact_coverage": 0.86, "schema_valid": true, "trajectory_compliant": true, "latency_ms": 2050, "cost_usd": 0.025, "critical_violation": false },
+        { "attempt_index": 4, "passed": false, "fact_coverage": 0.72, "schema_valid": true, "trajectory_compliant": false, "latency_ms": 2450, "cost_usd": 0.027, "critical_violation": false },
+        { "attempt_index": 5, "passed": true, "fact_coverage": 0.88, "schema_valid": true, "trajectory_compliant": true, "latency_ms": 2000, "cost_usd": 0.025, "critical_violation": false }
+      ],
+      "human_validation": { "checked": true, "judge_agreed": false }
+    }
+  ],
+  "impact": {
+    "recommendation_executability_rate": 0.62,
+    "evidence_link_coverage": 0.91,
+    "validated_impact_rate": 0.37,
+    "time_to_action_hours": [8, 6, 11, 7, 9]
+  }
+}

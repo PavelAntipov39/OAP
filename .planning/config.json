@@ -1,0 +1,20 @@
+{
+  "project": "oap",
+  "workflow": [
+    "specify",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "sourceOfTruth": ".specify/specs/001-oap/spec.md",
+  "contracts": [
+    ".specify/specs/001-oap/contracts/frontend-api.md",
+    ".specify/specs/001-oap/contracts/datasets.md"
+  ],
+  "checks": [
+    "npm --prefix ops-web run prepare-content",
+    "npm --prefix ops-web run check-agents",
+    "npm --prefix ops-web run build"
+  ]
+}
+

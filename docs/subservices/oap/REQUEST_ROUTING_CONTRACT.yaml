@@ -1,0 +1,379 @@
+{
+  "version": "1.0.0",
+  "updatedAt": "2026-03-08",
+  "status": "stable",
+  "description": "Canonical OAP startup routing contract. Domains are embedded here; manual decision table is removed.",
+  "origins": [
+    "user_chat",
+    "agent_generated",
+    "automation"
+  ],
+  "capabilities": [
+    "rules",
+    "tools",
+    "skills",
+    "mcp",
+    "session_state",
+    "long_term_memory",
+    "contracts",
+    "orchestration",
+    "human_approval"
+  ],
+  "fallback": {
+    "unknownDomain": "capability_first",
+    "conflictingDomain": "capability_first_with_escalation",
+    "missingCapabilities": "authority_then_repo_ops",
+    "trustOrder": [
+      ".specify/specs/001-oap/spec.md",
+      ".specify/specs/001-oap/contracts/*",
+      ".specify/specs/001-oap/decisions/*",
+      "docs/*",
+      "AGENTS.md",
+      "code_runtime_artifacts",
+      "tool_outputs",
+      "external_docs",
+      "external_global_files"
+    ]
+  },
+  "domains": [
+    {
+      "id": "agent-card/content",
+      "label": "Agent card content",
+      "entryDocs": [
+        "docs/subservices/oap/README.md",
+        "docs/subservices/oap/DESIGN_RULES.md"
+      ]
+    },
+    {
+      "id": "frontend-contract",
+      "label": "Frontend contract",
+      "entryDocs": [
+        ".specify/specs/001-oap/contracts/frontend-api.md",
+        "docs/subservices/oap/agents-card.schema.json"
+      ]
+    },
+    {
+      "id": "datasets/etl",
+      "label": "Datasets and ETL",
+      "entryDocs": [
+        ".specify/specs/001-oap/contracts/datasets.md",
+        ".specify/specs/001-oap/spec.md"
+      ]
+    },
+    {
+      "id": "telemetry/task-board",
+      "label": "Telemetry and task board",
+      "entryDocs": [
+        "docs/subservices/oap/AGENT_TELEMETRY.md",
+        "docs/subservices/oap/README.md"
+      ]
+    },
+    {
+      "id": "workflow/bpmn",
+      "label": "Workflow and BPMN",
+      "entryDocs": [
+        "docs/bpmn/analyst-agent-flow.bpmn",
+        "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md"
+      ]
+    },
+    {
+      "id": "architecture/c4",
+      "label": "Architecture and C4",
+      "entryDocs": [
+        ".specify/specs/001-oap/spec.md",
+        "docs/oap.c4"
+      ]
+    },
+    {
+      "id": "repo-ops",
+      "label": "Repo operations",
+      "entryDocs": [
+        ".specify/specs/001-oap/spec.md",
+        "AGENTS.md"
+      ]
+    },
+    {
+      "id": "long-term-memory-governance",
+      "label": "Long-term memory governance",
+      "entryDocs": [
+        "docs/subservices/oap/tasks/lessons.global.md",
+        "docs/subservices/oap/tasks/lessons.md",
+        "docs/subservices/oap/AGENT_OPERATIONS_RULES.md"
+      ]
+    },
+    {
+      "id": "unknown",
+      "label": "Unknown / capability-first fallback",
+      "entryDocs": [
+        ".specify/specs/001-oap/spec.md",
+        "docs/subservices/oap/README.md",
+        "AGENTS.md"
+      ]
+    }
+  ],
+  "routes": [
+    {
+      "id": "ui_card_content",
+      "origin": "user_chat",
+      "domain": "agent-card/content",
+      "capabilities": ["rules", "session_state"],
+      "readFirst": [
+        ".specify/specs/001-oap/spec.md",
+        "docs/subservices/oap/README.md",
+        "docs/subservices/oap/DESIGN_RULES.md"
+      ],
+      "verify": ["build_affected_ui", "verify_content_traceability"]
+    },
+    {
+      "id": "ui_drawer_contract",
+      "origin": "user_chat",
+      "domain": "frontend-contract",
+      "capabilities": ["rules", "contracts", "session_state"],
+      "readFirst": [
+        ".specify/specs/001-oap/spec.md",
+        ".specify/specs/001-oap/contracts/frontend-api.md",
+        "docs/subservices/oap/README.md"
+      ],
+      "verify": ["build_ui", "validate_contract_consistency"]
+    },
+    {
+      "id": "memory_section_ui",
+      "origin": "user_chat",
+      "domain": "agent-card/content",
+      "capabilities": ["session_state", "long_term_memory", "rules"],
+      "readFirst": [
+        ".specify/specs/001-oap/spec.md",
+        "docs/subservices/oap/README.md",
+        "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md"
+      ],
+      "verify": ["verify_labels", "verify_fallback_texts"]
+    },
+    {
+      "id": "mcp_block_update",
+      "origin": "user_chat",
+      "domain": "agent-card/content",
+      "capabilities": ["mcp", "rules"],
+      "readFirst": [
+        ".specify/specs/001-oap/spec.md",
+        "docs/agents/registry.yaml",
+        "docs/subservices/oap/README.md"
+      ],
+      "verify": ["verify_mcp_traceability_to_registry"]
+    },
+    {
+      "id": "skills_rules_block",
+      "origin": "user_chat",
+      "domain": "agent-card/content",
+      "capabilities": ["skills", "rules"],
+      "readFirst": [
+        ".specify/specs/001-oap/spec.md",
+        "docs/agents/registry.yaml",
+        "docs/subservices/oap/README.md"
+      ],
+      "verify": ["verify_links_and_rule_text_behavior"]
+    },
+    {
+      "id": "telemetry_metric_change",
+      "origin": "user_chat",
+      "domain": "telemetry/task-board",
+      "capabilities": ["tools", "contracts", "session_state"],
+      "readFirst": [
+        ".specify/specs/001-oap/spec.md",
+        "docs/subservices/oap/AGENT_TELEMETRY.md",
+        "docs/subservices/oap/README.md"
+      ],
+      "verify": ["telemetry_checks", "formula_source_match"]
+    },
+    {
+      "id": "bpmn_flow_update",
+      "origin": "user_chat",
+      "domain": "workflow/bpmn",
+      "capabilities": ["orchestration", "human_approval", "rules"],
+      "readFirst": [
+        ".specify/specs/001-oap/spec.md",
+        ".specify/specs/001-oap/decisions/*",
+        "docs/bpmn/analyst-agent-flow.bpmn"
+      ],
+      "verify": ["verify_bpmn_matches_business_behavior"]
+    },
+    {
+      "id": "orchestration_logic_change",
+      "origin": "user_chat",
+      "domain": "workflow/bpmn",
+      "capabilities": ["orchestration", "skills", "mcp"],
+      "readFirst": [
+        ".specify/specs/001-oap/spec.md",
+        ".specify/specs/001-oap/decisions/*",
+        "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md"
+      ],
+      "verify": ["verify_budget_and_lifecycle", "verify_done_gates"]
+    },
+    {
+      "id": "candidate_dataset_update",
+      "origin": "user_chat",
+      "domain": "datasets/etl",
+      "capabilities": ["contracts", "tools", "orchestration"],
+      "readFirst": [
+        ".specify/specs/001-oap/spec.md",
+        ".specify/specs/001-oap/contracts/datasets.md"
+      ],
+      "verify": ["run_script_tests", "validate_dataset_contract"]
+    },
+    {
+      "id": "agent_generated_improvement",
+      "origin": "agent_generated",
+      "domain": "unknown",
+      "capabilities": ["rules", "skills", "mcp", "session_state"],
+      "readFirst": [
+        ".specify/specs/001-oap/spec.md",
+        "docs/agents/registry.yaml",
+        "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md"
+      ],
+      "verify": ["verify_agent_identity_scope"]
+    },
+    {
+      "id": "unknown_domain_content",
+      "origin": "user_chat",
+      "domain": "unknown",
+      "capabilities": ["rules", "session_state"],
+      "readFirst": [
+        ".specify/specs/001-oap/spec.md",
+        "docs/subservices/oap/README.md",
+        "AGENTS.md"
+      ],
+      "verify": ["confirm_no_irrelevant_contract_reads"]
+    },
+    {
+      "id": "approval_gate_change",
+      "origin": "user_chat",
+      "domain": "workflow/bpmn",
+      "capabilities": ["human_approval", "orchestration", "rules"],
+      "readFirst": [
+        ".specify/specs/001-oap/spec.md",
+        ".specify/specs/001-oap/decisions/*",
+        "docs/bpmn/analyst-agent-flow.bpmn"
+      ],
+      "verify": ["verify_explicit_approval_path", "verify_status_transitions"]
+    },
+    {
+      "id": "section_rules_modal_update",
+      "origin": "user_chat",
+      "domain": "agent-card/content",
+      "capabilities": ["rules", "session_state"],
+      "readFirst": [
+        ".specify/specs/001-oap/spec.md",
+        "docs/subservices/oap/DESIGN_RULES.md",
+        "docs/subservices/oap/AGENT_OPERATIONS_RULES.md"
+      ],
+      "verify": ["verify_section_modal_text_matches_ui_behavior"]
+    },
+    {
+      "id": "c4_architecture_update",
+      "origin": "user_chat",
+      "domain": "architecture/c4",
+      "capabilities": ["orchestration", "contracts", "rules"],
+      "readFirst": [
+        ".specify/specs/001-oap/spec.md",
+        "docs/oap.c4",
+        ".specify/specs/001-oap/decisions/*"
+      ],
+      "verify": ["likec4_validate"]
+    },
+    {
+      "id": "long_term_memory_lesson_update",
+      "origin": "user_chat",
+      "domain": "long-term-memory-governance",
+      "capabilities": ["long_term_memory", "rules"],
+      "readFirst": [
+        "docs/subservices/oap/tasks/lessons.global.md",
+        "docs/subservices/oap/tasks/lessons.md",
+        "docs/subservices/oap/AGENT_OPERATIONS_RULES.md"
+      ],
+      "verify": ["verify_lessons_statuses", "verify_archive_policy"]
+    },
+    {
+      "id": "docs_search_index_refresh",
+      "origin": "automation",
+      "domain": "repo-ops",
+      "capabilities": ["tools", "session_state"],
+      "readFirst": [
+        "docs/subservices/oap/README.md",
+        "docs/subservices/oap/AGENT_OPERATIONS_RULES.md",
+        "ops-web/scripts/build_content_index.mjs"
+      ],
+      "verify": ["prepare_content", "search_index_contains_canonical_docs"]
+    },
+    {
+      "id": "generated_manifest_refresh",
+      "origin": "automation",
+      "domain": "frontend-contract",
+      "capabilities": ["tools", "contracts"],
+      "readFirst": [
+        "docs/agents/registry.yaml",
+        "docs/subservices/oap/agents-card.schema.json",
+        "ops-web/scripts/build_content_index.mjs"
+      ],
+      "verify": ["prepare_content", "check_agents"]
+    },
+    {
+      "id": "session_task_brief_change",
+      "origin": "user_chat",
+      "domain": "telemetry/task-board",
+      "capabilities": ["session_state", "contracts", "tools"],
+      "readFirst": [
+        ".specify/specs/001-oap/spec.md",
+        "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
+        ".specify/specs/001-oap/contracts/frontend-api.md"
+      ],
+      "verify": ["verify_task_brief_fields_map_to_session_state"]
+    },
+    {
+      "id": "cross_agent_card_unification",
+      "origin": "user_chat",
+      "domain": "agent-card/content",
+      "capabilities": ["rules", "contracts", "session_state"],
+      "readFirst": [
+        ".specify/specs/001-oap/spec.md",
+        "docs/subservices/oap/DESIGN_RULES.md",
+        "docs/subservices/oap/README.md"
+      ],
+      "verify": ["verify_analyst_card_baseline_preserved", "verify_no_special_case_routing_leaks"]
+    },
+    {
+      "id": "browser_verification_followup",
+      "origin": "user_chat",
+      "domain": "repo-ops",
+      "capabilities": ["tools", "session_state"],
+      "readFirst": [
+        "docs/subservices/oap/README.md",
+        "ops-web/tests/*",
+        "ops-web/src/pages/AgentsPage.tsx"
+      ],
+      "verify": ["run_focused_playwright", "capture_observable_result"]
+    },
+    {
+      "id": "repo_governance_rule_change",
+      "origin": "user_chat",
+      "domain": "repo-ops",
+      "capabilities": ["rules", "human_approval"],
+      "readFirst": [
+        ".specify/specs/001-oap/spec.md",
+        "AGENTS.md",
+        "docs/subservices/oap/AGENT_OPERATIONS_RULES.md"
+      ],
+      "verify": ["verify_precedence_is_explicit", "verify_trust_policy_is_explicit"]
+    },
+    {
+      "id": "machine_router_contract_update",
+      "origin": "user_chat",
+      "domain": "repo-ops",
+      "capabilities": ["rules", "tools", "orchestration"],
+      "readFirst": [
+        "docs/subservices/oap/DOCUMENTATION_MAP.md",
+        "docs/subservices/oap/REQUEST_ROUTING_CONTRACT.yaml",
+        "docs/subservices/oap/ROUTING_MANUAL_TRIALS.md"
+      ],
+      "verify": ["validate_router_contract"]
+    }
+  ]
+}
