@@ -52,6 +52,7 @@
   - краткими и фактическими;
   - evidence-first;
   - с явным разделением `факт` / `интерпретация`;
+  - с явным указанием, какой агент или какие агенты участвуют в ответе/задаче; если профильный агент не привлекается, это тоже нужно написать прямо;
   - без ссылок на UI-секции или workflow, которые не подтверждены текущим runtime/code;
   - с использованием semantic `section_id` как внутреннего якоря и lookup текущего label из `ops-web/src/generated/ui-section-contract.json`.
 
@@ -136,6 +137,15 @@
   - each production-like agent run must refresh the per-agent capability snapshot in `artifacts/capability_trials/<agent-id>/capability_snapshot.json`;
   - UI comparison tables must read the per-agent capability snapshot as canonical source, not raw telemetry logs;
   - if the snapshot is stale or fingerprint-drifted, promotion/replace decisions must stay blocked until the next agent run refreshes it.
+- Capability selection contract is mandatory for every OAP operating plan and runtime:
+  - step-level `Skills/Tools/MCP` listed in `OPERATING_PLAN.md` are baseline minima, not exhaustive runtime capability set;
+  - runtime capability set is selected dynamically via capability-first routing and orchestration from:
+    `workflowBackbone`, `collaboration_plan.spawned_instances.allowed_skills/allowed_tools/allowed_mcp`,
+    `docs/agents/registry.yaml` (`used*`/`available*`), and
+    `artifacts/capability_trials/<agent-id>/capability_snapshot.json`;
+  - dynamic selection must remain constrained by explicit gates:
+    `official-first` source policy, `shadow trial` before promotion, `human approve` for promotion;
+  - when dynamic capabilities are unavailable or degraded, fallback policy must be explicit and logged (soft-warning or strict gate by contract).
 - Universal workflow backbone is mandatory for every OAP agent profile and spawned specialist instance:
   - each profile must define `workflowBackbone` with `version=universal_backbone_v1`, `commonCoreSteps[]`, `roleWindow`, `stepExecutionPolicy`, `supportsDynamicInstances`;
   - all agent-specific logic must live inside one bounded `roleWindow`; do not spread domain-specific steps across the shared backbone;
@@ -180,6 +190,7 @@
 - В блоке `Память` карточки агента не заменять пользовательский подзаголовок `Оперативная память` на общее `Память` без явного запроса; tooltips для `Оперативная память`, `Долговременная память` и `Самоулучшение агента (Self-improvement loop)` должны оставаться отдельными и человеко-понятными.
 - Если пользователь просит улучшить workflow/логику агентной карточки, scope по умолчанию ограничивается подпроектом ОАП (docs/subservices/oap, ops-web, scripts для OAP) и не расширяется на внешние доменные проекты без явного запроса.
 - Если пользователь просит убрать UI-блок только из интерфейса, не расширять задачу на рефакторинг, удаление мертвого кода или синхронное обновление документации без отдельного подтверждения.
+- Если пользователь просит удалить конкретный UI-блок, запрещено удалять или скрывать соседние пункты/метрики/ссылки, которые явно не запрашивались к изменению.
 - При изменении контента вкладок карточки агента общий блок `Описание раздела` сохраняется по умолчанию; удалять его только при явном запросе пользователя.
 - Если путь к файлу в карточке агента отображается как гиперссылка, он должен оставаться кликабельным и одновременно поддерживать выделение/копирование текста мышью.
 - В документации/контрактах/скриптах ОАП не использовать legacy-нейминг `bible-kb` или `Bible KB`; canonical naming для текущего проекта: `OAP` и spec-root `/.specify/specs/001-oap/*`.
@@ -190,12 +201,16 @@
   - `designer-agent` для визуала/компоновки/UX;
   - `analyst-agent` для валидации KPI/impact и трассировки формул;
   - выполнять задачу без такого вызова запрещено.
+- При каждом пользовательском запросе в ответе обязательно явно указывать, какие агенты были фактически задействованы для этой задачи в текущем ходе работы; если использован только базовый исполнитель без delegation, это тоже нужно написать прямо.
 - Для `analyst-agent` тип карточки (legacy `AnalystCardDrawer` vs unified drawer) меняется только по явному запросу пользователя; при запросе на возврат предыдущего UI обязателен rollback роутинга.
 - В legacy-карточке `analyst-agent` ссылки на BPMN-файлы не открывать через текстовую модалку; путь `docs/bpmn/*.bpmn` должен вести в валидный BPMN/agent-flow viewer, а не в пустой fallback.
+- В `#/agent-flow` пользовательские формулировки приоритетнее внутренних технических идентификаторов: запрещено выносить ключевую логику в отдельный блок вне основного пайплайна, если это ухудшает понятность; step-id/status-id (`step_*`, `verify_*`, `capability_*`) не показывать как основной текст для не-IT пользователя.
 - В карточке `analyst-agent` секция `Используемые навыки` обязана содержать: пункт `Навыки` (теги навыков, задействованных за последний цикл сессии) и подпункт `Путь к файлу Skills`.
 - Карточка `analyst-agent` считается эталонной: без явного запроса пользователя запрещено менять её роутинг, тип drawer, базовую структуру секций и переносить её на другой UI-контракт.
 - В governance-документах и assistant entry-files запрещено фиксировать display-label UI-секции как канон; использовать только semantic `section_id` и брать label из актуального section-contract/runtime.
 - Если в проекте используется assistant-specific instruction file (`.github/copilot-instructions.md`, `CLAUDE.md` и т.п.), он должен быть автогенерируемой короткой точкой входа на `AGENTS.md`; ручное локальное расширение правил запрещено.
+- Для file-trace чипов (`source_kind`, `semantic_layer`) канонические label/tooltip берутся только из `docs/subservices/oap/CAPABILITY_GLOSSARY.json`; локальные hardcoded маппинги в UI запрещены.
+- Внутри label чипов запрещено дублировать префиксы типа `Контур:`/`Источник:`; показывать только canonical имя термина, а raw-значение выводить в tooltip.
 
 ## Agent Telemetry Logging (Mandatory)
 - Логирование ведется в формате OTel-first: у события должны быть `agent_id`, `task_id`, `step`, `status`, `run_id`, `trace_id`.

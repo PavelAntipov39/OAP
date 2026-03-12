@@ -1,16 +1,17 @@
-import { Box, Chip, Divider, Link, Stack, Tooltip, Typography } from "@mui/material";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import React from "react";
+import { Box, Link, Stack, Typography } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import type { AgentDoneGatePolicy, AgentLearningArtifacts, AgentMemoryContext, AgentOperatingPlan } from "../../../lib/generatedData";
+import {
+  getDocsIndex,
+  type AgentDoneGatePolicy,
+  type AgentMemoryContext,
+  type AgentOperatingPlan,
+} from "../../../lib/generatedData";
 import { SectionBlock } from "../SectionBlock";
 import { FilePathLink } from "../FilePathLink";
 
 const DEFAULT_OPERATING_PLAN_PATH = "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md";
-const DEFAULT_BPMN_FLOW_PATH = "docs/bpmn/analyst-agent-flow.bpmn";
-const DEFAULT_LOG_PATH = ".logs/agents/analyst-agent.jsonl";
-const DEFAULT_ERROR_LOG_PATH = ".logs/agents/analyst-agent-errors.jsonl";
-const DEFAULT_RISKS_REPORT_PATH = "artifacts/agent_cycle_validation_report.json";
-const ANALYST_FLOW_HASH = "#/agent-flow";
+const DEFAULT_LESSONS_PATH = "docs/subservices/oap/tasks/lessons/analyst-agent.md";
 const DESIGNER_OPERATING_PLAN_PATH = "docs/subservices/oap/agents/designer-agent/OPERATING_PLAN.md";
 const DESIGNER_UX_GATE_RULES_PATH = "docs/subservices/oap/DESIGN_RULES.md";
 const DESIGNER_UX_GATE_ITEMS: Array<{
@@ -62,58 +63,84 @@ function openInNewTab(hash: string) {
   window.open(`${base}${hash}`, "_blank", "noopener,noreferrer");
 }
 
+function countLessonsFromMarkdown(content: string): number {
+  const registryStatusMap = new Map<string, "active" | "monitoring" | "outdated" | "archived">();
+  const tableMatch = content.match(/\|\s*lesson_ref\s*\|[\s\S]*?(?=\n##|\n---|\s*$)/);
+  if (tableMatch) {
+    const rows = tableMatch[0].split("\n").slice(2);
+    for (const row of rows) {
+      const cells = row.split("|").map((c) => c.trim()).filter(Boolean);
+      if (cells.length < 2) continue;
+      const ref = cells[0].replace(/`/g, "").trim();
+      const status = cells[1].toLowerCase().trim();
+      if (!ref) continue;
+      if (status === "active" || status === "monitoring" || status === "outdated" || status === "archived") {
+        registryStatusMap.set(ref, status);
+      }
+    }
+  }
+
+  const sections = content.split(/\n(?=## )/);
+  let lessonsCount = 0;
+  for (const section of sections) {
+    const h2Match = section.match(/^## (.+)/);
+    if (!h2Match) continue;
+    const heading = h2Match[1].trim();
+    if (/Реестр актуальности|Analyst Agent Lessons|_TEMPLATE/i.test(heading)) continue;
+    const dateMatch = heading.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (!dateMatch) continue;
+
+    // Keep the same compatibility behavior as previous lessons parser:
+    // registry map is built to keep matching semantics stable across files.
+    if (registryStatusMap.size > 0) {
+      for (const key of registryStatusMap.keys()) {
+        if (heading.includes(key) || key.includes(heading.slice(0, 30))) break;
+      }
+    }
+
+    lessonsCount += 1;
+  }
+  return lessonsCount;
+}
+
 export function AgentProcessSection({
   operatingPlan,
   doneGatePolicy,
   shortDescription,
-  learningArtifacts,
   memoryContext,
   operatingPlanPath = DEFAULT_OPERATING_PLAN_PATH,
-  flowPath = DEFAULT_BPMN_FLOW_PATH,
   flowLinkHash,
-  agentLogPath = DEFAULT_LOG_PATH,
-  errorLogPath = DEFAULT_ERROR_LOG_PATH,
-  risksReportPath = DEFAULT_RISKS_REPORT_PATH,
   hasSessions = true,
+  lessonsPath = DEFAULT_LESSONS_PATH,
   onOpenFile,
-  onOpenModal,
-  onOpenAgentLog,
+  onOpenLessonsModal,
   onOpenSessionsList,
+  onOpenImprovementHistory,
 }: {
   operatingPlan: AgentOperatingPlan | null | undefined;
   doneGatePolicy?: AgentDoneGatePolicy | null;
   shortDescription?: string | null;
-  learningArtifacts?: AgentLearningArtifacts | null;
   memoryContext?: AgentMemoryContext | null;
   operatingPlanPath?: string;
-  flowPath?: string | null;
   flowLinkHash?: string | null;
-  agentLogPath?: string;
-  errorLogPath?: string;
-  risksReportPath?: string;
   hasSessions?: boolean;
+  lessonsPath?: string;
   onOpenFile: (path: string) => void;
-  onOpenModal: (title: string, content: string) => void;
-  onOpenAgentLog: () => void;
+  onOpenLessonsModal: () => void;
   onOpenSessionsList: () => void;
+  onOpenImprovementHistory: () => void;
 }) {
-  const rulesContent = operatingPlan
-    ? [
-        `## Миссия\n${operatingPlan.mission}`,
-        `\n## Процесс работы (${operatingPlan.dailyLoop.length} шагов)\n` +
-          operatingPlan.dailyLoop.map((s, i) => `${i + 1}. ${s}`).join("\n"),
-        operatingPlan.improvementLifecycle.length
-          ? `\n## Цикл самосовершенствования\n` +
-            operatingPlan.improvementLifecycle.map((s, i) => `${i + 1}. ${s}`).join("\n")
-          : "",
-      ]
-        .filter(Boolean)
-        .join("\n")
-    : "Операционный стандарт не загружен.";
-
   const modeValue = doneGatePolicy?.mode === "strict" ? "strict" : "soft_warning";
   const modeLabel = doneGatePolicy?.mode === "strict" ? "строгий" : "мягкий";
   const isDesignerAgent = operatingPlanPath.trim().toLowerCase() === DESIGNER_OPERATING_PLAN_PATH.toLowerCase();
+  const lessonsCount = React.useMemo(() => {
+    const targetPath = (lessonsPath || DEFAULT_LESSONS_PATH).trim();
+    if (!targetPath) return 0;
+    const docs = getDocsIndex();
+    const doc = docs.find((entry) => entry.path === targetPath || entry.path.endsWith(targetPath));
+    if (!doc?.content) return 0;
+    return countLessonsFromMarkdown(doc.content);
+  }, [lessonsPath]);
 
   return (
     <SectionBlock
@@ -145,17 +172,26 @@ export function AgentProcessSection({
             variant="body2"
             underline="hover"
             sx={{ fontWeight: 600, cursor: "pointer", display: "inline" }}
-            onClick={() => onOpenModal("Описание правил работы агента", rulesContent)}
+            onClick={() => onOpenFile(operatingPlanPath)}
           >
             Описание правил работы агента
           </Link>
-          <Box sx={{ mt: 0.5, pl: 1.5 }}>
-            <FilePathLink
-              path={operatingPlanPath}
-              label={operatingPlanPath}
-              onClick={onOpenFile}
-            />
-          </Box>
+        </Box>
+
+        <Box>
+          <Link
+            component="button"
+            type="button"
+            variant="body2"
+            underline="hover"
+            sx={{ fontWeight: 600, cursor: "pointer", display: "inline" }}
+            onClick={onOpenImprovementHistory}
+          >
+            История улучшений агента
+          </Link>
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
+            Откуда пришла практика, что взяли, что изменили, где применили и какой результат получили.
+          </Typography>
         </Box>
 
         {isDesignerAgent ? (
@@ -195,58 +231,24 @@ export function AgentProcessSection({
         ) : null}
 
         {/* Схема работы агента */}
-        <Box>
-          <Link
-            component="button"
-            type="button"
-            variant="body2"
-            underline="hover"
-            sx={{ fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 0.5 }}
-            onClick={() => {
-              if (flowLinkHash) {
-                openInNewTab(flowLinkHash);
-                return;
-              }
-              if (flowPath) onOpenFile(flowPath);
-            }}
-          >
-            <OpenInNewIcon sx={{ fontSize: 14 }} />
-            Схема работы агента
-          </Link>
-          {flowPath ? (
-            <Box sx={{ mt: 0.5, pl: 1.5 }}>
-              <FilePathLink
-                path={flowPath}
-                label={flowPath}
-                onClick={onOpenFile}
-              />
-            </Box>
-          ) : null}
-        </Box>
-
-        {/* Журнал действий агента */}
-        <Box>
-          <Link
-            component="button"
-            type="button"
-            variant="body2"
-            underline="hover"
-            sx={{ fontWeight: 600, cursor: "pointer", display: "inline" }}
-            onClick={onOpenAgentLog}
-          >
-            Журнал действий агента
-          </Link>
-          <Box sx={{ mt: 0.5, pl: 1.5 }}>
-            <FilePathLink
-              path={agentLogPath}
-              label={agentLogPath}
-              onClick={() => onOpenAgentLog()}
-            />
-          </Box>
-        </Box>
-
-        {hasSessions ? (
+        {flowLinkHash ? (
           <Box>
+            <Link
+              component="button"
+              type="button"
+              variant="body2"
+              underline="hover"
+              sx={{ fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 0.5 }}
+              onClick={() => openInNewTab(flowLinkHash)}
+            >
+              <OpenInNewIcon sx={{ fontSize: 14 }} />
+              Схема работы агента
+            </Link>
+          </Box>
+        ) : null}
+
+        <Box>
+          {hasSessions ? (
             <Link
               component="button"
               type="button"
@@ -257,98 +259,26 @@ export function AgentProcessSection({
             >
               Список сессий цикла агента
             </Link>
-          </Box>
-        ) : null}
-
-        <Divider />
-
-        {/* Журнал предложений по самоулучшению */}
-        <Box>
-          <Link
-            component="button"
-            type="button"
-            variant="body2"
-            underline="hover"
-            sx={{ fontWeight: 600, cursor: "pointer", display: "inline" }}
-            onClick={() => {
-              const path = learningArtifacts?.lessonsPath ?? "docs/subservices/oap/tasks/lessons/analyst-agent.md";
-              onOpenFile(path);
-            }}
-          >
-            Журнал предложений по самоулучшению агента
-          </Link>
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
-            Предложения, которые агент фиксирует в процессе работы для своего улучшения (self-improvement loop)
-          </Typography>
-          <Box sx={{ mt: 0.5, pl: 1.5 }}>
-            <FilePathLink
-              path={learningArtifacts?.lessonsPath ?? "docs/subservices/oap/tasks/lessons/analyst-agent.md"}
-              onClick={onOpenFile}
-            />
-          </Box>
-        </Box>
-
-        {/* Журнал списка ошибок */}
-        <Box>
-          <Stack direction="row" alignItems="center" spacing={0.5}>
+          ) : (
+            <Typography variant="body2" sx={{ fontWeight: 600, color: "text.secondary" }}>
+              Список сессий цикла агента
+            </Typography>
+          )}
+          <Box sx={{ mt: 0.45 }}>
             <Link
               component="button"
               type="button"
-              variant="body2"
+              variant="caption"
               underline="hover"
-              sx={{ fontWeight: 600, cursor: "pointer", display: "inline" }}
-              onClick={() => onOpenFile(errorLogPath)}
+              sx={{ cursor: "pointer", display: "inline" }}
+              onClick={onOpenLessonsModal}
             >
-              Журнал списка ошибок
+                Самоулучшение агента (Self-improvement loop): {lessonsCount}
             </Link>
-            <Tooltip title="Ошибки, зафиксированные самим агентом в ходе выполнения цикла его сессии" placement="top">
-              <InfoOutlinedIcon sx={{ fontSize: 15, color: "text.secondary", cursor: "help" }} />
-            </Tooltip>
-          </Stack>
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
-            Время, контекст и описание каждой ошибки — для проверки и устранения
-          </Typography>
-          <Box sx={{ mt: 0.5, pl: 1.5 }}>
-            <FilePathLink
-              path={errorLogPath}
-              onClick={onOpenFile}
-            />
           </Box>
         </Box>
 
-        {/* Риски */}
-        <Box>
-          <Stack direction="row" alignItems="center" spacing={0.75}>
-            <Link
-              component="button"
-              type="button"
-              variant="body2"
-              underline="hover"
-              sx={{ fontWeight: 600, cursor: "pointer", display: "inline" }}
-              onClick={() => onOpenFile(risksReportPath)}
-            >
-              Риски
-            </Link>
-            {memoryContext?.riskControl?.riskFlags && memoryContext.riskControl.riskFlags.length > 0 ? (
-              <Chip
-                size="small"
-                color="warning"
-                variant="outlined"
-                label={`${memoryContext.riskControl.riskFlags.length} флаг${memoryContext.riskControl.riskFlags.length > 1 ? "а" : ""}`}
-                sx={{ fontSize: "0.7rem", height: 18 }}
-              />
-            ) : null}
-          </Stack>
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
-            Критические риски и флаги безопасности, обнаруженные агентом в последнем цикле работы
-          </Typography>
-          <Box sx={{ mt: 0.5, pl: 1.5 }}>
-            <FilePathLink
-              path={risksReportPath}
-              onClick={onOpenFile}
-            />
-          </Box>
-        </Box>
+
       </Stack>
     </SectionBlock>
   );

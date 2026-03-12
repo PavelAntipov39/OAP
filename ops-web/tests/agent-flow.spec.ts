@@ -1,12 +1,15 @@
 import { expect, test } from "@playwright/test";
 
-test("agent flow page renders architecture, bpm, factual cycle and metric tooltip", async ({ page }) => {
-  await page.goto("/#/agent-flow");
+test("agent flow page renders simplified pipeline, mermaid loop and factual cycle", async ({ page }) => {
+  await page.goto("/#/agent-flow?agent=analyst-agent");
 
-  await expect(page.getByRole("heading", { name: "Agent Flow: analyst-agent" })).toBeVisible();
-  await expect(page.getByText("Как устроен агент (C4 process views)")).toBeVisible();
-  await expect(page.getByText("Как должен работать (BPMN)")).toBeVisible();
-  await expect(page.getByText("Как сработал последний цикл (факт)")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Аналитик" })).toBeVisible();
+  await expect(page.locator(".MuiChip-label", { hasText: "Проверка результата" }).first()).toBeVisible();
+  await expect(page.locator(".MuiChip-label", { hasText: "Обновление способностей" }).first()).toBeVisible();
+  await expect(page.getByText("Архитектура (C4 process views)")).toBeVisible();
+  await expect(page.getByText("Mermaid: unified capability optimization loop")).toBeVisible();
+  await expect(page.getByText("Последний цикл (факт)")).toBeVisible();
+  await expect(page.getByText("Таймлайн шагов")).toHaveCount(0);
 
   await page.getByRole("button", { name: "Обновить" }).click();
   await expect(page.getByText("KPI цикла")).toBeVisible();
@@ -16,3 +19,10 @@ test("agent flow page renders architecture, bpm, factual cycle and metric toolti
   await expect(page.getByText("Как считается")).toBeVisible();
 });
 
+test("agent flow keeps the same simplified model for non-analyst agent", async ({ page }) => {
+  await page.goto("/#/agent-flow?agent=designer-agent");
+
+  await expect(page.locator(".MuiChip-label", { hasText: "Проверка результата" }).first()).toBeVisible();
+  await expect(page.locator(".MuiChip-label", { hasText: "Обновление способностей" }).first()).toBeVisible();
+  await expect(page.getByText("Mermaid: unified capability optimization loop")).toBeVisible();
+});

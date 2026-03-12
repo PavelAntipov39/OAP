@@ -39,6 +39,45 @@ Legacy compatibility:
 6. `Autonomous Bug Fixing`
 По баг-репорту: воспроизвести, локализовать, исправить, верифицировать, зафиксировать результат.
 
+## Capability selection contract (Mandatory)
+- Step-level `Навыки/Инструменты/MCP` в `OPERATING_PLAN.md` задают только baseline minimum, а не полный runtime-набор.
+- Runtime-набор capabilities выбирается динамически capability-first контуром и orchestration-слоем из:
+  - `workflowBackbone`,
+  - `task_brief.context_package.collaboration_plan.spawned_instances.allowed_skills/allowed_tools/allowed_mcp`,
+  - `docs/agents/registry.yaml` (`usedSkills/availableSkills`, `usedTools/availableTools`, `usedMcp/availableMcp`),
+  - `artifacts/capability_trials/<agent-id>/capability_snapshot.json`.
+- Динамический выбор обязателен к ограничению через policy-gates:
+  - `official-first`,
+  - `shadow trial` до промоушна,
+  - `human approve` для promotion/replace решений.
+- Если динамический capability недоступен или degraded, должен применяться явный fallback policy с traceability в telemetry.
+- `skills[]/tools[]/mcp_tools[]` в telemetry фиксируют фактически использованный runtime-набор и могут быть шире baseline списка шага.
+
+## Bounded Delegation Contract (Mandatory)
+- Multi-agent delegation не создает отдельный workflow: она разрешена только внутри канонического цикла.
+- Канонические точки делегирования:
+  - `step_3_orchestration` — выбрать reuse/create стратегию и подготовить bounded child-run;
+  - `step_5_role_window` — вызвать specialist для узкой доменной проверки или исполнения;
+  - `step_6_role_exit_decision` — принять и нормализовать результат child-run обратно в parent-cycle.
+- Каждый delegated run обязан иметь:
+  - `purpose`,
+  - `input package`,
+  - `allowed_skills/tools/mcp/rules`,
+  - `output contract`,
+  - `parent_instance_id`,
+  - `root_agent_id`,
+  - `depth`,
+  - `orchestration budget`.
+- Child-run следует тому же `workflowBackbone` семейству, что и parent-run; неиспользуемые core-steps фиксируются как `skipped`, а не удаляются.
+- Если host не поддерживает native delegation, canonical fallback — dispatcher-backed execution; transport может измениться, но cycle contract и learning core менять нельзя.
+- Parent-run нельзя переводить дальше `step_6_role_exit_decision`, пока child-run не вернул terminal status (`completed|failed|skipped`) и нормализованный result package.
+- Минимальные telemetry-события для delegated run:
+  - `agent_instance_spawned`,
+  - `agent_instance_completed` или `agent_instance_failed`.
+- Минимальные execution artifacts delegated run:
+  - `artifacts/agent_runs/<run-id>/run_manifest.json`,
+  - `artifacts/agent_runs/<run-id>/result.json`.
+
 ## Universal learning core
 - Доменные шаги у агентов могут отличаться, но self-improvement state-machine едина.
 - Done-gate rollout:

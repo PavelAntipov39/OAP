@@ -57,15 +57,68 @@
   - `step_7_apply_or_publish` -> `step_7_contract_gate` -> `step_8_verify` -> `step_8_error_channel` -> `step_9_finalize` -> `step_9_publish_snapshots`
 - Это значит, что внутренние analyst-действия (scoring/prioritization) больше не считаются universal core. Для других агентов в этой зоне будут свои внутренние шаги, но с тем же входом и выходом.
 
+## Universal Backbone Mapping
+- `analyst-agent` использует полный `Universal Session Backbone v1` (`step_0 .. step_9_publish_snapshots`).
+- Доменная специфика аналитика ограничена одним bounded окном:
+  - `entryStep = step_5_role_window`
+  - `exitStep = step_6_role_exit_decision`
+- Неиспользуемые общие шаги не удаляются из контракта цикла и фиксируются как `skipped`.
+
+## Capability Selection Contract (Mandatory)
+<!-- contract-marker: baseline-minimum -->
+<!-- contract-marker: dynamic-capability-selection -->
+- Step-level `Навыки/Инструменты/MCP` в этом документе задают baseline minimum для шага.
+- Runtime-capabilities выбираются динамически capability-first контуром из:
+  - `workflowBackbone`,
+  - `task_brief.context_package.collaboration_plan.spawned_instances.allowed_skills/allowed_tools/allowed_mcp`,
+  - `docs/agents/registry.yaml` (`used*`/`available*`),
+  - `artifacts/capability_trials/analyst-agent/capability_snapshot.json`.
+- Динамический выбор ограничивается обязательными gates:
+  - `official-first`,
+  - `shadow trial`,
+  - `human approve` для promotion/replace.
+- Если динамический capability недоступен, fallback должен быть явным, трассируемым и зафиксированным в telemetry.
+
+## Dispatcher-backed Delegation Contract
+- `analyst-agent` может вызывать child-agents только в двух канонических окнах:
+  - `step_3_orchestration` — staging и запуск bounded instance;
+  - `step_5_role_window` — узкая delegated проверка внутри analyst-ветки.
+- Канонический source-of-truth для host-level ролей:
+  - `docs/agents/host_agnostic_agent_catalog.yaml`
+  - `docs/agents/host_capability_matrix.yaml`
+- Канонический execution bridge:
+  - `scripts/oap_agent_dispatcher.py`
+- Минимальный lifecycle child-run:
+  1. `stage-run` -> manifest `status=planned`
+  2. `start-run` -> telemetry `agent_instance_spawned`, manifest `status=running`
+  3. `complete-run|fail-run|cancel-run` -> terminal manifest + telemetry `agent_instance_completed|agent_instance_failed`
+- Минимальные runtime artifacts child-run:
+  - `artifacts/agent_runs/<run-id>/run_manifest.json`
+  - `artifacts/agent_runs/<run-id>/result.json`
+- Parent-cycle не двигается дальше `step_6_role_exit_decision`, пока delegated run не вернет terminal status и `output_refs`.
+
+## Self-Improvement and Lesson Gate (Mandatory)
+<!-- contract-marker: self-improvement-gate -->
+- Финал цикла разрешен только после learning-core последовательности:
+  `planned|started -> verify_started -> verify_passed|verify_failed -> lesson_captured|lesson_not_applicable -> completed|failed|review_passed`.
+- Любая пользовательская коррекция фиксируется в lessons с `root cause` и `preventive rule`.
+- Lesson governance check обязателен в каждом завершенном цикле.
+
+## Capability Refresh Note (Mandatory)
+<!-- contract-marker: capability-refresh -->
+- Для production-like run capability-refresh обязателен в режиме `on_run`.
+- Source-of-truth для capability-table: `artifacts/capability_trials/analyst-agent/capability_snapshot.json`.
+- При stale/fingerprint drift promotion/replace решения блокируются до следующего refresh.
+
 | Этап | Цель | Рабочий контур (что используется) | Память | Читает | Пишет | Done-gate |
 | --- | --- | --- | --- | --- | --- | --- |
 | 0) task-intake/sync | Подготовить task-run и контекст до старта цикла | Tools: `sync_agent_tasks`, orchestration helper; Rules: task contract | Оперативная (предстарт) | `docs/agents/registry.yaml`, `docs/agents/profile_templates.yaml`, `.logs/agents/*.jsonl` | `task_brief.context_package` (`operational_memory/collaboration_plan`) | task/run подготовлены, есть owner и цель |
 | 1) started | Запустить run/trace и зафиксировать старт цикла | Rules: `OPERATING_PLAN.md`, `AGENTS.md`; Skills: `agent-telemetry`, `doc` | Оперативная: anchors прошлого цикла | `docs/agents/registry.yaml`, `docs/subservices/oap/README.md` | `.logs/agents/analyst-agent.jsonl` (`started`) | run_id/task_id/trace_id зафиксированы |
 | 2) preflight health-check | Проверить статусы агентов, MCP, backlog и риски | Tools: `QMD retrieval`; MCP: `qmd/context7/supabase`; Rules: evidence-first | Оперативная + долговременная | `docs/agents/registry.yaml`, `artifacts/agent_telemetry_summary.json` | `.logs/agents/analyst-agent.jsonl` (`health-check`) | нет блокеров `critical` без owner |
-| 3) orchestration (reuse-first) | Выбрать reuse/create стратегию и заспавнить bounded instances | Rules: orchestration guardrails; Tools: orchestration helper | Оперативная: контекст задачи | `docs/agents/registry.yaml`, `docs/agents/profile_templates.yaml` | `collaboration_plan` в `task_brief.context_package` + `.logs/agents/analyst-agent.jsonl` | у каждой instance есть purpose/scope/allowlist/budget |
+| 3) orchestration (reuse-first) | Выбрать reuse/create стратегию, stage/run bounded instances и зафиксировать execution envelope | Rules: orchestration guardrails; Tools: orchestration helper, dispatcher | Оперативная: контекст задачи | `docs/agents/registry.yaml`, `docs/agents/profile_templates.yaml`, `docs/agents/host_agnostic_agent_catalog.yaml`, `docs/agents/host_capability_matrix.yaml` | `collaboration_plan` в `task_brief.context_package`, `artifacts/agent_runs/<run-id>/run_manifest.json`, `.logs/agents/*.jsonl` (`agent_instance_spawned`) | у каждой instance есть purpose/scope/allowlist/budget/status |
 | 4) context / evidence sync | Собрать доказательства до решений | Tools: `QMD retrieval`; MCP: `qmd`, `context7`; Skills: `doc` | Оперативная: обновление anchors | `.specify/specs/001-oap/spec.md`, `/.specify/specs/001-oap/contracts/*`, `docs/subservices/oap/DESIGN_RULES.md`, `docs/subservices/oap/agents-card.schema.json` | `.logs/agents/analyst-agent.jsonl` (`evidence`) | evidence coverage достаточен, противоречия отмечены |
 | 5) role window | Сформировать analyst-specific candidate-list с метриками эффекта | Skills: `spreadsheet`, `doc`; Rules: candidate contract | Оперативная | `artifacts/agent_telemetry_summary.json`, стандарты ОАП | рабочий candidate-list + `.logs/agents/analyst-agent.jsonl` | у каждого candidate есть owner/metric/baseline/delta |
-| 6) role exit decision | Завершить analyst role-window и вернуть top-priority/A-B решение в общий контур | Rules: lifecycle + A/B; Tools: telemetry scoring | Долговременная: lessons как ограничения | candidate-list, review/quality сигналы | `docs/agents/registry.yaml` (lifecycle/priority), `task_brief.context_package.ab_test_plan`, `.logs/agents/analyst-agent.jsonl` | selected <= budget, остальные в backlog |
+| 6) role exit decision | Завершить analyst role-window, принять child-run result package и вернуть top-priority/A-B решение в общий контур | Rules: lifecycle + A/B; Tools: telemetry scoring, dispatcher | Долговременная: lessons как ограничения | candidate-list, `artifacts/agent_runs/<run-id>/result.json`, review/quality сигналы | `docs/agents/registry.yaml` (lifecycle/priority), `task_brief.context_package.ab_test_plan`, `.logs/agents/*.jsonl` (`agent_instance_completed|agent_instance_failed`) | selected <= budget, child-run terminal status зафиксирован, остальные в backlog |
 | 7) apply / publish | Внести изменения и пересобрать контент/манифест | Skills: `doc`; Tools: `build_content_index`, schema checks | Оперативная | целевые файлы ОАП + contracts | измененные файлы + `ops-web/src/generated/*.json` + `.logs/agents/analyst-agent.jsonl` (`recommendation_applied`) | `prepare-content` + `check-agents` проходят |
 | 7.1) contract gate | Проверить контракт и целостность manifest после изменений | Tools: `check_agents_manifest`; Rules: schema contract | Оперативная | `ops-web/src/generated/agents-manifest.json`, `docs/subservices/oap/agents-card.schema.json` | `.logs/agents/analyst-agent.jsonl` (`contract_gate`) | контракт валиден, fallback-path нарушений нет |
 | 8) verify | Проверить эффект и регрессии | Skills: `agent-telemetry`, `playwright` (если UI), `doc`; Rules: verify-before-done | Оперативная + lessons | `.logs/agents/*.jsonl`, `artifacts/agent_telemetry_summary.json` | `.logs/agents/analyst-agent.jsonl` (`verify_*`), `artifacts/agent_cycle_validation_report.json` | verify_passed либо rollback/next-action |
@@ -94,9 +147,14 @@
   - `stale_table_rate` не растет без причины; каждое срабатывание сопровождается новым snapshot
 
 ### 2.2 Детализация шагов (операционная)
+Формат capability-описания для каждого шага:
+- `Baseline capabilities` — минимальный обязательный набор.
+- `Dynamic capabilities (runtime-selected)` — фактически выбранный runtime-набор по capability-first policy.
+
 ### 1) `started`: запуск цикла
 - Цель: зафиксировать новый run и старт аналитического цикла.
-- Навыки: `agent-telemetry`, `doc`.
+- Baseline capabilities: Skills `agent-telemetry`, `doc`; Rules `OPERATING_PLAN.md`, `AGENTS.md`.
+- Dynamic capabilities (runtime-selected): может добавляться orchestration/runtime instrumentation (например specialist-instance trace policy) без изменения baseline-контракта.
 - Читает:
   - `docs/agents/registry.yaml`
   - `docs/subservices/oap/README.md`
@@ -105,18 +163,19 @@
 
 ### 2) Health-check агентов
 - Цель: проверить статус агентов, задачи, review-ошибки, деградации MCP.
-- Навыки: `doc`.
-- Инструменты: `QMD retrieval`.
+- Baseline capabilities: Skills `doc`; Tools `QMD retrieval`; MCP `qmd/context7/supabase`.
+- Dynamic capabilities (runtime-selected): при обнаружении gap допускается подключение дополнительных skills/tools из `availableSkills/availableTools/availableMcp` по policy-gates.
 - Читает:
   - `docs/agents/registry.yaml`
   - `artifacts/agent_telemetry_summary.json` (если доступен)
 - Пишет:
   - `.logs/agents/analyst-agent.jsonl` (события шага проверки)
+  - candidate-рекомендации в `docs/agents/registry.yaml -> availableSkills[]/availableTools[]` и `externalSkillCandidates[]` (если выявлен capability-gap)
 
 ### 3) Проверка базы знаний ОАП
 - Цель: убедиться, что решения опираются на актуальные правила/контракты.
-- Навыки: `doc`.
-- Инструменты: `QMD retrieval`.
+- Baseline capabilities: Skills `doc`; Tools `QMD retrieval`.
+- Dynamic capabilities (runtime-selected): может добавляться vendor-specific retrieval/tooling при domain-specific запросах и наличии доверенного источника.
 - Читает:
   - `docs/subservices/oap/README.md`
   - `docs/subservices/oap/DESIGN_RULES.md`
@@ -127,7 +186,8 @@
 
 ### 3.1) Актуализация журнала уроков self-improvement
 - Цель: обновить статус уроков (`active|monitoring|outdated|archived`) и не допускать накопления устаревших правил.
-- Навыки: `doc`, `spreadsheet`, `agent-telemetry`.
+- Baseline capabilities: Skills `doc`, `spreadsheet`, `agent-telemetry`.
+- Dynamic capabilities (runtime-selected): допускается подключение runtime analytics helpers, если это улучшает lesson governance без нарушения contracts.
 - Читает:
   - `docs/subservices/oap/tasks/lessons/analyst-agent.md`
   - `artifacts/agent_cycle_validation_report.json` (если доступен)
@@ -143,8 +203,8 @@
 
 ### 4) Мониторинг внешних источников из whitelist
 - Цель: сверить новые практики с текущей базой без деградации качества.
-- Навыки: `doc`.
-- Инструменты: `QMD retrieval`.
+- Baseline capabilities: Skills `doc`; Tools `QMD retrieval`.
+- Dynamic capabilities (runtime-selected): при необходимости могут применяться дополнительные trusted tools для verification (только whitelist + policy-gates).
 - Читает:
   - официальные docs/changelog (из whitelist)
   - внутренние стандарты ОАП
@@ -153,8 +213,8 @@
 
 ### 5) Сверка «новые candidate vs текущая база»
 - Цель: выявить gap, который дает измеримый эффект и подготовить допуск к A/B.
-- Навыки: `spreadsheet`.
-- Инструменты: `QMD retrieval`.
+- Baseline capabilities: Skills `spreadsheet`; Tools `QMD retrieval`.
+- Dynamic capabilities (runtime-selected): может подключаться `doc`/`agent-telemetry`/другие доступные capabilities при повышении качества evidence.
 - Читает:
   - `docs/subservices/oap/README.md`
   - `docs/subservices/oap/DESIGN_RULES.md`
@@ -165,7 +225,8 @@
 
 ### 6) Формирование списка улучшений по агентам
 - Цель: сформировать полный список кандидатов с owner, metric, baseline, expected delta.
-- Навыки: `doc`, `spreadsheet`.
+- Baseline capabilities: Skills `doc`, `spreadsheet`.
+- Dynamic capabilities (runtime-selected): допускается подключение дополнительных capabilities из registry для оценки feasibility/impact при сохранении policy-gates.
 - Читает:
   - `docs/agents/registry.yaml`
   - `docs/subservices/oap/agents-card.schema.json`
@@ -176,7 +237,8 @@
 
 ### 7) Приоритизация и запуск A/B (гибридный режим)
 - Цель: отобрать top-priority к внедрению, остальное оставить в backlog, подходящие candidate переводить в `ab_test`.
-- Навыки: `spreadsheet`, `doc`.
+- Baseline capabilities: Skills `spreadsheet`, `doc`.
+- Dynamic capabilities (runtime-selected): может добавляться runtime-verify capability для high-risk candidates до статуса `scheduled`.
 - Читает:
   - кандидатный список улучшений
   - telemetry и review-сигналы
@@ -184,13 +246,15 @@
   - статусы lifecycle и приоритеты в `docs/agents/registry.yaml`
   - task context package (`operational_memory`, `collaboration_plan`, `ab_test_plan`) в `agent_tasks.task_brief`
   - `.logs/agents/analyst-agent.jsonl`
+- Promotion rule:
+  - `availableSkills/externalSkillCandidates -> usedSkills` только после `shadow trial` + `human approve` + подтвержденный эффект.
 - **Метрики решений:** логировать `"metrics": { "n_selected": <число отобранных>, "decision_time_ms": <мс от старта шага до завершения приоритизации> }` в событии этого шага.
 - **A/B правило для candidate:** `sessions_required` адаптивно `3..8`, `pass_rule=target_plus_guardrails`.
 
 ### 8) Внедрение отобранных улучшений
 - Цель: внедрить только подтвержденные top-priority изменения.
-- Навыки: `doc`.
-- Инструменты: `QMD retrieval`.
+- Baseline capabilities: Skills `doc`; Tools `QMD retrieval`.
+- Dynamic capabilities (runtime-selected): допускается подключение профильных capabilities (например `playwright` для UI-regression) при явной traceability в telemetry.
 - Читает:
   - `docs/subservices/oap/agents-card.schema.json`
   - `docs/subservices/oap/README.md`
@@ -208,7 +272,8 @@
 
 ### 9) Проверка эффекта и регрессий
 - Цель: убедиться, что внедрение дало эффект и не внесло регрессию.
-- Навыки: `agent-telemetry`, `playwright` (когда нужна UI-проверка), `doc`.
+- Baseline capabilities: Skills `agent-telemetry`, `doc`; Skills `playwright` при UI-сценариях.
+- Dynamic capabilities (runtime-selected): подключаются релевантные verify-capabilities из allowlist, если baseline не покрывает риск.
 - Читает:
   - `.logs/agents/*.jsonl`
   - `artifacts/agent_telemetry_summary.json`
@@ -217,7 +282,8 @@
 
 ### 10) Обновление `Задачи и качество` + telemetry
 - Цель: синхронизировать KPI и качество по результатам цикла.
-- Навыки: `agent-telemetry`, `doc`.
+- Baseline capabilities: Skills `agent-telemetry`, `doc`.
+- Dynamic capabilities (runtime-selected): допускается подключение дополнительных метрик/bench tooling без изменения runtime-контракта данных.
 - Читает:
   - `artifacts/agent_telemetry_summary.json`
   - `artifacts/agent_telemetry_summary.md`
@@ -228,7 +294,8 @@
 
 ### 11) Уведомления
 - Цель: отправить критичные сигналы сразу, остальные — в digest.
-- Навыки: `agent-telemetry`, `doc`.
+- Baseline capabilities: Skills `agent-telemetry`, `doc`.
+- Dynamic capabilities (runtime-selected): может добавляться канал/инструмент уведомлений из allowlist с обязательной фиксацией decision basis.
 - Читает:
   - результаты verification
   - итог цикла и backlog

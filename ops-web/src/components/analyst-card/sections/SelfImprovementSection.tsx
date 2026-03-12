@@ -4,18 +4,24 @@ import {
   Chip,
   Collapse,
   Divider,
+  Drawer,
+  IconButton,
+  Link,
   List,
   ListItemButton,
   Stack,
   Step,
   StepLabel,
   Stepper,
+  Tab,
+  Tabs,
   Tooltip,
   Typography,
 } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import type { AgentSummary } from "../../../lib/generatedData";
-import { getDocsIndex } from "../../../lib/generatedData";
+import { getAnalystLatestCycle, getDocsIndex } from "../../../lib/generatedData";
 import { SectionBlock } from "../SectionBlock";
 import { FilePathLink } from "../FilePathLink";
 import { ExternalLink } from "../ExternalLink";
@@ -62,7 +68,7 @@ function parseLessonsMarkdown(content: string): LessonEntry[] {
     const h2Match = section.match(/^## (.+)/);
     if (!h2Match) continue;
     const heading = h2Match[1].trim();
-    if (/Реестр актуальности|Analyst Agent Lessons|_TEMPLATE/i.test(heading)) continue;
+    if (/Реестр актуальности|Analyst Agent Lessons|_TEMPLATE|Обязательные принципы|Формат|Seed/i.test(heading)) continue;
 
     const getCaptureBlock = (label: string) => {
       const rx = new RegExp(`- ${label}:\\s*\\n((?:  .+\\n?)+)`, "i");
@@ -87,9 +93,9 @@ function parseLessonsMarkdown(content: string): LessonEntry[] {
     lessons.push({
       ref: heading,
       date,
-      correction: getCaptureBlock("Correction"),
-      rootCause: getCaptureBlock("Root cause"),
-      preventiveRule: getCaptureBlock("Preventive rule"),
+      correction: getCaptureBlock("Correction") || getCaptureBlock("Principle"),
+      rootCause: getCaptureBlock("Root cause") || getCaptureBlock("Trigger"),
+      preventiveRule: getCaptureBlock("Preventive rule") || getCaptureBlock("Preventive gate"),
       status,
     });
   }
@@ -110,8 +116,6 @@ const STATUS_LABEL: Record<LessonStatus, string> = {
   outdated: "устарел",
   archived: "архив",
 };
-
-const CYCLE_STEPS = ["planned", "verify_started", "verify_passed", "lesson_captured", "completed"];
 
 function LessonCard({
   lesson,
@@ -237,7 +241,24 @@ export function SelfImprovementSection({
     return parseLessonsMarkdown(doc.content);
   }, [la?.lessonsPath]);
 
-  const activeLessons = lessons.filter((l) => l.status !== "archived");
+  const globalLessons = React.useMemo<LessonEntry[]>(() => {
+    const docs = getDocsIndex();
+    const doc = docs.find((d) => d.path === "docs/subservices/oap/tasks/lessons.global.md");
+    if (!doc?.content) return [];
+    return parseLessonsMarkdown(doc.content);
+  }, []);
+
+  const latestCycle = React.useMemo(
+    () => (agent.id === "analyst-agent" ? getAnalystLatestCycle() : null),
+    [agent.id]
+  );
+  const cycleStages = latestCycle?.canonical_stages ?? [];
+
+  const [lessonsModalOpen, setLessonsModalOpen] = React.useState(false);
+  const [lessonsTab, setLessonsTab] = React.useState(0);
+  const lessonsPath = la?.lessonsPath ?? "";
+
+  const globalLessonsPath = "docs/subservices/oap/tasks/lessons.global.md";
 
   return (
     <SectionBlock
@@ -311,65 +332,147 @@ export function SelfImprovementSection({
       {/* Блок 3 — Уроки агента */}
       <Divider sx={{ my: 0.5 }} />
       <Stack direction="row" spacing={0.75} alignItems="center">
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          Уроки агента
-        </Typography>
-        {activeLessons.length > 0 && (
-          <Chip
-            size="small"
-            label={`${activeLessons.length}`}
-            variant="outlined"
-            sx={{ fontSize: "0.7rem", height: 18 }}
-          />
-        )}
+        <Link
+          component="button"
+          type="button"
+          variant="body2"
+          underline="hover"
+          sx={{ fontWeight: 600, textAlign: "left", lineHeight: 1.35 }}
+          onClick={() => setLessonsModalOpen(true)}
+        >
+          Уроки данного агента: {lessons.length}
+        </Link>
         <Tooltip
-          title="Выводы из закрытых задач. Нажмите на урок — раскроются причина и превентивное правило."
+          title={`Уроки данного агента (${lessons.length}) из файла ${lessonsPath || "—"}. Глобальный канон содержит ${globalLessons.length} урока.`}
           arrow
           placement="top"
         >
           <InfoOutlinedIcon sx={{ fontSize: 14, color: "text.secondary", cursor: "help" }} />
         </Tooltip>
       </Stack>
-      {activeLessons.length === 0 ? (
-        la?.lessonsPath ? (
-          <FilePathLink path={la.lessonsPath} label="Файл уроков агента" onClick={onOpenFile} />
-        ) : (
-          <Typography variant="caption" color="text.secondary">
-            Уроки не зафиксированы
-          </Typography>
-        )
-      ) : (
-        <List disablePadding dense sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-          {activeLessons.map((lesson, idx) => (
-            <LessonCard
-              key={idx}
-              lesson={lesson}
-              onOpenFile={onOpenFile}
-              lessonsPath={la?.lessonsPath ?? ""}
-            />
-          ))}
-        </List>
-      )}
+      <Drawer
+        anchor="right"
+        open={lessonsModalOpen}
+        onClose={() => { setLessonsModalOpen(false); setLessonsTab(0); }}
+        PaperProps={{
+          sx: {
+            width: { xs: "100%", sm: 580 },
+            p: 0,
+            display: "flex",
+            flexDirection: "column",
+          },
+        }}
+      >
+        {/* Header */}
+        <Stack
+          direction="row"
+          alignItems="flex-start"
+          spacing={1}
+          sx={{ p: 2, pb: 1.5, borderBottom: "1px solid", borderColor: "divider", bgcolor: "background.default", flexShrink: 0 }}
+        >
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              Уроки агента
+            </Typography>
+          </Box>
+          <IconButton onClick={() => { setLessonsModalOpen(false); setLessonsTab(0); }} aria-label="Закрыть боковую панель уроков">
+            <CloseIcon />
+          </IconButton>
+        </Stack>
+
+        {/* Tabs */}
+        <Tabs
+          value={lessonsTab}
+          onChange={(_e, v) => setLessonsTab(v)}
+          sx={{ borderBottom: "1px solid", borderColor: "divider", flexShrink: 0, px: 1 }}
+          textColor="primary"
+          indicatorColor="primary"
+        >
+          <Tab label={`Уроки данного агента (${lessons.length})`} />
+          <Tab label={`Все уроки (${globalLessons.length})`} />
+        </Tabs>
+
+        {/* Tab content */}
+        <Box sx={{ flex: 1, overflow: "auto", p: 1.5 }}>
+          {lessonsTab === 0 && (
+            <Stack spacing={0.75}>
+              {lessonsPath && (
+                <Typography variant="caption" color="text.secondary" sx={{ fontFamily: "monospace", display: "block", mb: 0.5 }}>
+                  {lessonsPath}
+                </Typography>
+              )}
+              {lessons.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  Уроки агента не найдены.
+                </Typography>
+              ) : (
+                <List disablePadding dense sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                  {lessons.map((lesson, idx) => (
+                    <LessonCard
+                      key={idx}
+                      lesson={lesson}
+                      onOpenFile={(path) => { setLessonsModalOpen(false); onOpenFile(path); }}
+                      lessonsPath={lessonsPath}
+                    />
+                  ))}
+                </List>
+              )}
+            </Stack>
+          )}
+          {lessonsTab === 1 && (
+            <Stack spacing={0.75}>
+              <Typography variant="caption" color="text.secondary" sx={{ fontFamily: "monospace", display: "block", mb: 0.5 }}>
+                {globalLessonsPath}
+              </Typography>
+              {globalLessons.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  Глобальный список уроков пуст.
+                </Typography>
+              ) : (
+                <List disablePadding dense sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                  {globalLessons.map((lesson, idx) => (
+                    <LessonCard
+                      key={idx}
+                      lesson={lesson}
+                      onOpenFile={(path) => { setLessonsModalOpen(false); onOpenFile(path); }}
+                      lessonsPath={globalLessonsPath}
+                    />
+                  ))}
+                </List>
+              )}
+            </Stack>
+          )}
+        </Box>
+      </Drawer>
 
       {/* Блок 4 — Схема цикла самоулучшения */}
-      {la?.lastLessonAt ? (
+      {(la?.lastLessonAt || cycleStages.length > 0) ? (
         <>
           <Divider sx={{ my: 0.5 }} />
           <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.75 }}>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              Последний цикл завершён
+              Последний цикл
             </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {formatRuDate(la.lastLessonAt)}
-            </Typography>
+            {la?.lastLessonAt && (
+              <Typography variant="caption" color="text.secondary">
+                {formatRuDate(la.lastLessonAt)}
+              </Typography>
+            )}
           </Stack>
-          <Stepper alternativeLabel sx={{ "& .MuiStepLabel-label": { fontSize: "0.62rem" } }}>
-            {CYCLE_STEPS.map((step) => (
-              <Step key={step} completed>
-                <StepLabel>{step.replace(/_/g, " ")}</StepLabel>
-              </Step>
-            ))}
-          </Stepper>
+          {cycleStages.length > 0 ? (
+            <>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+                Выполнено {cycleStages.filter((s) => s.executed).length} из {cycleStages.length} этапов
+              </Typography>
+              <Stepper orientation="vertical" sx={{ "& .MuiStepLabel-label": { fontSize: "0.68rem" } }}>
+                {cycleStages.map((stage) => (
+                  <Step key={stage.step_key} completed={stage.executed}>
+                    <StepLabel>{stage.step_label}</StepLabel>
+                  </Step>
+                ))}
+              </Stepper>
+            </>
+          ) : null}
         </>
       ) : null}
 

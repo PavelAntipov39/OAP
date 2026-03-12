@@ -22,6 +22,43 @@
 - Tools-with-impact: инструменты (MCP/skills) показываются с фактической пользой и результатом.
 - Recommendation governance: рекомендации содержат основание, сценарии применения, ожидаемый эффект и сложность внедрения.
 
+## Канонические типы агентов
+В пользовательской терминологии ОАП используются два типа агентов:
+
+1. `Автономные агенты`
+- самостоятельные роли системы;
+- могут быть основной точкой входа в задачу;
+- имеют свою карточку, operating plan, telemetry и host adapters.
+
+Текущий active set:
+- `orchestrator-agent`
+- `analyst-agent`
+- `designer-agent`
+- `reader-agent`
+
+2. `Процессные агенты (sub-agents)`
+- узкие подключаемые агенты внутри цикла автономного агента;
+- используются для bounded delegation и не считаются отдельной основной ролью;
+- обычно запускаются через orchestration/dispatcher и возвращают result package обратно в общий backbone.
+
+Текущий active set:
+- `retrieval-audit`
+- `ui-verification`
+- `telemetry-audit`
+- `contract-audit`
+- `docs-spec-sync`
+- `automation-governance`
+
+Правило расширения:
+- новый агент по умолчанию не попадает сразу в автономные;
+- сначала новая роль оформляется как процессный агент;
+- повышение до автономного агента возможно только после отдельного governance-check.
+
+`orchestrator-agent`:
+- это координационный автономный агент;
+- он не заменяет доменных исполнителей, а выбирает primary executor и bounded process agents;
+- доменная работа по-прежнему должна уходить в `analyst-agent`, `designer-agent` или `reader-agent`.
+
 ## Каноническая структура карточки агента
 1. Шапка
 - Имя агента.
@@ -30,73 +67,45 @@
 - Обновлено.
 - Источник данных.
 
-2. Операционный контур
-- Идентичность (identity).
-- Пульс (heartbeat): задачи в работе, требуют внимания, просрочены.
-- Память (memory): 3-5 ключевых опорных источников.
-- Инструменты (tools): активные MCP и навыки.
-- Следующий фокус: 1 приоритетное действие.
+2. Анализ эффективности агента
+- Единый блок метрик для всех top-level карточек.
+- Один и тот же title, layout, tooltip-логика и row-pattern.
+- Наполнение агент-специфично, но структура одинакова:
+  - ключевые фактические метрики на карточке;
+  - ссылка `Открыть остальные метрики`;
+  - modal `metrics_catalog` по тому же URL-контракту.
+- Если данных нет, блок не скрывается и показывает fallback `не зафиксировано`.
 
-3. MCP: фактическое применение
-- Название MCP.
-- Что дает.
-- Где уже применялось (конкретные задачи).
-- Результат в цифрах.
-- Текущий статус подключения.
+3. Как работает ИИ агент
+- `Режим работы агента`.
+- `Описание правил работы агента`.
+- `История улучшений агента`.
+- `Схема работы агента`.
+- `Список сессий цикла агента`.
+- `Уроки данного агента`.
+- Для любого top-level агента эти пункты существуют в одном и том же порядке; при отсутствии runtime-данных открывается честный empty state без фиктивного успеха.
 
-4. MCP: рекомендации к установке
-- Название.
-- Что делает.
-- Когда использовать.
-- Что улучшит.
-- Основание рекомендации.
-- Задачи, где поможет.
-- Сложность подключения.
-- Ссылка.
+4. Рабочий контур агента
+- Навыки.
+- Инструменты.
+- MCP / интеграции.
+- Правила.
+- Блок показывает фактически задействованный capability-contour в одном и том же формате у всех top-level агентов.
 
-5. Опорные источники решений
-- Источник.
-- Файл/путь.
-- Где смотреть.
-- Ссылка на источник.
+5. Память
+- Оперативная память.
+- Долговременная память.
+- Самоулучшение агента.
+- Пустые данные не убирают раздел, а отображаются как `не зафиксировано`.
 
-6. Навыки и правила (для modern-карточек аналитика и продакт дизайнера)
-- Кнопка `Правила работы раздела` -> открывает модалку с полным текстом правил.
-- Используемые навыки:
-  - Название навыка.
-  - Время последнего использования.
-  - Путь к `SKILL.md`.
-  - Точный текст из `SKILL.md` (без подстановки из registry).
-- Правила:
-  - Путь к правилу (показывается как понятная гиперссылка с названием документа).
-  - Краткое описание.
-  - Переход открывает текстовую модалку внутри ОАП.
-  - По умолчанию показывается релевантный фрагмент по `pathHint`, а не весь документ.
-- `Сравнительная таблица Rules, Tools, Skills, MCP`:
-  - Показывает единый цикл `Discover -> Describe -> Compare -> Trial -> Decide -> Promote -> Measure`.
-  - Для всех capability отображает current contract: `Источник`, `Trust`, `Когда использовать`, `Когда не использовать`, `Contract score`, `Verify after use`, `Fallback after use`, `Статус review`, `Решение`.
-  - Для `Skills` дополнительно показывает внешний verified candidate, его источник, статус `shadow trial` и `promotion status`.
-  - Policy v1: `official-first`, `skills.sh` используется только как discovery-index, внешние skill-alternatives проходят только через `shadow mode`, promotion выполняется только после `human approve`.
-  - Канонический источник данных таблицы: `artifacts/capability_trials/<agent-id>/capability_snapshot.json`.
-  - Для автоматического refresh capability-table использовать:
-    - `python3 scripts/skill_shadow_trial_runner.py refresh --agent-id analyst-agent`
-    - `python3 scripts/skill_shadow_trial_runner.py refresh --all-agents`
-  - Low-level/manual команды остаются для адресного trial:
-    - `python3 scripts/skill_shadow_trial_runner.py plan --agent-id analyst-agent`
-    - `python3 scripts/skill_shadow_trial_runner.py judge --input-json artifacts/skill_shadow_trial_input.json`
+6. Риски
+- Отдельный фиксированный финальный раздел карточки.
+- Содержит риски и контрольные условия без переноса их в другие секции.
 
-7. Рекомендации по улучшению
-- Карточка рекомендации:
-  - `Оценка эффекта ICE: Score | Impact | Confidence | Ease`
-  - `Точка роста`
-  - `Решение`
-  - `Кнопка: Скопировать промт для внедрения`
-- Кнопка `Открыть все рекомендации`:
-  - открывает модалку со списком подготовленных промтов (`promptMarkdown`).
-
-Правило для modern-карточек:
-- Все карточки агентов открываются через единый `UnifiedAgentDrawer` контракт.
-- Каноническая runtime-реализация `UnifiedAgentDrawer` опирается на analyst-card composition как на эталонную структуру секций и fallback-логики.
+Правило канонического overview:
+- Все top-level карточки агентов открываются через единый `UnifiedAgentDrawer` контракт.
+- Каноническая runtime-реализация `UnifiedAgentDrawer` опирается на `analyst-agent` overview как на общий composer для `orchestrator-agent`, `analyst-agent`, `designer-agent`, `reader-agent`.
+- Любое изменение структуры/порядка/поведения секций делается один раз в общем composer и автоматически применяется ко всем top-level карточкам.
 - Special-case роутинг карточки конкретного агента не допускается.
 
 8. Задачи
@@ -191,6 +200,20 @@
 - Подробные политики (`источники`, `whitelist`, `lifecycle`, `уведомления`, `критичные случаи`) читаются в модалке по ссылке на operating plan.
 - Блок должен быть связан с реальными данными `improvements`, `rulesApplied`, `tasks/taskEvents`, telemetry.
 
+### Capability selection contract (mandatory for all agents)
+- Step-level `Навыки/Инструменты/MCP` в `OPERATING_PLAN.md` являются baseline minimum и не ограничивают полный runtime-набор.
+- Runtime-набор выбирается динамически capability-first контуром из:
+  - `workflowBackbone`,
+  - `collaboration_plan.spawned_instances.allowed_skills/allowed_tools/allowed_mcp`,
+  - capability-полей registry (`used*`/`available*`),
+  - per-agent snapshot `artifacts/capability_trials/<agent-id>/capability_snapshot.json`.
+- Обязательные gates выбора:
+  - `official-first`,
+  - `shadow mode` для внешних skill/tool alternatives,
+  - `human approve` перед promotion/replace.
+- При недоступности динамического capability используется явный fallback policy с telemetry-traceability.
+- В telemetry поля `skills[]/tools[]/mcp_tools[]` отражают фактически использованный runtime-набор и могут быть шире baseline списка шага.
+
 ### Canonical per-agent docs layout
 
 | Agent ID | Обязательные файлы | Назначение |
@@ -198,14 +221,27 @@
 | `analyst-agent` | `OPERATING_PLAN.md`, `CARD_DATA_SOURCES_MAP.md`, `FLOW.md`, `CARD_FULL_FLOW.md` | analyst-card contract, data-source map, flow views и compatibility alias |
 | `designer-agent` | `OPERATING_PLAN.md` | operating standard дизайнера |
 | `reader-agent` | `OPERATING_PLAN.md` | operating standard инженерного исполнителя |
-| `data-agent` | `OPERATING_PLAN.md` | operating standard data/ETL исполнителя |
-| `ops-agent` | `OPERATING_PLAN.md` | operating standard ops/reliability исполнителя |
 
 Правило расширения:
 - любой новый агент обязан иметь папку `docs/subservices/oap/agents/<agent-id>/`;
 - минимальный обязательный файл для нового агента: `OPERATING_PLAN.md`;
 - дополнительные обязательные файлы фиксируются явно в validator policy, если агент получает отдельный UI/data-flow contract;
 - проверка выполняется через `python3 scripts/validate_agent_operating_plans.py`.
+- архивные профили и их operating plans хранятся в `docs/subservices/oap/archive/agents/<agent-id>/` и не считаются частью active manifest.
+- отдельный governance-runbook для top-level vs runtime specialist хранится в `docs/subservices/oap/MULTI_AGENT_GOVERNANCE.md`.
+- live/manual checklist реального handoff по hosts хранится в `docs/subservices/oap/HOST_HANDOFF_CHECKLIST.md`.
+- новый агент не может попасть в active top-level set без:
+  - distinct mission,
+  - measurable task class,
+  - bounded delegation model,
+  - telemetry viability KPI,
+  - host adapter support и успешного `python3 scripts/export_host_agents.py smoke-active-set`.
+- если эти условия не выполнены, новая роль сначала оформляется только как `runtime specialist`.
+
+### Термины для документации и UI
+- User-facing термин `Автономные агенты` соответствует internal key `top_level`.
+- User-facing термин `Процессные агенты (sub-agents)` соответствует internal key `runtime_specialist`.
+- Internal schema keys не переименовываются, чтобы не ломать registry, telemetry и cross-host adapters.
 
 ## KPI для контроля качества после рефакторинга
 - `tasks_in_work` = `queued + running + retrying`.
@@ -265,8 +301,8 @@
 - `analyst-agent` служит эталонным примером этой модели, но его внутренние шаги `candidate scoring / priority decision` остаются analyst-specific branch, а не общим core.
 - capability-optimization обязателен для всех агентов: при финальном каноническом событии цикла telemetry запускает `capability_refresh` в режиме `on_run` (если `capabilityOptimization.enabled=true` и `refreshMode=on_run`), а результаты пишутся в `artifacts/capability_trials/<agent-id>/capability_snapshot.json`.
 
-Проверка auto-refresh (smoke, все агенты):
-- записать финальное каноническое событие для `designer-agent`, `reader-agent`, `data-agent`, `ops-agent`;
+Проверка auto-refresh (smoke, все активные агенты):
+- записать финальное каноническое событие для `designer-agent`, `reader-agent`, `analyst-agent`;
 - убедиться, что в `.logs/agents/<agent-id>.jsonl` появились `capability_refresh_started` и `capability_refresh_completed`;
 - пересобрать отчеты:
   - `python3 scripts/agent_telemetry.py report --log-dir .logs/agents --out-json artifacts/agent_telemetry_summary.json --out-md artifacts/agent_telemetry_summary.md --out-cycle-json artifacts/agent_cycle_validation_report.json --out-latest-analyst-json ops-web/public/generated/agent-latest-cycle-analyst.json --benchmark-summary-json artifacts/agent_benchmark_summary.json`
@@ -330,6 +366,25 @@
 Правило актуальности:
 - При любом изменении структуры ОАП, правил, телеметрии или реестра агентов нужно обновить источники выше и пересобрать generated индексы:
   - `npm --prefix ops-web run prepare-content`
+- После изменения host-agent каталога или generated adapters обязательно прогонять cross-host smoke для активной тройки (`analyst-agent`, `designer-agent`, `reader-agent`):
+  ```bash
+  python3 scripts/export_host_agents.py smoke-active-set
+  ```
+- Smoke проверяет:
+  - repo-generated adapters в `.claude/agents/*.md`,
+  - repo-generated adapters в `.github/agents/*.agent.md`,
+  - codex mirror generation в temp `skills-generated`,
+  - handoff targets только на существующие agent ids каталога.
+- После успешного smoke для реального host-level handoff нужно отдельно пройти live/manual checklist:
+  - `docs/subservices/oap/HOST_HANDOFF_CHECKLIST.md`
+- Для release-like прогона перед демонстрацией или rollout использовать единый gate:
+  ```bash
+  npm --prefix ops-web run check:release
+  ```
+  Он объединяет:
+  - contract/build checks,
+  - cross-host parity checks,
+  - Playwright smoke для `#/agents` и capability workflows.
 
 ## Синхронизация task board
 1. Создать/обновить задачи из `docs/agents/registry.yaml` и применить telemetry-переходы:
@@ -348,22 +403,29 @@ make agent-tasks-report DB="$SUPABASE_DB_URL"
 - Для перевода задачи в `В работе` используется telemetry-команда:
   `make agent-log AGENT=<agent> TASK=<external_key> STEP=implement STATUS=started`.
 
-## Экран `#/agent-flow` для analyst-agent
-- Экран показывает 3 слоя:
-  1) `Как устроен агент` (C4 process-view ссылки `analyst_flow_*` из `agents/analyst-agent/FLOW.md`),
-  2) `Как должен работать` (BPMN `docs/bpmn/analyst-agent-flow.bpmn`),
-  3) `Как сработал последний цикл` (факт из telemetry).
-- Фактический слой строится из:
+## Экран `#/agent-flow` (все агенты)
+- Экран показывает 4 слоя:
+  1) `Пайплайн работы агента` (единый backbone + встроенные метки ключевых проверок),
+  2) `Mermaid: unified capability optimization loop` (упрощённая схема цикла улучшения без технического жаргона),
+  3) `Как сработал последний цикл` (факт из telemetry, analyst-first runtime contract),
+  4) `Архитектура (C4 process views)` для analyst-agent.
+- Важные проверки показываются внутри этапов пайплайна, а не отдельным блоком:
+  - `Проверка результата` (этап проверки эффекта),
+  - `Обновление способностей` (этап обновления профиля агента).
+- Runtime-факт последнего цикла в текущем контракте гарантирован для `analyst-agent` через:
   - `.logs/agents/analyst-agent.jsonl`,
   - `artifacts/agent_cycle_validation_report.json`,
   - `artifacts/agent_telemetry_summary.json`,
   - `artifacts/agent_latest_cycle_analyst.json`.
-- Для file-trace обязательно использовать telemetry-поля:
+- Для `file trace` обязательно использовать telemetry-поля:
   - `artifacts_read[]`,
   - `artifacts_written[]`.
-- Обновление экрана:
+- Обновление runtime-среза:
   - авто при открытии,
   - ручная кнопка `Обновить`.
+- Onboarding для нового участника:
+  - читать экран сверху вниз: `пайплайн` -> `Mermaid loop` -> `факт последнего цикла` -> `file-trace`;
+  - в первую очередь смотреть этапы с метками `Проверка результата` и `Обновление способностей`.
 
 ## Visual explainer для последнего цикла аналитика
 ```bash

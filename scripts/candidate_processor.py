@@ -32,8 +32,6 @@ DEFAULT_AB_GUARDRAILS = ["review_error_rate", "verification_pass_rate", "lesson_
 COLLABORATION_HINT_KEYWORDS: dict[str, tuple[str, ...]] = {
     "designer-agent": ("ui", "ux", "design", "дизайн", "карточк", "tooltip", "m3", "mui"),
     "reader-agent": ("knowledge", "kb", "докум", "retrieval", "context"),
-    "data-agent": ("data", "dataset", "etl", "sql", "schema", "rls", "таблиц"),
-    "ops-agent": ("deploy", "release", "incident", "ops", "mcp", "integration", "infra", "security"),
     "analyst-agent": ("metric", "telemetry", "quality", "review", "risk", "benchmark"),
 }
 

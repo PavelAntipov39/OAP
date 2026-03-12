@@ -75,6 +75,24 @@
       "howInTable": "Все строки capability comparison - это сравнение конкретных capabilities между собой."
     },
     {
+      "id": "term.autonomous_agents",
+      "label": "Автономные агенты",
+      "tooltip": "Самостоятельные агенты, которые могут быть точкой входа и вести задачу целиком.",
+      "what": "Автономные агенты - это постоянные роли системы, которые можно выбирать как основных исполнителей задачи. Они имеют свою миссию, operating plan, telemetry и карточку в интерфейсе.",
+      "where": "В active set на странице агентов, в task routing и в automation/host adapters.",
+      "why": "Помогают разделить ответственность по крупным классам задач и не превращать один агент в универсального исполнителя всего подряд.",
+      "howInTable": "В документации и UI это верхний уровень агентной системы. Текущий active set ОАП: `orchestrator-agent`, `analyst-agent`, `designer-agent`, `reader-agent`."
+    },
+    {
+      "id": "term.process_agents",
+      "label": "Процессные агенты (sub-agents)",
+      "tooltip": "Узкие подключаемые агенты, которые работают внутри цикла автономного агента.",
+      "what": "Процессные агенты - это bounded runtime-агенты для отдельных подпроцессов: проверки evidence, runtime UI, telemetry и других узких задач. Они не являются самостоятельной основной точкой входа.",
+      "where": "В `step_3 orchestration`, внутри roleWindow, в dispatcher-backed delegation и в `collaboration_plan.spawned_instances[]`.",
+      "why": "Позволяют не раздувать active set автономных ролей и подключать узкую экспертизу только там, где она реально нужна.",
+      "howInTable": "В текущем контуре ОАП к процессным агентам относятся `retrieval-audit`, `ui-verification`, `telemetry-audit`, `contract-audit`, `docs-spec-sync`, `automation-governance`."
+    },
+    {
       "id": "term.verification",
       "label": "Verification",
       "tooltip": "Проверка, что изменение реально сработало и не вызвало регрессию.",
@@ -208,6 +226,186 @@
       "where": "В таблице схемы последней сессии, если путь относится к задачам/урокам самоулучшения.",
       "why": "Нужен для прозрачности, как агент превращает проверку результата в новое правило поведения.",
       "howInTable": "Позволяет отличить обычные рабочие файлы от артефактов обучения агента."
+    },
+    {
+      "id": "term.trace_source_kind.registry",
+      "label": "Registry",
+      "tooltip": "Источник file trace: реестр агентов и профилей.",
+      "what": "Показывает, что файл относится к реестру агентов и их runtime-профилей.",
+      "where": "Чип `Источник` в active-list журнала оперативной памяти.",
+      "why": "Помогает быстро отличать реестр от артефактов и логов.",
+      "howInTable": "Используется как canonical label для `source_kind=registry`."
+    },
+    {
+      "id": "term.trace_source_kind.template_catalog",
+      "label": "Template catalog",
+      "tooltip": "Источник file trace: каталог шаблонов specialist-ролей.",
+      "what": "Показывает, что файл относится к каталогу шаблонов ролей.",
+      "where": "Чип `Источник` в active-list журнала оперативной памяти.",
+      "why": "Позволяет отличать runtime-каталог шаблонов от реестра и telemetry.",
+      "howInTable": "Используется как canonical label для `source_kind=template_catalog`."
+    },
+    {
+      "id": "term.trace_source_kind.operating_plan",
+      "label": "Operating plan",
+      "tooltip": "Источник file trace: операционный регламент агента.",
+      "what": "Показывает, что файл является операционным стандартом роли.",
+      "where": "Чип `Источник` в active-list журнала оперативной памяти.",
+      "why": "Нужно для прозрачности: агент читал/обновлял именно регламент.",
+      "howInTable": "Используется как canonical label для `source_kind=operating_plan`."
+    },
+    {
+      "id": "term.trace_source_kind.spec",
+      "label": "Spec",
+      "tooltip": "Источник file trace: каноническая спецификация.",
+      "what": "Показывает, что источник относится к spec-слою source-of-truth.",
+      "where": "Чип `Источник` в active-list журнала оперативной памяти.",
+      "why": "Отделяет системную спецификацию от локальных operational-файлов.",
+      "howInTable": "Используется как canonical label для `source_kind=spec`."
+    },
+    {
+      "id": "term.trace_source_kind.contract",
+      "label": "Contract",
+      "tooltip": "Источник file trace: формальный контракт или schema.",
+      "what": "Показывает, что файл описывает формальную структуру или правила валидации.",
+      "where": "Чип `Источник` в active-list журнала оперативной памяти.",
+      "why": "Нужно отделять договоренности контракта от прикладного контента.",
+      "howInTable": "Используется как canonical label для `source_kind=contract`."
+    },
+    {
+      "id": "term.trace_source_kind.telemetry_log",
+      "label": "Telemetry log",
+      "tooltip": "Источник file trace: журнал telemetry-событий.",
+      "what": "Показывает, что файл относится к runtime-логам и event history.",
+      "where": "Чип `Источник` в active-list журнала оперативной памяти.",
+      "why": "Позволяет быстро понять, что контекст пришел из фактических логов.",
+      "howInTable": "Используется как canonical label для `source_kind=telemetry_log`."
+    },
+    {
+      "id": "term.trace_source_kind.generated_artifact",
+      "label": "Generated artifact",
+      "tooltip": "Источник file trace: сгенерированный артефакт цикла.",
+      "what": "Показывает, что файл является продуктом выполнения шага/скрипта.",
+      "where": "Чип `Источник` в active-list журнала оперативной памяти.",
+      "why": "Отделяет generated output от исходных документов и контрактов.",
+      "howInTable": "Используется как canonical label для `source_kind=generated_artifact`."
+    },
+    {
+      "id": "term.trace_source_kind.capability_snapshot",
+      "label": "Capability snapshot",
+      "tooltip": "Источник file trace: snapshot состояния capability-контуров.",
+      "what": "Показывает, что источник связан со snapshot capability trials.",
+      "where": "Чип `Источник` в active-list журнала оперативной памяти.",
+      "why": "Помогает отделять quality snapshot от обычных артефактов.",
+      "howInTable": "Используется как canonical label для `source_kind=capability_snapshot`."
+    },
+    {
+      "id": "term.trace_source_kind.unknown",
+      "label": "Unknown",
+      "tooltip": "Источник file trace не определен producer-слоем.",
+      "what": "Показывает, что producer не передал taxonomy по источнику.",
+      "where": "Чип `Источник` в active-list журнала оперативной памяти.",
+      "why": "Сигнализирует о неполной детализации telemetry.",
+      "howInTable": "Используется как canonical label для `source_kind=unknown`."
+    },
+    {
+      "id": "term.trace_source_kind.other",
+      "label": "Other",
+      "tooltip": "Источник file trace не входит в текущий канонический словарь.",
+      "what": "Показывает, что пришло новое значение source_kind, не описанное в glossary.",
+      "where": "Чип `Источник` в active-list журнала оперативной памяти.",
+      "why": "Позволяет не ломать UI и одновременно подсветить необходимость расширить glossary.",
+      "howInTable": "Используется как fallback label для нестандартного `source_kind`."
+    },
+    {
+      "id": "term.trace_semantic_layer.skills",
+      "label": "Skills",
+      "tooltip": "Семантический слой file trace: навыки агента.",
+      "what": "Показывает, что операция относится к слою навыков.",
+      "where": "Чип `Контур` в active-list журнала оперативной памяти.",
+      "why": "Нужно для разделения skills от tools/rules/memory.",
+      "howInTable": "Используется как canonical label для `semantic_layer=skills`."
+    },
+    {
+      "id": "term.trace_semantic_layer.tools",
+      "label": "Tools",
+      "tooltip": "Семантический слой file trace: прикладные инструменты.",
+      "what": "Показывает, что операция относится к инструментальному слою.",
+      "where": "Чип `Контур` в active-list журнала оперативной памяти.",
+      "why": "Помогает отделять tool-use от skills и правил.",
+      "howInTable": "Используется как canonical label для `semantic_layer=tools`."
+    },
+    {
+      "id": "term.trace_semantic_layer.mcp",
+      "label": "MCP",
+      "tooltip": "Семантический слой file trace: MCP/интеграции.",
+      "what": "Показывает, что операция относится к интеграционному контуру.",
+      "where": "Чип `Контур` в active-list журнала оперативной памяти.",
+      "why": "Дает прозрачность, что использовалась внешняя интеграция.",
+      "howInTable": "Используется как canonical label для `semantic_layer=mcp`."
+    },
+    {
+      "id": "term.trace_semantic_layer.rules",
+      "label": "Rules",
+      "tooltip": "Семантический слой file trace: правила и policy.",
+      "what": "Показывает, что операция относится к регламенту/ограничениям.",
+      "where": "Чип `Контур` в active-list журнала оперативной памяти.",
+      "why": "Позволяет отделять policy-контур от задач и памяти.",
+      "howInTable": "Используется как canonical label для `semantic_layer=rules`."
+    },
+    {
+      "id": "term.trace_semantic_layer.tasks",
+      "label": "Tasks",
+      "tooltip": "Семантический слой file trace: задачи и task-контекст.",
+      "what": "Показывает, что операция относится к задаче или task payload.",
+      "where": "Чип `Контур` в active-list журнала оперативной памяти.",
+      "why": "Нужно для прозрачности task-driven контекста.",
+      "howInTable": "Используется как canonical label для `semantic_layer=tasks`."
+    },
+    {
+      "id": "term.trace_semantic_layer.memory",
+      "label": "Memory",
+      "tooltip": "Семантический слой file trace: память (оперативная/долговременная).",
+      "what": "Показывает, что операция относится к memory-контуру агента.",
+      "where": "Чип `Контур` в active-list журнала оперативной памяти.",
+      "why": "Помогает отделять память от telemetry и task-слоя.",
+      "howInTable": "Используется как canonical label для `semantic_layer=memory`."
+    },
+    {
+      "id": "term.trace_semantic_layer.schema",
+      "label": "Schema",
+      "tooltip": "Семантический слой file trace: схемы и контракты.",
+      "what": "Показывает, что операция относится к schema/contract уровню.",
+      "where": "Чип `Контур` в active-list журнала оперативной памяти.",
+      "why": "Нужно для ясности, что изменялся или читался формальный контракт.",
+      "howInTable": "Используется как canonical label для `semantic_layer=schema`."
+    },
+    {
+      "id": "term.trace_semantic_layer.telemetry",
+      "label": "Telemetry",
+      "tooltip": "Семантический слой file trace: telemetry и runtime журналы.",
+      "what": "Показывает, что операция относится к telemetry-контуру.",
+      "where": "Чип `Контур` в active-list журнала оперативной памяти.",
+      "why": "Отделяет operational telemetry от рабочих документов.",
+      "howInTable": "Используется как canonical label для `semantic_layer=telemetry`."
+    },
+    {
+      "id": "term.trace_semantic_layer.unknown",
+      "label": "Unknown",
+      "tooltip": "Семантический слой file trace не определен producer-слоем.",
+      "what": "Показывает, что producer не передал semantic_layer.",
+      "where": "Чип `Контур` в active-list журнала оперативной памяти.",
+      "why": "Сигнализирует о неполной детализации telemetry.",
+      "howInTable": "Используется как canonical label для `semantic_layer=unknown`."
+    },
+    {
+      "id": "term.trace_semantic_layer.other",
+      "label": "Other",
+      "tooltip": "Семантический слой file trace не входит в текущий канон glossary.",
+      "what": "Показывает новое значение semantic_layer, которое еще не описано в glossary.",
+      "where": "Чип `Контур` в active-list журнала оперативной памяти.",
+      "why": "Позволяет сохранить устойчивый UI и не терять новые значения из telemetry.",
+      "howInTable": "Используется как fallback label для нестандартного `semantic_layer`."
     },
     {
       "id": "term.consistency_sync",

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-10T07:24:10.033710Z",
+  "generated_at": "2026-03-11T12:48:31.506038Z",
   "version": "agent_latest_cycle_analyst.v1",
   "agent_id": "analyst-agent",
   "available": true,
@@ -9,20 +9,22 @@
     "log_dir": ".logs/agents"
   },
   "metrics": {
-    "verification_pass_rate": 118.18,
-    "lesson_capture_rate": 84.62,
+    "verification_pass_rate": 100,
+    "lesson_capture_rate": 100,
     "review_error_rate": 0,
     "recommendation_action_rate": null,
     "replan_rate": 0,
     "decision_time_avg_ms": null,
-    "time_to_solution_min": 13
+    "unknown_source_rate": 0,
+    "unknown_semantic_rate": 50,
+    "time_to_solution_min": null
   },
   "metric_meta": {
     "verification_pass_rate": {
       "label": "Успех верификации",
       "description": "Какая доля verify-запусков завершилась успешно.",
-      "formula": "verify_passed / verify_started * 100",
-      "source": "artifacts/agent_telemetry_summary.json -> agents[].status_counts"
+      "formula": "unique task_id with verify_started+verify_passed / unique task_id with verify_started * 100",
+      "source": "artifacts/agent_telemetry_summary.json -> agents[].verification_pass_rate"
     },
     "lesson_capture_rate": {
       "label": "Фиксация уроков",
@@ -59,195 +61,378 @@
       "description": "Длительность последнего завершённого цикла от started до completed.",
       "formula": "completed_at - started_at (минуты)",
       "source": ".logs/agents/analyst-agent.jsonl -> latest cycle events"
+    },
+    "unknown_source_rate": {
+      "label": "Unknown source rate",
+      "description": "Доля artifact refs, где source_kind остался unknown.",
+      "formula": "unknown_source_refs_total / artifact_refs_total * 100",
+      "source": ".logs/agents/analyst-agent.jsonl -> artifacts_read/artifacts_written"
+    },
+    "unknown_semantic_rate": {
+      "label": "Unknown semantic rate",
+      "description": "Доля artifact refs, где semantic_layer остался unknown.",
+      "formula": "unknown_semantic_refs_total / artifact_refs_total * 100",
+      "source": ".logs/agents/analyst-agent.jsonl -> artifacts_read/artifacts_written"
     }
   },
   "latest_cycle": {
-    "task_id": "task-card-waiting-human-rollout-20260310",
-    "first_event_at": "2026-03-10T14:00:00Z",
-    "last_event_at": "2026-03-10T14:13:00Z",
+    "task_id": "task-ui-refresh-1773179006961",
+    "first_event_at": "2026-03-10T21:43:27.195346Z",
+    "last_event_at": "2026-03-10T21:43:27.231147Z",
     "latest_final_status": "completed",
     "final_scope": "latest",
-    "events_total": 5
+    "events_total": 6
   },
   "timeline": [
     {
-      "timestamp": "2026-03-10T14:00:00Z",
-      "step": "step_1_start",
-      "step_raw": "started",
-      "step_label": "1) started",
-      "status": "started",
-      "run_id": "run-task-card-wh-20260310",
-      "trace_id": "trace-task-card-wh-20260310",
-      "recommendation_id": "",
-      "outcome": "task card routing expansion for waiting_human service_mode",
-      "tokens_in": 0,
-      "tokens_out": 0,
-      "artifacts_read": [
-        {
-          "path": "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
-          "source_kind": "operating_plan",
-          "semantic_layer": "unknown",
-          "reason": "unknown",
-          "label": "Операционный стандарт агента"
-        },
-        {
-          "path": "docs/agents/registry.yaml",
-          "source_kind": "registry",
-          "semantic_layer": "unknown",
-          "reason": "unknown",
-          "label": "Реестр агентов"
-        }
-      ],
-      "artifacts_written": [
-        {
-          "path": ".logs/agents/analyst-agent.jsonl",
-          "source_kind": "telemetry_log",
-          "semantic_layer": "telemetry",
-          "reason": "unknown",
-          "label": "Telemetry log: analyst-agent"
-        }
-      ],
-      "artifacts_source": "fallback"
-    },
-    {
-      "timestamp": "2026-03-10T14:10:00Z",
-      "step": "verify_started",
-      "step_raw": "verify_started",
-      "step_label": "verify_started",
-      "status": "verify_started",
-      "run_id": "run-task-card-wh-20260310",
-      "trace_id": "trace-task-card-wh-20260310",
-      "recommendation_id": "",
-      "outcome": "tsc --noEmit passed, playwright 3/3 passed, npm run check passed",
-      "tokens_in": 0,
-      "tokens_out": 0,
-      "artifacts_read": [
-        {
-          "path": "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
-          "source_kind": "operating_plan",
-          "semantic_layer": "unknown",
-          "reason": "unknown",
-          "label": "Операционный стандарт агента"
-        },
-        {
-          "path": "docs/agents/registry.yaml",
-          "source_kind": "registry",
-          "semantic_layer": "unknown",
-          "reason": "unknown",
-          "label": "Реестр агентов"
-        }
-      ],
-      "artifacts_written": [
-        {
-          "path": ".logs/agents/analyst-agent.jsonl",
-          "source_kind": "telemetry_log",
-          "semantic_layer": "telemetry",
-          "reason": "unknown",
-          "label": "Telemetry log: analyst-agent"
-        }
-      ],
-      "artifacts_source": "fallback"
-    },
-    {
-      "timestamp": "2026-03-10T14:11:00Z",
-      "step": "verify_passed",
-      "step_raw": "verify_passed",
-      "step_label": "verify_passed",
-      "status": "verify_passed",
-      "run_id": "run-task-card-wh-20260310",
-      "trace_id": "trace-task-card-wh-20260310",
-      "recommendation_id": "",
-      "outcome": "all checks passed: tsc 0 errors, playwright 3/3, build ok",
-      "tokens_in": 0,
-      "tokens_out": 0,
-      "artifacts_read": [
-        {
-          "path": ".logs/agents/analyst-agent.jsonl",
-          "source_kind": "telemetry_log",
-          "semantic_layer": "telemetry",
-          "reason": "unknown",
-          "label": "Telemetry log: analyst-agent"
-        },
-        {
-          "path": "artifacts/agent_telemetry_summary.json",
-          "source_kind": "generated_artifact",
-          "semantic_layer": "telemetry",
-          "reason": "unknown",
-          "label": "Telemetry summary"
-        }
-      ],
-      "artifacts_written": [
-        {
-          "path": "artifacts/agent_cycle_validation_report.json",
-          "source_kind": "generated_artifact",
-          "semantic_layer": "telemetry",
-          "reason": "unknown",
-          "label": "Cycle validation report"
-        },
-        {
-          "path": ".logs/agents/analyst-agent.jsonl",
-          "source_kind": "telemetry_log",
-          "semantic_layer": "telemetry",
-          "reason": "unknown",
-          "label": "Telemetry log: analyst-agent"
-        }
-      ],
-      "artifacts_source": "fallback"
-    },
-    {
-      "timestamp": "2026-03-10T14:12:00Z",
-      "step": "lesson_captured",
-      "step_raw": "lesson_captured",
-      "step_label": "lesson_captured",
-      "status": "lesson_captured",
-      "run_id": "run-task-card-wh-20260310",
-      "trace_id": "trace-task-card-wh-20260310",
-      "recommendation_id": "",
-      "outcome": "lesson task-card-routing-by-service-mode added to lessons.global.md and analyst-agent.md",
-      "tokens_in": 0,
-      "tokens_out": 0,
-      "artifacts_read": [],
-      "artifacts_written": [
-        {
-          "path": "docs/subservices/oap/tasks/lessons.global.md",
-          "source_kind": "unknown",
-          "semantic_layer": "memory",
-          "reason": "unknown",
-          "label": "lessons.global.md"
-        },
-        {
-          "path": "docs/subservices/oap/tasks/lessons/analyst-agent.md",
-          "source_kind": "unknown",
-          "semantic_layer": "memory",
-          "reason": "unknown",
-          "label": "analyst-agent.md"
-        }
-      ],
-      "artifacts_source": "telemetry"
-    },
-    {
-      "timestamp": "2026-03-10T14:13:00Z",
-      "step": "completed",
-      "step_raw": "completed",
-      "step_label": "completed",
+      "timestamp": "2026-03-10T21:43:27.195346Z",
+      "step": "step_9_publish_snapshots",
+      "step_raw": "step_9_publish_snapshots",
+      "step_label": "9.1) publish snapshots",
       "status": "completed",
-      "run_id": "run-task-card-wh-20260310",
-      "trace_id": "trace-task-card-wh-20260310",
+      "run_id": "run-ui-refresh-1773179006961",
+      "trace_id": "trace-ui-refresh-1773179006961",
       "recommendation_id": "",
-      "outcome": "task card routing expanded: waiting_human tasks now route to experimental drawer. 5 files changed, 1 new test, lessons captured.",
-      "tokens_in": 0,
-      "tokens_out": 0,
-      "artifacts_read": [],
-      "artifacts_written": [
+      "outcome": "ui freshness integration smoke",
+      "tokens_in": 21,
+      "tokens_out": 13,
+      "artifacts_read": [
         {
-          "path": "docs/subservices/oap/tasks/todo.md",
-          "source_kind": "unknown",
+          "path": "docs/agents/registry.yaml",
+          "source_kind": "registry",
           "semantic_layer": "unknown",
-          "reason": "unknown",
-          "label": "todo.md"
+          "reason": "publish_snapshot",
+          "label": "Реестр агентов"
         }
       ],
-      "artifacts_source": "telemetry"
+      "artifacts_written": [
+        {
+          "path": "artifacts/capability_trials/analyst-agent/capability_snapshot.json",
+          "source_kind": "capability_snapshot",
+          "semantic_layer": "telemetry",
+          "reason": "publish_snapshot",
+          "label": "Capability snapshot artifact"
+        }
+      ],
+      "artifacts_source": "telemetry",
+      "artifact_contract_version": "v2",
+      "artifact_ops_origin": "mirrored_legacy",
+      "artifact_operations": [
+        {
+          "path": "docs/agents/registry.yaml",
+          "op": "read",
+          "timestamp": "2026-03-10T21:43:27.195346Z",
+          "step": "step_9_publish_snapshots",
+          "task_id": "task-ui-refresh-1773179006961",
+          "run_id": "run-ui-refresh-1773179006961",
+          "source": "telemetry",
+          "source_kind": "registry",
+          "semantic_layer": "unknown",
+          "reason": "publish_snapshot",
+          "label": "Реестр агентов"
+        },
+        {
+          "path": "artifacts/capability_trials/analyst-agent/capability_snapshot.json",
+          "op": "write",
+          "timestamp": "2026-03-10T21:43:27.195346Z",
+          "step": "step_9_publish_snapshots",
+          "task_id": "task-ui-refresh-1773179006961",
+          "run_id": "run-ui-refresh-1773179006961",
+          "source": "telemetry",
+          "source_kind": "capability_snapshot",
+          "semantic_layer": "telemetry",
+          "reason": "publish_snapshot",
+          "label": "Capability snapshot artifact"
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-03-10T21:43:27.225913Z",
+      "step": "step_9_publish_snapshots",
+      "step_raw": "step_9_publish_snapshots",
+      "step_label": "9.1) publish snapshots",
+      "status": "capability_refresh_started",
+      "run_id": "run-ui-refresh-1773179006961",
+      "trace_id": "trace-ui-refresh-1773179006961",
+      "recommendation_id": "",
+      "outcome": "capability refresh subflow started",
+      "tokens_in": 64,
+      "tokens_out": 18,
+      "artifacts_read": [
+        {
+          "path": "docs/agents/registry.yaml",
+          "source_kind": "registry",
+          "semantic_layer": "unknown",
+          "reason": "capability_refresh",
+          "label": "Реестр агентов"
+        }
+      ],
+      "artifacts_written": [],
+      "artifacts_source": "telemetry",
+      "artifact_contract_version": "v2",
+      "artifact_ops_origin": "mirrored_legacy",
+      "artifact_operations": [
+        {
+          "path": "docs/agents/registry.yaml",
+          "op": "read",
+          "timestamp": "2026-03-10T21:43:27.225913Z",
+          "step": "step_9_publish_snapshots",
+          "task_id": "task-ui-refresh-1773179006961",
+          "run_id": "run-ui-refresh-1773179006961",
+          "source": "telemetry",
+          "source_kind": "registry",
+          "semantic_layer": "unknown",
+          "reason": "capability_refresh",
+          "label": "Реестр агентов"
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-03-10T21:43:27.230473Z",
+      "step": "step_9_publish_snapshots",
+      "step_raw": "step_9_publish_snapshots",
+      "step_label": "9.1) publish snapshots",
+      "status": "shadow_trial_plan_refreshed",
+      "run_id": "run-ui-refresh-1773179006961",
+      "trace_id": "trace-ui-refresh-1773179006961",
+      "recommendation_id": "",
+      "outcome": "shadow trial plan refreshed",
+      "tokens_in": 42,
+      "tokens_out": 24,
+      "artifacts_read": [
+        {
+          "path": "docs/agents/registry.yaml",
+          "source_kind": "registry",
+          "semantic_layer": "unknown",
+          "reason": "capability_refresh",
+          "label": "Реестр агентов"
+        }
+      ],
+      "artifacts_written": [
+        {
+          "path": "artifacts/capability_trials/analyst-agent/shadow_trial_plan.json",
+          "source_kind": "capability_snapshot",
+          "semantic_layer": "telemetry",
+          "reason": "capability_refresh",
+          "label": "Capability snapshot artifact"
+        }
+      ],
+      "artifacts_source": "telemetry",
+      "artifact_contract_version": "v2",
+      "artifact_ops_origin": "mirrored_legacy",
+      "artifact_operations": [
+        {
+          "path": "docs/agents/registry.yaml",
+          "op": "read",
+          "timestamp": "2026-03-10T21:43:27.230473Z",
+          "step": "step_9_publish_snapshots",
+          "task_id": "task-ui-refresh-1773179006961",
+          "run_id": "run-ui-refresh-1773179006961",
+          "source": "telemetry",
+          "source_kind": "registry",
+          "semantic_layer": "unknown",
+          "reason": "capability_refresh",
+          "label": "Реестр агентов"
+        },
+        {
+          "path": "artifacts/capability_trials/analyst-agent/shadow_trial_plan.json",
+          "op": "write",
+          "timestamp": "2026-03-10T21:43:27.230473Z",
+          "step": "step_9_publish_snapshots",
+          "task_id": "task-ui-refresh-1773179006961",
+          "run_id": "run-ui-refresh-1773179006961",
+          "source": "telemetry",
+          "source_kind": "capability_snapshot",
+          "semantic_layer": "telemetry",
+          "reason": "capability_refresh",
+          "label": "Capability snapshot artifact"
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-03-10T21:43:27.230725Z",
+      "step": "step_9_publish_snapshots",
+      "step_raw": "step_9_publish_snapshots",
+      "step_label": "9.1) publish snapshots",
+      "status": "shadow_trial_judged",
+      "run_id": "run-ui-refresh-1773179006961",
+      "trace_id": "trace-ui-refresh-1773179006961",
+      "recommendation_id": "",
+      "outcome": "shadow trial judgement linked into capability snapshot",
+      "tokens_in": 26,
+      "tokens_out": 14,
+      "artifacts_read": [
+        {
+          "path": "artifacts/skill_shadow_trial_judgement.json",
+          "source_kind": "generated_artifact",
+          "semantic_layer": "unknown",
+          "reason": "capability_refresh",
+          "label": "skill_shadow_trial_judgement.json"
+        }
+      ],
+      "artifacts_written": [
+        {
+          "path": "artifacts/capability_trials/analyst-agent/capability_snapshot.json",
+          "source_kind": "capability_snapshot",
+          "semantic_layer": "telemetry",
+          "reason": "capability_refresh",
+          "label": "Capability snapshot artifact"
+        }
+      ],
+      "artifacts_source": "telemetry",
+      "artifact_contract_version": "v2",
+      "artifact_ops_origin": "mirrored_legacy",
+      "artifact_operations": [
+        {
+          "path": "artifacts/skill_shadow_trial_judgement.json",
+          "op": "read",
+          "timestamp": "2026-03-10T21:43:27.230725Z",
+          "step": "step_9_publish_snapshots",
+          "task_id": "task-ui-refresh-1773179006961",
+          "run_id": "run-ui-refresh-1773179006961",
+          "source": "telemetry",
+          "source_kind": "generated_artifact",
+          "semantic_layer": "unknown",
+          "reason": "capability_refresh",
+          "label": "skill_shadow_trial_judgement.json"
+        },
+        {
+          "path": "artifacts/capability_trials/analyst-agent/capability_snapshot.json",
+          "op": "write",
+          "timestamp": "2026-03-10T21:43:27.230725Z",
+          "step": "step_9_publish_snapshots",
+          "task_id": "task-ui-refresh-1773179006961",
+          "run_id": "run-ui-refresh-1773179006961",
+          "source": "telemetry",
+          "source_kind": "capability_snapshot",
+          "semantic_layer": "telemetry",
+          "reason": "capability_refresh",
+          "label": "Capability snapshot artifact"
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-03-10T21:43:27.230937Z",
+      "step": "step_9_publish_snapshots",
+      "step_raw": "step_9_publish_snapshots",
+      "step_label": "9.1) publish snapshots",
+      "status": "capability_snapshot_published",
+      "run_id": "run-ui-refresh-1773179006961",
+      "trace_id": "trace-ui-refresh-1773179006961",
+      "recommendation_id": "",
+      "outcome": "capability snapshot written",
+      "tokens_in": 34,
+      "tokens_out": 22,
+      "artifacts_read": [
+        {
+          "path": "artifacts/capability_trials/analyst-agent/shadow_trial_plan.json",
+          "source_kind": "capability_snapshot",
+          "semantic_layer": "telemetry",
+          "reason": "publish_snapshot",
+          "label": "Capability snapshot artifact"
+        },
+        {
+          "path": "artifacts/skill_shadow_trial_judgement.json",
+          "source_kind": "generated_artifact",
+          "semantic_layer": "unknown",
+          "reason": "publish_snapshot",
+          "label": "skill_shadow_trial_judgement.json"
+        }
+      ],
+      "artifacts_written": [
+        {
+          "path": "artifacts/capability_trials/analyst-agent/capability_snapshot.json",
+          "source_kind": "capability_snapshot",
+          "semantic_layer": "telemetry",
+          "reason": "publish_snapshot",
+          "label": "Capability snapshot artifact"
+        }
+      ],
+      "artifacts_source": "telemetry",
+      "artifact_contract_version": "v2",
+      "artifact_ops_origin": "mirrored_legacy",
+      "artifact_operations": [
+        {
+          "path": "artifacts/capability_trials/analyst-agent/shadow_trial_plan.json",
+          "op": "read",
+          "timestamp": "2026-03-10T21:43:27.230937Z",
+          "step": "step_9_publish_snapshots",
+          "task_id": "task-ui-refresh-1773179006961",
+          "run_id": "run-ui-refresh-1773179006961",
+          "source": "telemetry",
+          "source_kind": "capability_snapshot",
+          "semantic_layer": "telemetry",
+          "reason": "publish_snapshot",
+          "label": "Capability snapshot artifact"
+        },
+        {
+          "path": "artifacts/skill_shadow_trial_judgement.json",
+          "op": "read",
+          "timestamp": "2026-03-10T21:43:27.230937Z",
+          "step": "step_9_publish_snapshots",
+          "task_id": "task-ui-refresh-1773179006961",
+          "run_id": "run-ui-refresh-1773179006961",
+          "source": "telemetry",
+          "source_kind": "generated_artifact",
+          "semantic_layer": "unknown",
+          "reason": "publish_snapshot",
+          "label": "skill_shadow_trial_judgement.json"
+        },
+        {
+          "path": "artifacts/capability_trials/analyst-agent/capability_snapshot.json",
+          "op": "write",
+          "timestamp": "2026-03-10T21:43:27.230937Z",
+          "step": "step_9_publish_snapshots",
+          "task_id": "task-ui-refresh-1773179006961",
+          "run_id": "run-ui-refresh-1773179006961",
+          "source": "telemetry",
+          "source_kind": "capability_snapshot",
+          "semantic_layer": "telemetry",
+          "reason": "publish_snapshot",
+          "label": "Capability snapshot artifact"
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-03-10T21:43:27.231147Z",
+      "step": "step_9_publish_snapshots",
+      "step_raw": "step_9_publish_snapshots",
+      "step_label": "9.1) publish snapshots",
+      "status": "capability_refresh_completed",
+      "run_id": "run-ui-refresh-1773179006961",
+      "trace_id": "trace-ui-refresh-1773179006961",
+      "recommendation_id": "",
+      "outcome": "capability refresh subflow completed",
+      "tokens_in": 18,
+      "tokens_out": 12,
+      "artifacts_read": [
+        {
+          "path": "artifacts/capability_trials/analyst-agent/capability_snapshot.json",
+          "source_kind": "capability_snapshot",
+          "semantic_layer": "telemetry",
+          "reason": "capability_refresh",
+          "label": "Capability snapshot artifact"
+        }
+      ],
+      "artifacts_written": [],
+      "artifacts_source": "telemetry",
+      "artifact_contract_version": "v2",
+      "artifact_ops_origin": "mirrored_legacy",
+      "artifact_operations": [
+        {
+          "path": "artifacts/capability_trials/analyst-agent/capability_snapshot.json",
+          "op": "read",
+          "timestamp": "2026-03-10T21:43:27.231147Z",
+          "step": "step_9_publish_snapshots",
+          "task_id": "task-ui-refresh-1773179006961",
+          "run_id": "run-ui-refresh-1773179006961",
+          "source": "telemetry",
+          "source_kind": "capability_snapshot",
+          "semantic_layer": "telemetry",
+          "reason": "capability_refresh",
+          "label": "Capability snapshot artifact"
+        }
+      ]
     }
   ],
   "canonical_stages": [
@@ -269,42 +454,17 @@
     {
       "step_key": "step_1_start",
       "step_label": "1) started",
-      "executed": true,
-      "events_total": 1,
-      "started_at": "2026-03-10T14:00:00Z",
-      "last_event_at": "2026-03-10T14:00:00Z",
-      "status": "started",
+      "executed": false,
+      "events_total": 0,
+      "started_at": null,
+      "last_event_at": null,
+      "status": null,
       "tokens_in": 0,
       "tokens_out": 0,
       "tokens_total": 0,
-      "artifacts_read": [
-        {
-          "path": "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
-          "source_kind": "operating_plan",
-          "semantic_layer": "unknown",
-          "reason": "unknown",
-          "label": "Операционный стандарт агента"
-        },
-        {
-          "path": "docs/agents/registry.yaml",
-          "source_kind": "registry",
-          "semantic_layer": "unknown",
-          "reason": "unknown",
-          "label": "Реестр агентов"
-        }
-      ],
-      "artifacts_written": [
-        {
-          "path": ".logs/agents/analyst-agent.jsonl",
-          "source_kind": "telemetry_log",
-          "semantic_layer": "telemetry",
-          "reason": "unknown",
-          "label": "Telemetry log: analyst-agent"
-        }
-      ],
-      "raw_steps": [
-        "started"
-      ]
+      "artifacts_read": [],
+      "artifacts_written": [],
+      "raw_steps": []
     },
     {
       "step_key": "step_2_preflight",
@@ -459,291 +619,227 @@
     {
       "step_key": "step_9_publish_snapshots",
       "step_label": "9.1) publish snapshots",
-      "executed": false,
-      "events_total": 0,
-      "started_at": null,
-      "last_event_at": null,
-      "status": null,
-      "tokens_in": 0,
-      "tokens_out": 0,
-      "tokens_total": 0,
-      "artifacts_read": [],
-      "artifacts_written": [],
-      "raw_steps": []
-    }
-  ],
-  "out_of_canon": [
-    {
-      "timestamp": "2026-03-10T14:10:00Z",
-      "step": "verify_started",
-      "step_raw": "verify_started",
-      "step_label": "verify_started",
-      "status": "verify_started",
-      "tokens_in": 0,
-      "tokens_out": 0,
+      "executed": true,
+      "events_total": 6,
+      "started_at": "2026-03-10T21:43:27.195346Z",
+      "last_event_at": "2026-03-10T21:43:27.231147Z",
+      "status": "capability_refresh_completed",
+      "tokens_in": 205,
+      "tokens_out": 103,
+      "tokens_total": 308,
       "artifacts_read": [
         {
-          "path": "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
-          "source_kind": "operating_plan",
+          "path": "docs/agents/registry.yaml",
+          "source_kind": "registry",
           "semantic_layer": "unknown",
-          "reason": "unknown",
-          "label": "Операционный стандарт агента"
+          "reason": "publish_snapshot",
+          "label": "Реестр агентов"
         },
         {
           "path": "docs/agents/registry.yaml",
           "source_kind": "registry",
           "semantic_layer": "unknown",
-          "reason": "unknown",
+          "reason": "capability_refresh",
           "label": "Реестр агентов"
-        }
-      ],
-      "artifacts_written": [
-        {
-          "path": ".logs/agents/analyst-agent.jsonl",
-          "source_kind": "telemetry_log",
-          "semantic_layer": "telemetry",
-          "reason": "unknown",
-          "label": "Telemetry log: analyst-agent"
-        }
-      ],
-      "artifacts_source": "fallback"
-    },
-    {
-      "timestamp": "2026-03-10T14:11:00Z",
-      "step": "verify_passed",
-      "step_raw": "verify_passed",
-      "step_label": "verify_passed",
-      "status": "verify_passed",
-      "tokens_in": 0,
-      "tokens_out": 0,
-      "artifacts_read": [
-        {
-          "path": ".logs/agents/analyst-agent.jsonl",
-          "source_kind": "telemetry_log",
-          "semantic_layer": "telemetry",
-          "reason": "unknown",
-          "label": "Telemetry log: analyst-agent"
         },
         {
-          "path": "artifacts/agent_telemetry_summary.json",
+          "path": "artifacts/skill_shadow_trial_judgement.json",
           "source_kind": "generated_artifact",
-          "semantic_layer": "telemetry",
-          "reason": "unknown",
-          "label": "Telemetry summary"
-        }
-      ],
-      "artifacts_written": [
-        {
-          "path": "artifacts/agent_cycle_validation_report.json",
-          "source_kind": "generated_artifact",
-          "semantic_layer": "telemetry",
-          "reason": "unknown",
-          "label": "Cycle validation report"
-        },
-        {
-          "path": ".logs/agents/analyst-agent.jsonl",
-          "source_kind": "telemetry_log",
-          "semantic_layer": "telemetry",
-          "reason": "unknown",
-          "label": "Telemetry log: analyst-agent"
-        }
-      ],
-      "artifacts_source": "fallback"
-    },
-    {
-      "timestamp": "2026-03-10T14:12:00Z",
-      "step": "lesson_captured",
-      "step_raw": "lesson_captured",
-      "step_label": "lesson_captured",
-      "status": "lesson_captured",
-      "tokens_in": 0,
-      "tokens_out": 0,
-      "artifacts_read": [],
-      "artifacts_written": [
-        {
-          "path": "docs/subservices/oap/tasks/lessons.global.md",
-          "source_kind": "unknown",
-          "semantic_layer": "memory",
-          "reason": "unknown",
-          "label": "lessons.global.md"
-        },
-        {
-          "path": "docs/subservices/oap/tasks/lessons/analyst-agent.md",
-          "source_kind": "unknown",
-          "semantic_layer": "memory",
-          "reason": "unknown",
-          "label": "analyst-agent.md"
-        }
-      ],
-      "artifacts_source": "telemetry"
-    },
-    {
-      "timestamp": "2026-03-10T14:13:00Z",
-      "step": "completed",
-      "step_raw": "completed",
-      "step_label": "completed",
-      "status": "completed",
-      "tokens_in": 0,
-      "tokens_out": 0,
-      "artifacts_read": [],
-      "artifacts_written": [
-        {
-          "path": "docs/subservices/oap/tasks/todo.md",
-          "source_kind": "unknown",
           "semantic_layer": "unknown",
-          "reason": "unknown",
-          "label": "todo.md"
+          "reason": "capability_refresh",
+          "label": "skill_shadow_trial_judgement.json"
+        },
+        {
+          "path": "artifacts/capability_trials/analyst-agent/shadow_trial_plan.json",
+          "source_kind": "capability_snapshot",
+          "semantic_layer": "telemetry",
+          "reason": "publish_snapshot",
+          "label": "Capability snapshot artifact"
+        },
+        {
+          "path": "artifacts/skill_shadow_trial_judgement.json",
+          "source_kind": "generated_artifact",
+          "semantic_layer": "unknown",
+          "reason": "publish_snapshot",
+          "label": "skill_shadow_trial_judgement.json"
+        },
+        {
+          "path": "artifacts/capability_trials/analyst-agent/capability_snapshot.json",
+          "source_kind": "capability_snapshot",
+          "semantic_layer": "telemetry",
+          "reason": "capability_refresh",
+          "label": "Capability snapshot artifact"
         }
       ],
-      "artifacts_source": "telemetry"
+      "artifacts_written": [
+        {
+          "path": "artifacts/capability_trials/analyst-agent/capability_snapshot.json",
+          "source_kind": "capability_snapshot",
+          "semantic_layer": "telemetry",
+          "reason": "publish_snapshot",
+          "label": "Capability snapshot artifact"
+        },
+        {
+          "path": "artifacts/capability_trials/analyst-agent/shadow_trial_plan.json",
+          "source_kind": "capability_snapshot",
+          "semantic_layer": "telemetry",
+          "reason": "capability_refresh",
+          "label": "Capability snapshot artifact"
+        },
+        {
+          "path": "artifacts/capability_trials/analyst-agent/capability_snapshot.json",
+          "source_kind": "capability_snapshot",
+          "semantic_layer": "telemetry",
+          "reason": "capability_refresh",
+          "label": "Capability snapshot artifact"
+        }
+      ],
+      "raw_steps": [
+        "step_9_publish_snapshots"
+      ]
     }
   ],
+  "out_of_canon": [],
   "file_trace": {
     "edges": [
       {
-        "step": "step_1_start",
-        "step_label": "1) started",
-        "kind": "read",
-        "path": "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
-        "source_kind": "operating_plan",
-        "semantic_layer": "unknown",
-        "reason": "unknown",
-        "label": "Операционный стандарт агента",
-        "source": "fallback"
-      },
-      {
-        "step": "step_1_start",
-        "step_label": "1) started",
+        "step": "step_9_publish_snapshots",
+        "step_label": "9.1) publish snapshots",
         "kind": "read",
         "path": "docs/agents/registry.yaml",
         "source_kind": "registry",
         "semantic_layer": "unknown",
-        "reason": "unknown",
+        "reason": "publish_snapshot",
         "label": "Реестр агентов",
-        "source": "fallback"
+        "source": "telemetry"
       },
       {
-        "step": "step_1_start",
-        "step_label": "1) started",
+        "step": "step_9_publish_snapshots",
+        "step_label": "9.1) publish snapshots",
         "kind": "write",
-        "path": ".logs/agents/analyst-agent.jsonl",
-        "source_kind": "telemetry_log",
+        "path": "artifacts/capability_trials/analyst-agent/capability_snapshot.json",
+        "source_kind": "capability_snapshot",
         "semantic_layer": "telemetry",
-        "reason": "unknown",
-        "label": "Telemetry log: analyst-agent",
-        "source": "fallback"
+        "reason": "publish_snapshot",
+        "label": "Capability snapshot artifact",
+        "source": "telemetry"
       },
       {
-        "step": "verify_started",
-        "step_label": "verify_started",
-        "kind": "read",
-        "path": "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
-        "source_kind": "operating_plan",
-        "semantic_layer": "unknown",
-        "reason": "unknown",
-        "label": "Операционный стандарт агента",
-        "source": "fallback"
-      },
-      {
-        "step": "verify_started",
-        "step_label": "verify_started",
+        "step": "step_9_publish_snapshots",
+        "step_label": "9.1) publish snapshots",
         "kind": "read",
         "path": "docs/agents/registry.yaml",
         "source_kind": "registry",
         "semantic_layer": "unknown",
-        "reason": "unknown",
+        "reason": "capability_refresh",
         "label": "Реестр агентов",
-        "source": "fallback"
-      },
-      {
-        "step": "verify_started",
-        "step_label": "verify_started",
-        "kind": "write",
-        "path": ".logs/agents/analyst-agent.jsonl",
-        "source_kind": "telemetry_log",
-        "semantic_layer": "telemetry",
-        "reason": "unknown",
-        "label": "Telemetry log: analyst-agent",
-        "source": "fallback"
-      },
-      {
-        "step": "verify_passed",
-        "step_label": "verify_passed",
-        "kind": "read",
-        "path": ".logs/agents/analyst-agent.jsonl",
-        "source_kind": "telemetry_log",
-        "semantic_layer": "telemetry",
-        "reason": "unknown",
-        "label": "Telemetry log: analyst-agent",
-        "source": "fallback"
-      },
-      {
-        "step": "verify_passed",
-        "step_label": "verify_passed",
-        "kind": "read",
-        "path": "artifacts/agent_telemetry_summary.json",
-        "source_kind": "generated_artifact",
-        "semantic_layer": "telemetry",
-        "reason": "unknown",
-        "label": "Telemetry summary",
-        "source": "fallback"
-      },
-      {
-        "step": "verify_passed",
-        "step_label": "verify_passed",
-        "kind": "write",
-        "path": "artifacts/agent_cycle_validation_report.json",
-        "source_kind": "generated_artifact",
-        "semantic_layer": "telemetry",
-        "reason": "unknown",
-        "label": "Cycle validation report",
-        "source": "fallback"
-      },
-      {
-        "step": "verify_passed",
-        "step_label": "verify_passed",
-        "kind": "write",
-        "path": ".logs/agents/analyst-agent.jsonl",
-        "source_kind": "telemetry_log",
-        "semantic_layer": "telemetry",
-        "reason": "unknown",
-        "label": "Telemetry log: analyst-agent",
-        "source": "fallback"
-      },
-      {
-        "step": "lesson_captured",
-        "step_label": "lesson_captured",
-        "kind": "write",
-        "path": "docs/subservices/oap/tasks/lessons.global.md",
-        "source_kind": "unknown",
-        "semantic_layer": "memory",
-        "reason": "unknown",
-        "label": "lessons.global.md",
         "source": "telemetry"
       },
       {
-        "step": "lesson_captured",
-        "step_label": "lesson_captured",
-        "kind": "write",
-        "path": "docs/subservices/oap/tasks/lessons/analyst-agent.md",
-        "source_kind": "unknown",
-        "semantic_layer": "memory",
-        "reason": "unknown",
-        "label": "analyst-agent.md",
-        "source": "telemetry"
-      },
-      {
-        "step": "completed",
-        "step_label": "completed",
-        "kind": "write",
-        "path": "docs/subservices/oap/tasks/todo.md",
-        "source_kind": "unknown",
+        "step": "step_9_publish_snapshots",
+        "step_label": "9.1) publish snapshots",
+        "kind": "read",
+        "path": "docs/agents/registry.yaml",
+        "source_kind": "registry",
         "semantic_layer": "unknown",
-        "reason": "unknown",
-        "label": "todo.md",
+        "reason": "capability_refresh",
+        "label": "Реестр агентов",
+        "source": "telemetry"
+      },
+      {
+        "step": "step_9_publish_snapshots",
+        "step_label": "9.1) publish snapshots",
+        "kind": "write",
+        "path": "artifacts/capability_trials/analyst-agent/shadow_trial_plan.json",
+        "source_kind": "capability_snapshot",
+        "semantic_layer": "telemetry",
+        "reason": "capability_refresh",
+        "label": "Capability snapshot artifact",
+        "source": "telemetry"
+      },
+      {
+        "step": "step_9_publish_snapshots",
+        "step_label": "9.1) publish snapshots",
+        "kind": "read",
+        "path": "artifacts/skill_shadow_trial_judgement.json",
+        "source_kind": "generated_artifact",
+        "semantic_layer": "unknown",
+        "reason": "capability_refresh",
+        "label": "skill_shadow_trial_judgement.json",
+        "source": "telemetry"
+      },
+      {
+        "step": "step_9_publish_snapshots",
+        "step_label": "9.1) publish snapshots",
+        "kind": "write",
+        "path": "artifacts/capability_trials/analyst-agent/capability_snapshot.json",
+        "source_kind": "capability_snapshot",
+        "semantic_layer": "telemetry",
+        "reason": "capability_refresh",
+        "label": "Capability snapshot artifact",
+        "source": "telemetry"
+      },
+      {
+        "step": "step_9_publish_snapshots",
+        "step_label": "9.1) publish snapshots",
+        "kind": "read",
+        "path": "artifacts/capability_trials/analyst-agent/shadow_trial_plan.json",
+        "source_kind": "capability_snapshot",
+        "semantic_layer": "telemetry",
+        "reason": "publish_snapshot",
+        "label": "Capability snapshot artifact",
+        "source": "telemetry"
+      },
+      {
+        "step": "step_9_publish_snapshots",
+        "step_label": "9.1) publish snapshots",
+        "kind": "read",
+        "path": "artifacts/skill_shadow_trial_judgement.json",
+        "source_kind": "generated_artifact",
+        "semantic_layer": "unknown",
+        "reason": "publish_snapshot",
+        "label": "skill_shadow_trial_judgement.json",
+        "source": "telemetry"
+      },
+      {
+        "step": "step_9_publish_snapshots",
+        "step_label": "9.1) publish snapshots",
+        "kind": "write",
+        "path": "artifacts/capability_trials/analyst-agent/capability_snapshot.json",
+        "source_kind": "capability_snapshot",
+        "semantic_layer": "telemetry",
+        "reason": "publish_snapshot",
+        "label": "Capability snapshot artifact",
+        "source": "telemetry"
+      },
+      {
+        "step": "step_9_publish_snapshots",
+        "step_label": "9.1) publish snapshots",
+        "kind": "read",
+        "path": "artifacts/capability_trials/analyst-agent/capability_snapshot.json",
+        "source_kind": "capability_snapshot",
+        "semantic_layer": "telemetry",
+        "reason": "capability_refresh",
+        "label": "Capability snapshot artifact",
         "source": "telemetry"
       }
     ],
-    "fallback_used": true
+    "fallback_used": false
+  },
+  "taxonomy_guard": {
+    "threshold_pct": 10,
+    "artifact_refs_total": 8,
+    "unknown_source_refs_total": 0,
+    "unknown_semantic_refs_total": 4,
+    "unknown_source_rate": 0,
+    "unknown_semantic_rate": 50,
+    "warnings": [
+      {
+        "code": "unknown_semantic_rate_high",
+        "message": "semantic_layer contains too many unknown values",
+        "threshold_pct": 10,
+        "actual_pct": 50
+      }
+    ]
   }
 }

@@ -15,9 +15,9 @@
   ],
   "collaboration_plan": {
     "analysis_required": true,
-    "suggested_agents": ["designer-agent", "ops-agent"],
+    "suggested_agents": ["designer-agent", "reader-agent"],
     "selected_agents": [],
-    "rationale": "Нужны UI и release проверки для candidate-практики.",
+    "rationale": "Нужны UI и retrieval проверки для candidate-практики.",
     "reviewed_at": null,
     "strategy": "reuse_existing",
     "reuse_candidates": [

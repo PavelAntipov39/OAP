@@ -38,6 +38,7 @@ import {
   getAgentsManifest,
   getAgentBenchmarkSummary,
   getDocsIndex,
+  getHostAgentSmokeReport,
   getOapKbIndex,
   getOapKbRawLogs,
   type AgentBenchmarkSummary,
@@ -202,6 +203,8 @@ type TelemetrySummaryAgent = {
   agent_id?: string;
   tasks_total?: number;
   completed_tasks?: number;
+  invocation_count?: number;
+  completed_task_count?: number;
   plan_signal_tasks?: number;
   recommendations_suggested?: number;
   recommendations_applied?: number;
@@ -212,6 +215,11 @@ type TelemetrySummaryAgent = {
   replan_rate?: number;
   autonomous_bugfix_rate?: number;
   elegance_gate_rate?: number;
+  orchestration_cost_per_completed_task?: number | null;
+  orchestration_cost_unit?: string | null;
+  handoff_use_rate?: number | null;
+  overlap_with_analyst_rate?: number | null;
+  host_adapter_sync_status?: string | null;
   p95_duration_ms?: number;
   status_counts?: Record<string, number>;
 };
@@ -258,6 +266,13 @@ type MetricDisplayItem = {
 
 type SectionKey = "mcp" | "skills_rules" | "tasks_quality" | "memory_context" | "improvements";
 type TaskLookupSource = "task_event" | "review_error";
+
+const HOST_ADAPTER_SYNC_LABELS: Record<string, string> = {
+  synced: "синхронизированы",
+  partial: "частично синхронизированы",
+  missing: "не подключены",
+  archived: "архив",
+};
 type IndexedDocument = DocsDocument | OapKbDocument;
 type AgentLogEventRecord = {
   timestamp: string;
@@ -276,10 +291,11 @@ type ParsedAgentLogTimeline = {
   invalidLines: number;
   totalLines: number;
 };
-const MODERN_AGENT_IDS = new Set(["analyst-agent", "designer-agent"]);
+const MODERN_AGENT_IDS = new Set(["analyst-agent", "designer-agent", "orchestrator-agent"]);
 const OPERATING_PLAN_PATH_FALLBACKS: Record<string, string> = {
   "analyst-agent": "docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md",
   "designer-agent": "docs/subservices/oap/agents/designer-agent/OPERATING_PLAN.md",
+  "orchestrator-agent": "docs/subservices/oap/agents/orchestrator-agent/OPERATING_PLAN.md",
 };
 
 function isModernAgent(agentId: string): boolean {
@@ -304,6 +320,12 @@ const usedMcpStatusMeta: Record<UsedMcpStatus, { label: string; color: "success"
   reauth_required: { label: "Требуется повторное подключение (Re-auth required)", color: "warning" },
   degraded: { label: "Ограничено (Degraded)", color: "warning" },
   offline: { label: "Недоступно (Offline)", color: "error" },
+};
+
+const hostSmokeLabels: Record<string, string> = {
+  claude_code: "Claude Code",
+  github_copilot: "GitHub Copilot",
+  codex: "Codex",
 };
 
 const AGENT_CLASS_META: Record<AgentSummary["agentClass"], { label: string; color: "primary" | "info" }> = {
@@ -1217,6 +1239,13 @@ function AgentDetailsModern({
 
   const telemetryCompletedTasks = asFiniteNumber(telemetryAgent?.completed_tasks);
   const telemetryTasksTotal = asFiniteNumber(telemetryAgent?.tasks_total);
+  const invocationCount = asFiniteNumber(telemetryAgent?.invocation_count) ?? telemetryTasksTotal;
+  const completedTaskCount = asFiniteNumber(telemetryAgent?.completed_task_count) ?? telemetryCompletedTasks;
+  const handoffUseRate = asFiniteNumber(telemetryAgent?.handoff_use_rate);
+  const overlapWithAnalystRate = asFiniteNumber(telemetryAgent?.overlap_with_analyst_rate);
+  const orchestrationCostPerCompletedTask = asFiniteNumber(telemetryAgent?.orchestration_cost_per_completed_task);
+  const orchestrationCostUnit = asString(telemetryAgent?.orchestration_cost_unit) || null;
+  const hostAdapterSyncStatus = asString(telemetryAgent?.host_adapter_sync_status) || null;
   const planSignalTasksCount = asFiniteNumber(telemetryAgent?.plan_signal_tasks);
   const telemetryStatusCounts = telemetryAgent?.status_counts || {};
   const plannedStatusCount = asFiniteNumber(telemetryStatusCounts.planned) || 0;
@@ -1365,6 +1394,18 @@ function AgentDetailsModern({
     return `$${roundTo(value, 3).toFixed(3)}`;
   }, []);
 
+  const formatTelemetryCostMetric = React.useCallback((value: number | null, unit: string | null) => {
+    if (value === null) return "не зафиксировано";
+    if (unit === "usd") return `$${roundTo(value, 3).toFixed(3)}`;
+    if (unit === "token_proxy") return `${roundTo(value, 2).toFixed(2)} токенов (proxy)`;
+    return `${roundTo(value, 2).toFixed(2)}${unit ? ` ${unit}` : ""}`;
+  }, []);
+
+  const formatAdapterSyncMetric = React.useCallback((value: string | null) => {
+    if (!value) return "не зафиксировано";
+    return HOST_ADAPTER_SYNC_LABELS[value] || value;
+  }, []);
+
   const formatHoursMetric = React.useCallback((value: number | null) => {
     if (value === null) return "не зафиксировано";
     return `${roundTo(value, 1).toFixed(1)} ч`;
@@ -1472,15 +1513,57 @@ function AgentDetailsModern({
       label: "Успех верификации (`verification_pass_rate`)",
       description: "Какая доля verify-запусков завершилась успешно.",
       valueLabel: formatPercentMetric(verificationPassRate),
-      formula: "verify_passed / verify_started * 100",
-      source: "Telemetry summary (`status_counts.verify_started`, `status_counts.verify_passed`).",
+      formula: "unique task_id с verify_started и verify_passed / unique task_id с verify_started * 100",
+      source: "Telemetry summary (`verification_pass_rate`, task-based aggregation по `task_id`).",
     },
     lesson_capture_rate: {
       label: "Фиксация уроков (`lesson_capture_rate`)",
       description: "Насколько стабильно после verify фиксируются уроки self-improvement.",
       valueLabel: formatPercentMetric(lessonCaptureRate),
-      formula: "lesson_captured / (verify_passed + verify_failed) * 100",
-      source: "Telemetry summary (`status_counts.lesson_captured`, verify statuses).",
+      formula: "unique task_id с lesson_captured / (unique task_id с verify_passed + unique task_id с verify_failed) * 100",
+      source: "Telemetry summary (`lesson_capture_rate`, task-based aggregation по `task_id`).",
+    },
+    invocation_count: {
+      label: "Запусков (`invocation_count`)",
+      description: "Сколько отдельных запусков агента было за выбранный период.",
+      valueLabel: formatCountMetric(invocationCount),
+      formula: "count(distinct run_id), если run_id отсутствует — fallback на tasks_total",
+      source: "Telemetry summary (`invocation_count`, `tasks_total`).",
+    },
+    completed_task_count: {
+      label: "Завершено задач (`completed_task_count`)",
+      description: "Сколько задач агент довел до terminal success.",
+      valueLabel: formatCountMetric(completedTaskCount),
+      formula: "completed_tasks",
+      source: "Telemetry summary (`completed_task_count`).",
+    },
+    handoff_use_rate: {
+      label: "Использование делегирования (`handoff_use_rate`)",
+      description: "Как часто агент реально создавал child-run и передавал часть задачи другому агенту.",
+      valueLabel: formatPercentMetric(handoffUseRate),
+      formula: "tasks_with_agent_instance_spawned / tasks_total * 100",
+      source: "Telemetry summary (`handoff_use_rate`).",
+    },
+    overlap_with_analyst_rate: {
+      label: "Пересечение с analyst-agent (`overlap_with_analyst_rate`)",
+      description: "Как часто агент участвовал в тех же задачах, что и analyst-agent.",
+      valueLabel: formatPercentMetric(overlapWithAnalystRate),
+      formula: "shared_task_id_with_analyst / tasks_total * 100",
+      source: "Telemetry summary (`overlap_with_analyst_rate`).",
+    },
+    orchestration_cost_per_completed_task: {
+      label: "Стоимость на завершенную задачу (`orchestration_cost_per_completed_task`)",
+      description: "Средняя стоимость одного завершенного цикла агента по фактическим telemetry-данным.",
+      valueLabel: formatTelemetryCostMetric(orchestrationCostPerCompletedTask, orchestrationCostUnit),
+      formula: "cost_total / completed_tasks, либо token_proxy / completed_tasks",
+      source: "Telemetry summary (`orchestration_cost_per_completed_task`, `orchestration_cost_unit`).",
+    },
+    host_adapter_sync_status: {
+      label: "Синхронизация host adapters (`host_adapter_sync_status`)",
+      description: "Актуален ли repo-owned агентный контракт на уровне Claude/Copilot/Codex adapters.",
+      valueLabel: formatAdapterSyncMetric(hostAdapterSyncStatus),
+      formula: "derived status по fingerprint и наличию generated host adapters",
+      source: "Telemetry summary (`host_adapter_sync_status`).",
     },
     replan_rate: {
       label: "Частота re-plan (`replan_rate`)",
@@ -1602,9 +1685,12 @@ function AgentDetailsModern({
     formatCountMetric,
     formatDurationMetric,
     formatPercentMetric,
+    formatAdapterSyncMetric,
     formatHoursMetric,
+    formatTelemetryCostMetric,
     formatUnitPercentMetric,
     formatUsdMetric,
+    completedTaskCount,
     planCoverageRate,
     p95TimeToContextMs,
     replanRate,
@@ -1612,7 +1698,13 @@ function AgentDetailsModern({
     recommendationPrecision,
     regressionRate,
     reviewErrorRate,
+    handoffUseRate,
+    hostAdapterSyncStatus,
+    invocationCount,
     lessonCaptureRate,
+    orchestrationCostPerCompletedTask,
+    orchestrationCostUnit,
+    overlapWithAnalystRate,
     verificationPassRate,
     autonomousBugfixRate,
     eleganceGateRate,
@@ -1657,6 +1749,18 @@ function AgentDetailsModern({
   const targetRoleMetrics = React.useMemo(
     () => buildMetricRows(operatingPlan?.metricsCatalog.analyst || []),
     [buildMetricRows, operatingPlan],
+  );
+  const viabilityMetricRows = React.useMemo(
+    () => buildMetricRows([
+      "invocation_count",
+      "completed_task_count",
+      "handoff_use_rate",
+      "overlap_with_analyst_rate",
+      "verification_pass_rate",
+      "orchestration_cost_per_completed_task",
+      "host_adapter_sync_status",
+    ]),
+    [buildMetricRows],
   );
   const workflowMetricRows = React.useMemo(
     () => buildMetricRows(workflowMetricsCatalog),
@@ -1726,6 +1830,7 @@ function AgentDetailsModern({
         "Доля ошибок review считается как review_errors / completed_tasks.",
         "Task Quality Score считается по задаче после выполнения и показывает итог качества выполнения task-level.",
         "Workflow KPI (plan/verify/lesson/replan/autonomous/elegance) строятся по telemetry status_counts.",
+        "Подпункт «Жизнеспособность роли» показывает, нужен ли агент как отдельная рабочая роль: запуски, завершенные задачи, делегирование, пересечение с analyst-agent, verify и adapter sync.",
         "Benchmark стабильность и impact-метрики берутся из local-first артефакта `artifacts/agent_benchmark_summary.json`.",
         "Done Gate использует policy агента и показывает обязательные проверки перед финальным done.",
       ],
@@ -2162,11 +2267,12 @@ function AgentDetailsModern({
             "- В текущем источнике task-level доступны только `review_errors`, поэтому в UI используется доступная часть формулы: `TQS = clamp(100 - 35*review_errors, 0, 100)`.",
             "- Среднее время задачи считается только при наличии task-level duration; если данных нет, показывается `N/A`.",
             "- `plan_coverage_rate = plan_signal_tasks / tasks_total * 100`, где `plan_signal_tasks` включает `planned|replanned` и `step=plan*` при `status=started`.",
-            "- `verification_pass_rate = verify_passed / verify_started * 100`.",
-            "- `lesson_capture_rate = lesson_captured / (verify_passed + verify_failed) * 100`.",
+            "- `verification_pass_rate = unique task_id с verify_started и verify_passed / unique task_id с verify_started * 100`.",
+            "- `lesson_capture_rate = unique task_id с lesson_captured / (unique task_id с verify_passed + unique task_id с verify_failed) * 100`.",
             "- `replan_rate = replanned / planned * 100`.",
             "- `autonomous_bugfix_rate = bugfix_autonomous / tasks_total * 100`.",
             "- `elegance_gate_rate = elegance_checked / planned * 100`.",
+            "- Блок «Жизнеспособность роли» показывает `invocation_count`, `completed_task_count`, `handoff_use_rate`, `overlap_with_analyst_rate`, `verification_pass_rate`, `orchestration_cost_per_completed_task`, `host_adapter_sync_status`.",
             "- `pass_at_5 = successful_cases / total_cases`.",
             "- `fact_coverage_mean = avg(facts_covered / expected_facts)`.",
             "- `schema_valid_rate = valid_schema_attempts / attempts_total`.",
@@ -2750,6 +2856,17 @@ function AgentDetailsModern({
                           Dynamic specialist instances: {workflowBackbone.supportsDynamicInstances ? "поддерживаются" : "не поддерживаются"}.
                         </Typography>
                       </Box>
+                      <Box sx={{ mt: 0.5 }}>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          href={`#/agent-flow?agent=${encodeURIComponent(agent.id)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Как работает агент →
+                        </Button>
+                      </Box>
                     </>
                   ) : null}
 
@@ -3204,6 +3321,13 @@ function AgentDetailsModern({
                   {agent.name} (контур качества)
                 </Typography>
                 {renderMetricRows(targetRoleMetrics)}
+              </Box>
+
+              <Box sx={{ mt: 1.2 }}>
+                <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.55 }}>
+                  {agent.name} (жизнеспособность роли)
+                </Typography>
+                {renderMetricRows(viabilityMetricRows)}
               </Box>
 
               <Box sx={{ mt: 1.2 }}>
@@ -3918,6 +4042,25 @@ export function UnifiedAgentDrawer({
   tabKey,
   onTabChange,
   onCopyLink,
+  metricsCatalogOpen,
+  onOpenMetricsCatalog,
+  onCloseMetricsCatalog,
+  improvementHistoryOpen,
+  onOpenImprovementHistory,
+  onCloseImprovementHistory,
+  lessonsModalOpen,
+  lessonsModalEntityKey,
+  onOpenLessonsModal,
+  onCloseLessonsModal,
+  onLessonsModalEntityChange,
+  sessionsModalOpen,
+  sessionsModalEntityKey,
+  onOpenSessionsModal,
+  onCloseSessionsModal,
+  operativeMemoryModalOpen,
+  operativeMemoryModalEntityKey,
+  onOpenOperativeMemoryModal,
+  onCloseOperativeMemoryModal,
 }: {
   open: boolean;
   agent: AgentSummary | AgentMeta | null;
@@ -3927,6 +4070,25 @@ export function UnifiedAgentDrawer({
   tabKey?: AgentTabKey;
   onTabChange?: (tabKey: AgentTabKey) => void;
   onCopyLink?: () => Promise<boolean>;
+  metricsCatalogOpen?: boolean;
+  onOpenMetricsCatalog?: () => void;
+  onCloseMetricsCatalog?: () => void;
+  improvementHistoryOpen?: boolean;
+  onOpenImprovementHistory?: () => void;
+  onCloseImprovementHistory?: () => void;
+  lessonsModalOpen?: boolean;
+  lessonsModalEntityKey?: string | null;
+  onOpenLessonsModal?: (entity: "agent" | "global") => void;
+  onCloseLessonsModal?: () => void;
+  onLessonsModalEntityChange?: (entity: "agent" | "global") => void;
+  sessionsModalOpen?: boolean;
+  sessionsModalEntityKey?: string | null;
+  onOpenSessionsModal?: (sessionId: string | null) => void;
+  onCloseSessionsModal?: () => void;
+  operativeMemoryModalOpen?: boolean;
+  operativeMemoryModalEntityKey?: string | null;
+  onOpenOperativeMemoryModal?: (sessionId: string | null) => void;
+  onCloseOperativeMemoryModal?: () => void;
 }) {
   return (
     <AnalystCardDrawer
@@ -3936,12 +4098,32 @@ export function UnifiedAgentDrawer({
       tabKey={tabKey || "overview"}
       onTabChange={onTabChange}
       onCopyLink={onCopyLink}
+      metricsCatalogOpen={metricsCatalogOpen}
+      onOpenMetricsCatalog={onOpenMetricsCatalog}
+      onCloseMetricsCatalog={onCloseMetricsCatalog}
+      improvementHistoryOpen={improvementHistoryOpen}
+      onOpenImprovementHistory={onOpenImprovementHistory}
+      onCloseImprovementHistory={onCloseImprovementHistory}
+      lessonsModalOpen={lessonsModalOpen}
+      lessonsModalEntityKey={lessonsModalEntityKey}
+      onOpenLessonsModal={onOpenLessonsModal}
+      onCloseLessonsModal={onCloseLessonsModal}
+      onLessonsModalEntityChange={onLessonsModalEntityChange}
+      sessionsModalOpen={sessionsModalOpen}
+      sessionsModalEntityKey={sessionsModalEntityKey}
+      onOpenSessionsModal={onOpenSessionsModal}
+      onCloseSessionsModal={onCloseSessionsModal}
+      operativeMemoryModalOpen={operativeMemoryModalOpen}
+      operativeMemoryModalEntityKey={operativeMemoryModalEntityKey}
+      onOpenOperativeMemoryModal={onOpenOperativeMemoryModal}
+      onCloseOperativeMemoryModal={onCloseOperativeMemoryModal}
     />
   );
 }
 
 export function AgentsPage() {
   const manifest = React.useMemo(() => getAgentsManifest(), []);
+  const hostAgentSmoke = React.useMemo(() => getHostAgentSmokeReport(), []);
   const docsByPath = React.useMemo(() => buildDocsByPath(getAgentModalDocs()), []);
 
   const [query, setQuery] = React.useState("");
@@ -3955,6 +4137,15 @@ export function AgentsPage() {
   const [taskLookupModal, setTaskLookupModal] = React.useState<TextModalPayload | null>(null);
   const [comparisonModalOpen, setComparisonModalOpen] = React.useState(false);
   const [comparisonJournalKey, setComparisonJournalKey] = React.useState<string | null>(null);
+  const [metricsCatalogModalOpen, setMetricsCatalogModalOpen] = React.useState(false);
+  const [metricsCatalogEntityKey, setMetricsCatalogEntityKey] = React.useState<string | null>(null);
+  const [improvementHistoryModalOpen, setImprovementHistoryModalOpen] = React.useState(false);
+  const [lessonsModalOpen, setLessonsModalOpen] = React.useState(false);
+  const [lessonsModalEntityKey, setLessonsModalEntityKey] = React.useState<string | null>(null);
+  const [sessionsModalOpen, setSessionsModalOpen] = React.useState(false);
+  const [sessionsModalEntityKey, setSessionsModalEntityKey] = React.useState<string | null>(null);
+  const [operativeMemoryModalOpen, setOperativeMemoryModalOpen] = React.useState(false);
+  const [operativeMemoryModalEntityKey, setOperativeMemoryModalEntityKey] = React.useState<string | null>(null);
   const taskLookupCacheRef = React.useRef<Map<string, string | null>>(new Map());
   const taskServiceModeCacheRef = React.useRef<Map<string, AgentTaskServiceMode>>(new Map());
 
@@ -3976,6 +4167,20 @@ export function AgentsPage() {
     const isComparisonModalVisible = canonical.modalKey === "capability_comparison" || canonical.modalKey === "capability_journal";
     setComparisonModalOpen(isComparisonModalVisible);
     setComparisonJournalKey(canonical.modalKey === "capability_journal" ? canonical.modalEntityKey : null);
+    const isMetricsCatalogVisible = canonical.modalKey === "metrics_catalog" && Boolean(canonical.agentId);
+    setMetricsCatalogModalOpen(isMetricsCatalogVisible);
+    setMetricsCatalogEntityKey(isMetricsCatalogVisible ? (canonical.modalEntityKey || canonical.agentId || "analyst") : null);
+    const isLessonsVisible = canonical.modalKey === "lessons" && Boolean(canonical.agentId);
+    setLessonsModalOpen(isLessonsVisible);
+    setLessonsModalEntityKey(isLessonsVisible ? (canonical.modalEntityKey === "global" ? "global" : "agent") : null);
+    const isSessionsVisible = canonical.modalKey === "sessions" && Boolean(canonical.agentId);
+    setSessionsModalOpen(isSessionsVisible);
+    setSessionsModalEntityKey(isSessionsVisible ? (canonical.modalEntityKey || "latest") : null);
+    const isImprovementHistoryVisible = canonical.modalKey === "improvement_history" && Boolean(canonical.agentId);
+    setImprovementHistoryModalOpen(isImprovementHistoryVisible);
+    const isOperativeMemoryVisible = canonical.modalKey === "operative_memory" && Boolean(canonical.agentId);
+    setOperativeMemoryModalOpen(isOperativeMemoryVisible);
+    setOperativeMemoryModalEntityKey(isOperativeMemoryVisible ? (canonical.modalEntityKey || "latest") : null);
     const nextHash = buildAgentsHash(canonical);
     if (window.location.hash !== nextHash) {
       window.history.replaceState(window.history.state, "", nextHash);
@@ -4016,17 +4221,133 @@ export function AgentsPage() {
       modalEntityKey: rowKey,
     });
   }, [applyRouteState, selectedAgentId, selectedTabKey]);
+  const openMetricsCatalog = React.useCallback(() => {
+    if (!selectedAgentId) return;
+    applyRouteState({
+      agentId: selectedAgentId,
+      tabKey: selectedTabKey,
+      modalKey: "metrics_catalog",
+      modalEntityKey: selectedAgentId,
+    });
+  }, [applyRouteState, selectedAgentId, selectedTabKey]);
+  const closeMetricsCatalog = React.useCallback(() => {
+    applyRouteState({
+      agentId: selectedAgentId,
+      tabKey: selectedTabKey,
+      modalKey: null,
+      modalEntityKey: null,
+    });
+  }, [applyRouteState, selectedAgentId, selectedTabKey]);
+  const openImprovementHistory = React.useCallback(() => {
+    if (!selectedAgentId) return;
+    applyRouteState({
+      agentId: selectedAgentId,
+      tabKey: selectedTabKey,
+      modalKey: "improvement_history",
+      modalEntityKey: null,
+    });
+  }, [applyRouteState, selectedAgentId, selectedTabKey]);
+  const closeImprovementHistory = React.useCallback(() => {
+    applyRouteState({
+      agentId: selectedAgentId,
+      tabKey: selectedTabKey,
+      modalKey: null,
+      modalEntityKey: null,
+    });
+  }, [applyRouteState, selectedAgentId, selectedTabKey]);
+  const openLessonsModal = React.useCallback((entity: "agent" | "global") => {
+    if (!selectedAgentId) return;
+    applyRouteState({
+      agentId: selectedAgentId,
+      tabKey: selectedTabKey,
+      modalKey: "lessons",
+      modalEntityKey: entity === "global" ? "global" : "agent",
+    });
+  }, [applyRouteState, selectedAgentId, selectedTabKey]);
+  const closeLessonsModal = React.useCallback(() => {
+    applyRouteState({
+      agentId: selectedAgentId,
+      tabKey: selectedTabKey,
+      modalKey: null,
+      modalEntityKey: null,
+    });
+  }, [applyRouteState, selectedAgentId, selectedTabKey]);
+  const handleLessonsModalEntityChange = React.useCallback((entity: "agent" | "global") => {
+    if (!selectedAgentId) return;
+    applyRouteState({
+      agentId: selectedAgentId,
+      tabKey: selectedTabKey,
+      modalKey: "lessons",
+      modalEntityKey: entity === "global" ? "global" : "agent",
+    });
+  }, [applyRouteState, selectedAgentId, selectedTabKey]);
+  const openSessionsModal = React.useCallback((sessionId: string | null) => {
+    if (!selectedAgentId) return;
+    applyRouteState({
+      agentId: selectedAgentId,
+      tabKey: selectedTabKey,
+      modalKey: "sessions",
+      modalEntityKey: sessionId || "latest",
+    });
+  }, [applyRouteState, selectedAgentId, selectedTabKey]);
+  const closeSessionsModal = React.useCallback(() => {
+    applyRouteState({
+      agentId: selectedAgentId,
+      tabKey: selectedTabKey,
+      modalKey: null,
+      modalEntityKey: null,
+    });
+  }, [applyRouteState, selectedAgentId, selectedTabKey]);
+  const openOperativeMemoryModal = React.useCallback((sessionId: string | null) => {
+    if (!selectedAgentId) return;
+    applyRouteState({
+      agentId: selectedAgentId,
+      tabKey: selectedTabKey,
+      modalKey: "operative_memory",
+      modalEntityKey: sessionId || "latest",
+    });
+  }, [applyRouteState, selectedAgentId, selectedTabKey]);
+  const closeOperativeMemoryModal = React.useCallback(() => {
+    applyRouteState({
+      agentId: selectedAgentId,
+      tabKey: selectedTabKey,
+      modalKey: null,
+      modalEntityKey: null,
+    });
+  }, [applyRouteState, selectedAgentId, selectedTabKey]);
   const handleCopyLink = React.useCallback(async () => {
     if (!selectedAgentId) return false;
     const modalKey: AgentsModalKey | null = comparisonModalOpen
       ? (comparisonJournalKey ? "capability_journal" : "capability_comparison")
-      : null;
+      : improvementHistoryModalOpen
+        ? "improvement_history"
+      : sessionsModalOpen
+        ? "sessions"
+      : lessonsModalOpen
+        ? "lessons"
+      : operativeMemoryModalOpen
+        ? "operative_memory"
+      : metricsCatalogModalOpen
+        ? "metrics_catalog"
+        : null;
+    const modalEntityKey =
+      modalKey === "capability_journal"
+        ? comparisonJournalKey
+        : modalKey === "sessions"
+          ? (sessionsModalEntityKey || "latest")
+        : modalKey === "lessons"
+          ? (lessonsModalEntityKey === "global" ? "global" : "agent")
+        : modalKey === "operative_memory"
+          ? (operativeMemoryModalEntityKey || "latest")
+        : modalKey === "metrics_catalog"
+          ? (metricsCatalogEntityKey || selectedAgentId || "analyst")
+          : null;
     const canonical = canonicalizeState(
       {
         agentId: selectedAgentId,
         tabKey: selectedTabKey,
         modalKey,
-        modalEntityKey: comparisonJournalKey,
+        modalEntityKey,
       },
       knownAgentIds,
       resolveAgentKind,
@@ -4034,7 +4355,23 @@ export function AgentsPage() {
     const hash = buildAgentsHash(canonical);
     const deepLink = `${window.location.origin}${window.location.pathname}${hash}`;
     return copyTextToClipboard(deepLink);
-  }, [comparisonJournalKey, comparisonModalOpen, knownAgentIds, resolveAgentKind, selectedAgentId, selectedTabKey]);
+  }, [
+    comparisonJournalKey,
+    comparisonModalOpen,
+    improvementHistoryModalOpen,
+    knownAgentIds,
+    lessonsModalEntityKey,
+    lessonsModalOpen,
+    metricsCatalogEntityKey,
+    metricsCatalogModalOpen,
+    operativeMemoryModalEntityKey,
+    operativeMemoryModalOpen,
+    resolveAgentKind,
+    sessionsModalEntityKey,
+    sessionsModalOpen,
+    selectedAgentId,
+    selectedTabKey,
+  ]);
 
   React.useEffect(() => {
     applyRouteState(parseAgentsHash(window.location.hash, resolveAgentKind));
@@ -4068,6 +4405,34 @@ export function AgentsPage() {
     () => agents.filter((agent) => matchesAgent(agent, { query, status, skill, mcp })),
     [agents, query, status, skill, mcp],
   );
+  const hostSmokeEntries = React.useMemo(
+    () => Object.entries(hostAgentSmoke.hosts || {}).map(([hostId, state]) => ({
+      hostId,
+      label: hostSmokeLabels[hostId] || hostId,
+      ok: Boolean(state?.ok),
+      agentsTotal: Array.isArray(state?.agents) ? state.agents.length : 0,
+    })),
+    [hostAgentSmoke],
+  );
+  const hostSmokeIssues = React.useMemo(() => {
+    const issues: string[] = [];
+    if (hostAgentSmoke.error) {
+      issues.push(hostAgentSmoke.error);
+    }
+    if (!hostAgentSmoke.handoff_validation?.ok) {
+      issues.push(...(hostAgentSmoke.handoff_validation?.issues || []));
+    }
+    hostSmokeEntries.forEach((entry) => {
+      if (!entry.ok) {
+        issues.push(`${entry.label}: найден drift в generated adapters`);
+      }
+    });
+    return issues;
+  }, [hostAgentSmoke, hostSmokeEntries]);
+  const hostSmokeSeverity = React.useMemo<"success" | "warning" | "error">(() => {
+    if (!hostAgentSmoke.available) return "warning";
+    return hostAgentSmoke.ok ? "success" : "error";
+  }, [hostAgentSmoke]);
 
   const selectedAgent = React.useMemo(
     () => agents.find((agent) => agent.id === selectedAgentId) || null,
@@ -4198,6 +4563,18 @@ export function AgentsPage() {
             >
               Сравнительная таблица Rules, Tools, Skills, MCP
             </Button>
+            <Box sx={{ mt: 0.25 }}>
+              <Link
+                href="http://127.0.0.1:4174/#/presentation"
+                target="_blank"
+                rel="noopener noreferrer"
+                underline="hover"
+                variant="body2"
+                sx={{ fontWeight: 600 }}
+              >
+                Презентация проекта
+              </Link>
+            </Box>
           </Box>
         </Stack>
 
@@ -4233,6 +4610,73 @@ export function AgentsPage() {
             icon={<WarningAmberOutlinedIcon fontSize="small" />}
           />
         </Box>
+
+        <Paper
+          variant="outlined"
+          sx={{
+            p: 1.5,
+            borderRadius: 2.5,
+            borderColor: hostSmokeSeverity === "success" ? "success.light" : hostSmokeSeverity === "error" ? "error.light" : "warning.light",
+          }}
+        >
+          <Stack spacing={1.25}>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1}
+              alignItems={{ xs: "flex-start", sm: "center" }}
+              justifyContent="space-between"
+            >
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                  Cross-host smoke
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Проверка generated adapters и handoff targets для активного набора агентов.
+                </Typography>
+              </Box>
+              <Chip
+                size="small"
+                color={hostSmokeSeverity}
+                label={!hostAgentSmoke.available ? "не выполнен" : hostAgentSmoke.ok ? "ok" : "есть drift"}
+              />
+            </Stack>
+
+            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+              {hostSmokeEntries.map((entry) => (
+                <Chip
+                  key={entry.hostId}
+                  size="small"
+                  color={entry.ok ? "success" : "warning"}
+                  variant={entry.ok ? "filled" : "outlined"}
+                  label={`${entry.label}: ${entry.ok ? "ok" : "drift"} (${entry.agentsTotal})`}
+                />
+              ))}
+              <Chip
+                size="small"
+                color={hostAgentSmoke.handoff_validation?.ok ? "success" : "warning"}
+                variant={hostAgentSmoke.handoff_validation?.ok ? "filled" : "outlined"}
+                label={`Handoff targets: ${hostAgentSmoke.handoff_validation?.ok ? "ok" : "нужно проверить"}`}
+              />
+            </Stack>
+
+            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+              {(hostAgentSmoke.active_top_level_agents || []).map((agentId) => (
+                <Chip key={agentId} size="small" variant="outlined" label={agentId} />
+              ))}
+            </Stack>
+
+            {hostSmokeIssues.length > 0 ? (
+              <Alert severity={hostSmokeSeverity}>
+                {hostSmokeIssues.slice(0, 3).join(" | ")}
+              </Alert>
+            ) : (
+              <Typography variant="caption" color="text.secondary">
+                Обновлено: {hostAgentSmoke.generated_at ? formatDateTime(hostAgentSmoke.generated_at) : "не зафиксировано"}. Проверка
+                синхронизирована по `Claude Code`, `GitHub Copilot` и `Codex`.
+              </Typography>
+            )}
+          </Stack>
+        </Paper>
 
         <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2.5 }}>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
@@ -4446,6 +4890,25 @@ export function AgentsPage() {
         tabKey={selectedTabKey}
         onTabChange={handleTabChange}
         onCopyLink={handleCopyLink}
+        metricsCatalogOpen={metricsCatalogModalOpen}
+        onOpenMetricsCatalog={openMetricsCatalog}
+        onCloseMetricsCatalog={closeMetricsCatalog}
+        improvementHistoryOpen={improvementHistoryModalOpen}
+        onOpenImprovementHistory={openImprovementHistory}
+        onCloseImprovementHistory={closeImprovementHistory}
+        lessonsModalOpen={lessonsModalOpen}
+        lessonsModalEntityKey={lessonsModalEntityKey}
+        onOpenLessonsModal={openLessonsModal}
+        onCloseLessonsModal={closeLessonsModal}
+        onLessonsModalEntityChange={handleLessonsModalEntityChange}
+        sessionsModalOpen={sessionsModalOpen}
+        sessionsModalEntityKey={sessionsModalEntityKey}
+        onOpenSessionsModal={openSessionsModal}
+        onCloseSessionsModal={closeSessionsModal}
+        operativeMemoryModalOpen={operativeMemoryModalOpen}
+        operativeMemoryModalEntityKey={operativeMemoryModalEntityKey}
+        onOpenOperativeMemoryModal={openOperativeMemoryModal}
+        onCloseOperativeMemoryModal={closeOperativeMemoryModal}
       />
 
       <CapabilityComparisonModal

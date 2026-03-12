@@ -55,6 +55,7 @@ export type SessionFlowTableRow = {
 export type SessionFileOperation = {
   path: string;
   op: "read" | "write" | "delete";
+  rawOp?: "read" | "write" | "create" | "update" | "delete" | null;
   timestamp: string;
   step: string;
   taskId: string;
@@ -1011,6 +1012,14 @@ function normalizeFileOperation(value: string | undefined): SessionFileOperation
   return null;
 }
 
+function normalizeRawFileOperation(value: string | undefined): SessionFileOperation["rawOp"] {
+  const op = String(value || "").trim().toLowerCase();
+  if (!op) return null;
+  if (op === "read" || op === "write" || op === "create" || op === "update" || op === "delete") return op;
+  if (op === "remove" || op === "removed" || op === "unlink" || op === "drop" || op === "rm") return "delete";
+  return null;
+}
+
 function getEventFileOperations(event: TelemetryEvent): SessionFileOperation[] {
   const timestamp = String(event.timestamp || "");
   const step = String(event.step_raw || event.step || "").trim();
@@ -1030,6 +1039,7 @@ function getEventFileOperations(event: TelemetryEvent): SessionFileOperation[] {
       return [{
         path,
         op,
+        rawOp: normalizeRawFileOperation(item?.op) || op,
         timestamp: String(item?.timestamp || timestamp),
         step: String(item?.step || step).trim(),
         taskId: String(item?.task_id || taskId),
@@ -1055,6 +1065,7 @@ function getEventFileOperations(event: TelemetryEvent): SessionFileOperation[] {
     fallbackOperations.push({
       path,
       op: "read",
+      rawOp: "read",
       timestamp,
       step,
       taskId,
@@ -1071,6 +1082,7 @@ function getEventFileOperations(event: TelemetryEvent): SessionFileOperation[] {
     fallbackOperations.push({
       path,
       op: "write",
+      rawOp: "write",
       timestamp,
       step,
       taskId,

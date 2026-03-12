@@ -19,8 +19,19 @@ const AgentsPage = React.lazy(() => import("../pages/AgentsPage").then((module) 
 const TasksPage = React.lazy(() => import("../pages/TasksPage").then((module) => ({ default: module.TasksPage })));
 const AgentFlowPage = React.lazy(() => import("../pages/AgentFlowPage").then((module) => ({ default: module.AgentFlowPage })));
 const VisualExplainerPage = React.lazy(() => import("../pages/VisualExplainerPage").then((module) => ({ default: module.VisualExplainerPage })));
+const PresentationPage = React.lazy(() => import("../pages/PresentationPage").then((module) => ({ default: module.PresentationPage })));
 
-type OpsRoute = "overview" | "architecture" | "bpmn" | "docs" | "glossary" | "tasks" | "agents" | "agent-flow" | "visual-explainer";
+type OpsRoute =
+  | "overview"
+  | "architecture"
+  | "bpmn"
+  | "docs"
+  | "glossary"
+  | "tasks"
+  | "agents"
+  | "agent-flow"
+  | "visual-explainer"
+  | "presentation";
 
 function readRoute(): OpsRoute {
   const hash = (location.hash || "").replace(/^#\/?/, "");
@@ -32,6 +43,7 @@ function readRoute(): OpsRoute {
   if (hash.startsWith("agents")) return "agents";
   if (hash.startsWith("agent-flow")) return "agent-flow";
   if (hash.startsWith("visual-explainer")) return "visual-explainer";
+  if (hash.startsWith("presentation")) return "presentation";
   return "overview";
 }
 
@@ -88,6 +100,9 @@ export function App() {
           <Link href="#/agent-flow" underline="hover" color="inherit">
             Agent Flow
           </Link>
+          <Link href="#/presentation" underline="hover" color="inherit">
+            Presentation
+          </Link>
         </Toolbar>
       </AppBar>
 
@@ -102,6 +117,7 @@ export function App() {
           {route === "agents" ? <AgentsPage /> : null}
           {route === "agent-flow" ? <AgentFlowPage /> : null}
           {route === "visual-explainer" ? <VisualExplainerPage /> : null}
+          {route === "presentation" ? <PresentationPage /> : null}
         </Suspense>
       </Container>
     </Box>

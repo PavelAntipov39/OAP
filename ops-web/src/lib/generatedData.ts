@@ -8,6 +8,9 @@ import oapKbSearchIndex from "../generated/oap-kb-search-index.json";
 import oapKbRawLogs from "../generated/oap-kb-raw-logs.json";
 import analystLatestCycle from "../generated/agent-latest-cycle-analyst.json";
 import agentBenchmarkSummary from "../generated/agent-benchmark-summary.json";
+import agentTelemetrySummary from "../generated/agent-telemetry-summary.json";
+import hostAgentSmokeReport from "../generated/host-agent-smoke.json";
+import agentImprovementHistory from "../generated/agent-improvement-history.json";
 
 export type C4View = {
   id: string;
@@ -127,6 +130,63 @@ export type AgentTaskCollaborationSpawnedInstance = {
   output_refs: string[];
   status: string;
   verify_status: string;
+  phase_id?: string | null;
+  execution_mode?: string | null;
+  execution_backend?: string | null;
+  context_window_id?: string | null;
+  isolation_mode?: string | null;
+  read_only?: boolean;
+  ownership_scope?: string[];
+  depends_on?: string[];
+  merge_target?: string | null;
+};
+
+export type AgentTaskCollaborationPhase = {
+  phase_id: string;
+  label: string;
+  mode: string;
+  goal: string;
+  participants: string[];
+  depends_on: string[];
+  outputs?: string[];
+  status: string;
+  merge_into?: string | null;
+};
+
+export type AgentTaskCollaborationHostPolicy = {
+  display_name: string;
+  execution_backend: string;
+  native_delegation: boolean;
+  isolated_context_windows: boolean;
+  dispatcher_required: boolean;
+  fallback_mode: string;
+  adapter_strategy: string;
+};
+
+export type AgentTaskCollaborationHostExecutionStrategy = {
+  default_host_id: string;
+  selected_backend_by_default: string;
+  context_isolation_policy: string;
+  host_policies: Record<string, AgentTaskCollaborationHostPolicy>;
+};
+
+export type AgentTaskRoundtablePolicy = {
+  enabled: boolean;
+  moderated_by: string | null;
+  max_rounds: number;
+  transcript_visibility: string;
+  allow_free_chat: boolean;
+  allow_position_sharing: boolean;
+  summary_required_each_round: boolean;
+};
+
+export type AgentTaskDiscussionRound = {
+  round_id: string;
+  round_index: number;
+  participants: string[];
+  summary: string;
+  status: string;
+  next_owner_agent_id?: string | null;
 };
 
 export type AgentTaskCollaborationBudget = {
@@ -145,6 +205,18 @@ export type AgentTaskCollaborationPlan = {
   strategy?: AgentTaskCollaborationStrategy;
   reuse_candidates?: AgentTaskCollaborationReuseCandidate[];
   created_profiles?: AgentTaskCollaborationCreatedProfile[];
+  primary_coordinator_agent_id?: string | null;
+  final_synthesizer_agent_id?: string | null;
+  merge_owner_agent_id?: string | null;
+  interaction_mode?: string | null;
+  interaction_phases?: AgentTaskCollaborationPhase[];
+  selection_basis?: string[];
+  merge_strategy?: string | null;
+  conflict_policy?: string | null;
+  host_execution_strategy?: AgentTaskCollaborationHostExecutionStrategy | null;
+  context_isolation_policy?: string | null;
+  roundtable_policy?: AgentTaskRoundtablePolicy | null;
+  discussion_rounds?: AgentTaskDiscussionRound[];
   spawned_instances?: AgentTaskCollaborationSpawnedInstance[];
   orchestration_budget?: AgentTaskCollaborationBudget;
   delegation_depth?: number;
@@ -1094,6 +1166,94 @@ export type AgentBenchmarkSummary = {
   agents: Array<Record<string, unknown>>;
 };
 
+export type AgentTelemetrySummaryAgent = {
+  agent_id: string;
+  events_total: number;
+  tasks_total: number;
+  invocation_count?: number;
+  completed_tasks: number;
+  completed_task_count?: number;
+  failed_tasks: number;
+  verification_pass_rate?: number | null;
+  recommendation_action_rate?: number | null;
+  handoff_use_rate?: number | null;
+  overlap_with_analyst_rate?: number | null;
+  orchestration_cost_per_completed_task?: number | null;
+  orchestration_cost_unit?: string | null;
+  host_adapter_sync_status?: "synced" | "partial" | "missing" | "archived" | string;
+};
+
+export type AgentTelemetrySummary = {
+  generated_at: string;
+  version: string;
+  log_dir: string;
+  totals: Record<string, unknown>;
+  warnings: Array<Record<string, unknown>>;
+  agents: AgentTelemetrySummaryAgent[];
+};
+
+export type HostAgentSmokeSpec = {
+  path: string;
+  exists: boolean;
+  matches: boolean;
+};
+
+export type HostAgentSmokeAgentCheck = {
+  agent_id: string;
+  ok: boolean;
+  specs: HostAgentSmokeSpec[];
+  written?: string[];
+};
+
+export type HostAgentSmokeHostCheck = {
+  ok: boolean;
+  agents: HostAgentSmokeAgentCheck[];
+};
+
+export type HostAgentSmokeValidation = {
+  ok: boolean;
+  issues: string[];
+};
+
+export type HostAgentSmokeReport = {
+  generated_at: string;
+  version: string;
+  available: boolean;
+  ok: boolean;
+  command: string;
+  active_top_level_agents: string[];
+  hosts: Record<string, HostAgentSmokeHostCheck>;
+  handoff_validation: HostAgentSmokeValidation;
+  error: string | null;
+};
+
+export type AgentImprovementHistorySourceTool = "codex" | "copilot" | "claude" | "other";
+
+export type AgentImprovementHistoryResultStatus = "captured" | "applied" | "verified" | "rollback" | "rejected";
+
+export type AgentImprovementHistoryEvent = {
+  event_id: string;
+  occurred_at: string;
+  agent_id: string;
+  source_tool: AgentImprovementHistorySourceTool;
+  source_ref: string | null;
+  extracted_value: string;
+  applied_change: string;
+  target_scope: string;
+  result_status: AgentImprovementHistoryResultStatus;
+  result_note: string;
+  metric_name?: string | null;
+  metric_delta?: number | null;
+  evidence_refs: string[];
+};
+
+export type AgentImprovementHistoryFeed = {
+  generated_at: string;
+  version: "improvement_history.v1";
+  source: string;
+  events: AgentImprovementHistoryEvent[];
+};
+
 export function getC4Manifest(): C4Manifest {
   return c4Manifest as C4Manifest;
 }
@@ -1298,4 +1458,97 @@ export function getAgentBenchmarkSummary(): AgentBenchmarkSummary {
     },
     agents: Array.isArray(parsed.agents) ? parsed.agents : [],
   };
+}
+
+export function getAgentTelemetrySummary(): AgentTelemetrySummary {
+  const fallback: AgentTelemetrySummary = {
+    generated_at: "",
+    version: "agent_telemetry_report.v1",
+    log_dir: ".logs/agents",
+    totals: {},
+    warnings: [],
+    agents: [],
+  };
+
+  const parsed = agentTelemetrySummary as unknown as Partial<AgentTelemetrySummary>;
+  if (!parsed || typeof parsed !== "object") {
+    return fallback;
+  }
+
+  return {
+    ...fallback,
+    ...parsed,
+    agents: Array.isArray(parsed.agents) ? parsed.agents as AgentTelemetrySummaryAgent[] : [],
+  };
+}
+
+export function getAgentTelemetrySummaryByAgent(agentId: string): AgentTelemetrySummaryAgent | null {
+  const normalized = String(agentId || "").trim();
+  if (!normalized) return null;
+  return getAgentTelemetrySummary().agents.find((item) => String(item.agent_id || "").trim() === normalized) || null;
+}
+
+export function getHostAgentSmokeReport(): HostAgentSmokeReport {
+  const fallback: HostAgentSmokeReport = {
+    generated_at: "",
+    version: "host_agent_smoke_report.v1",
+    available: false,
+    ok: false,
+    command: "python3 scripts/export_host_agents.py smoke-active-set",
+    active_top_level_agents: [],
+    hosts: {},
+    handoff_validation: {
+      ok: false,
+      issues: [],
+    },
+    error: "smoke_not_available",
+  };
+
+  const parsed = hostAgentSmokeReport as unknown as Partial<HostAgentSmokeReport>;
+  if (!parsed || typeof parsed !== "object") {
+    return fallback;
+  }
+
+  return {
+    ...fallback,
+    ...parsed,
+    active_top_level_agents: Array.isArray(parsed.active_top_level_agents) ? parsed.active_top_level_agents as string[] : [],
+    hosts: parsed.hosts && typeof parsed.hosts === "object" ? parsed.hosts as Record<string, HostAgentSmokeHostCheck> : {},
+    handoff_validation: {
+      ...fallback.handoff_validation,
+      ...(parsed.handoff_validation || {}),
+      issues: Array.isArray(parsed.handoff_validation?.issues) ? parsed.handoff_validation.issues as string[] : [],
+    },
+    error: typeof parsed.error === "string" ? parsed.error : null,
+  };
+}
+
+export function getAgentImprovementHistory(): AgentImprovementHistoryFeed {
+  const fallback: AgentImprovementHistoryFeed = {
+    generated_at: "",
+    version: "improvement_history.v1",
+    source: "generated",
+    events: [],
+  };
+
+  const parsed = agentImprovementHistory as unknown as Partial<AgentImprovementHistoryFeed>;
+  if (!parsed || typeof parsed !== "object") {
+    return fallback;
+  }
+
+  const events = Array.isArray(parsed.events)
+    ? parsed.events.filter((item) => item && typeof item === "object") as AgentImprovementHistoryEvent[]
+    : [];
+
+  return {
+    ...fallback,
+    ...parsed,
+    events,
+  };
+}
+
+export function getAgentImprovementHistoryByAgent(agentId: string): AgentImprovementHistoryEvent[] {
+  const normalized = String(agentId || "").trim();
+  if (!normalized) return [];
+  return getAgentImprovementHistory().events.filter((event) => String(event.agent_id || "").trim() === normalized);
 }

@@ -284,6 +284,87 @@ function normalizeStringArray(value) {
   return Array.isArray(value) ? value.map((item) => asString(item)).filter(Boolean) : [];
 }
 
+function createStableEventId(prefix, payload) {
+  const hash = createHash("sha1").update(stableStringify(payload), "utf8").digest("hex").slice(0, 16);
+  return `${prefix}_${hash}`;
+}
+
+function inferSourceTool(...parts) {
+  const raw = parts
+    .map((item) => asString(item).toLowerCase())
+    .filter(Boolean)
+    .join(" ");
+  if (!raw) return "other";
+  if (/(^|[\s:/_-])copilot([\s:/_-]|$)/i.test(raw)) return "copilot";
+  if (/(^|[\s:/_-])claude([\s:/_-]|$)/i.test(raw)) return "claude";
+  if (/(^|[\s:/_-])codex([\s:/_-]|$)/i.test(raw)) return "codex";
+  return "other";
+}
+
+function normalizeHistoryStatus(rawStatus) {
+  const status = asString(rawStatus).toLowerCase();
+  if (!status) return null;
+  if (status === "captured" || status === "applied" || status === "verified" || status === "rollback" || status === "rejected") {
+    return status;
+  }
+
+  if (status === "verify_passed" || status === "ab_test_passed") return "verified";
+  if (status === "rollback_applied" || status === "ab_test_failed") return "rollback";
+  if (status === "candidate_rejected" || status === "rejected" || status === "verify_failed" || status === "review_failed") return "rejected";
+  if (status === "recommendation_applied" || status === "ab_test_started") return "applied";
+  if (
+    status === "recommendation_suggested"
+    || status === "candidate_received"
+    || status === "candidate_assessed"
+    || status === "ab_test_checkpoint"
+    || status === "captured"
+  ) {
+    return "captured";
+  }
+  return null;
+}
+
+function parseDeltaToNumber(raw) {
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+  const text = asString(raw);
+  if (!text) return null;
+  const match = text.match(/-?\d+(?:[.,]\d+)?/);
+  if (!match) return null;
+  const normalized = match[0].replace(",", ".");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function toArtifactPathList(value) {
+  if (!Array.isArray(value)) return [];
+  const result = [];
+  for (const item of value) {
+    if (typeof item === "string") {
+      const pathValue = asString(item);
+      if (pathValue) result.push(pathValue);
+      continue;
+    }
+    if (item && typeof item === "object") {
+      const pathValue = asString(item.path);
+      if (pathValue) result.push(pathValue);
+    }
+  }
+  return result;
+}
+
+function uniqueList(values) {
+  const seen = new Set();
+  const ordered = [];
+  for (const item of values) {
+    const value = asString(item);
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    ordered.push(value);
+  }
+  return ordered;
+}
+
 function buildCapabilitySourceFingerprintPayload(agent) {
   return {
     capabilityOptimization: agent?.capabilityOptimization && typeof agent.capabilityOptimization === "object"
@@ -567,6 +648,9 @@ async function walkFiles(rootDir, extension = ".md") {
     for (const entry of entries) {
       const absolute = path.join(current, entry.name);
       if (entry.isDirectory()) {
+        if (entry.name === "archive") {
+          continue;
+        }
         await walk(absolute);
         continue;
       }
@@ -1797,23 +1881,11 @@ function normalizeWorkflowBackbone(value, ctx) {
       "role_synthesize_answer",
       "role_check_coverage",
     ],
-    "data-agent": [
-      "role_check_dataset_quality",
-      "role_analyze_drift",
-      "role_prepare_data_action",
-    ],
-    "ops-agent": [
-      "role_triage_operation",
-      "role_select_runbook_action",
-      "role_prepare_ops_resolution",
-    ],
   };
   const defaultPurposeByAgent = {
     "analyst-agent": "Выполнить evidence-based анализ кандидатов и вернуть decision package по улучшениям.",
     "designer-agent": "Выполнить UX/UI-проверку и вернуть пакет дизайн-действий и verify-требований.",
     "reader-agent": "Собрать, синтезировать и упаковать ответ по релевантному контексту.",
-    "data-agent": "Проверить качество данных и вернуть пакет действий по ETL или quality-control.",
-    "ops-agent": "Разобрать операционный инцидент или change-request и вернуть runbook-based action package.",
   };
   const version = asString(source?.version) || "universal_backbone_v1";
   const commonCoreSteps = normalizeStringArray(source?.commonCoreSteps);
@@ -2742,6 +2814,358 @@ async function buildAgentBenchmarkSummarySnapshot() {
   }
 }
 
+async function buildAgentTelemetrySummarySnapshot() {
+  const sourcePath = path.join(repoRoot, "artifacts", "agent_telemetry_summary.json");
+  const fallback = {
+    generated_at: new Date().toISOString(),
+    version: "agent_telemetry_report.v1",
+    log_dir: ".logs/agents",
+    totals: {
+      agents_total: 0,
+      events_total: 0,
+      tasks_total: 0,
+    },
+    warnings: [],
+    agents: [],
+  };
+
+  try {
+    const raw = await fs.readFile(sourcePath, "utf8");
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") {
+      return fallback;
+    }
+    return parsed;
+  } catch {
+    return fallback;
+  }
+}
+
+async function buildHostAgentSmokeSnapshot() {
+  const fallback = {
+    generated_at: new Date().toISOString(),
+    version: "host_agent_smoke_report.v1",
+    available: false,
+    ok: false,
+    command: "python3 scripts/export_host_agents.py smoke-active-set",
+    active_top_level_agents: [],
+    hosts: {},
+    handoff_validation: {
+      ok: false,
+      issues: [],
+    },
+    error: "smoke_not_run",
+  };
+
+  const parseReport = (raw) => {
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return null;
+      return {
+        ...fallback,
+        ...parsed,
+        generated_at: new Date().toISOString(),
+        available: true,
+        error: null,
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  try {
+    const stdout = execFileSync("python3", ["scripts/export_host_agents.py", "smoke-active-set"], {
+      cwd: repoRoot,
+      stdio: "pipe",
+    }).toString("utf8");
+    return parseReport(stdout) || fallback;
+  } catch (error) {
+    const stdout = error && typeof error === "object" && "stdout" in error
+      ? String(error.stdout || "")
+      : "";
+    const stderr = error && typeof error === "object" && "stderr" in error
+      ? String(error.stderr || "")
+      : "";
+    const parsed = parseReport(stdout);
+    if (parsed) {
+      return {
+        ...parsed,
+        error: stderr.trim() || null,
+      };
+    }
+    return {
+      ...fallback,
+      error: stderr.trim() || "smoke_failed_without_json",
+    };
+  }
+}
+
+async function buildAgentImprovementHistoryFeed(agentsManifest) {
+  const nowIso = new Date().toISOString();
+  const events = [];
+  const seenIds = new Set();
+
+  const pushEvent = (raw) => {
+    if (!raw || typeof raw !== "object") return;
+    const eventId = asString(raw.event_id);
+    if (!eventId || seenIds.has(eventId)) return;
+
+    const occurredAt = asString(raw.occurred_at) || nowIso;
+    const timestamp = Date.parse(occurredAt);
+    const normalizedOccurredAt = Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : nowIso;
+    const agentId = asString(raw.agent_id) || "unknown-agent";
+    const sourceTool = inferSourceTool(raw.source_tool, raw.source_ref, raw.extracted_value, raw.result_note);
+    const sourceRef = asString(raw.source_ref) || null;
+    const extractedValue = asString(raw.extracted_value) || "не зафиксировано";
+    const appliedChange = asString(raw.applied_change) || "не зафиксировано";
+    const targetScope = asString(raw.target_scope) || "не зафиксировано";
+    const resultStatus = normalizeHistoryStatus(raw.result_status) || "captured";
+    const resultNote = asString(raw.result_note) || "не зафиксировано";
+    const metricName = asString(raw.metric_name) || null;
+    const metricDelta = parseDeltaToNumber(raw.metric_delta);
+    const evidenceRefs = uniqueList(Array.isArray(raw.evidence_refs) ? raw.evidence_refs : []);
+
+    seenIds.add(eventId);
+    events.push({
+      event_id: eventId,
+      occurred_at: normalizedOccurredAt,
+      agent_id: agentId,
+      source_tool: sourceTool,
+      source_ref: sourceRef,
+      extracted_value: extractedValue,
+      applied_change: appliedChange,
+      target_scope: targetScope,
+      result_status: resultStatus,
+      result_note: resultNote,
+      metric_name: metricName,
+      metric_delta: metricDelta,
+      evidence_refs: evidenceRefs,
+    });
+  };
+
+  const safeReadJson = async (relPath) => {
+    try {
+      const absolutePath = path.join(repoRoot, relPath);
+      const raw = await fs.readFile(absolutePath, "utf8");
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  };
+
+  const safeReadJsonlEntries = async (absolutePath) => {
+    try {
+      const raw = await fs.readFile(absolutePath, "utf8");
+      return raw
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          try {
+            return JSON.parse(line);
+          } catch {
+            return null;
+          }
+        })
+        .filter(Boolean);
+    } catch {
+      return [];
+    }
+  };
+
+  const extractCandidateSourceRef = (candidate) => {
+    const links = Array.isArray(candidate?.links) ? candidate.links.map((item) => asString(item)).filter(Boolean) : [];
+    if (links.length > 0) return links[0];
+    return asString(candidate?.source_ref) || asString(candidate?.source_key) || null;
+  };
+
+  const candidatePending = await safeReadJson("artifacts/candidate_pending.json");
+  const pendingItems = Array.isArray(candidatePending?.items) ? candidatePending.items : [];
+  for (const item of pendingItems) {
+    const sourceRef = extractCandidateSourceRef(item);
+    pushEvent({
+      event_id: asString(item?.candidate_id) || createStableEventId("pending_candidate", item),
+      occurred_at:
+        asString(item?.received_at)
+        || asString(candidatePending?.cutoff_iso)
+        || asString(candidatePending?.generated_at)
+        || "1970-01-01T00:00:00Z",
+      agent_id: asString(item?.agent_id) || "analyst-agent",
+      source_tool: inferSourceTool(item?.source_tool, item?.source_key, item?.text, sourceRef),
+      source_ref: sourceRef,
+      extracted_value: asString(item?.text),
+      applied_change: "Кандидат добавлен в очередь оценки практик.",
+      target_scope: "candidate_inbox",
+      result_status: "captured",
+      result_note: `Статус: ${asString(item?.status) || "candidate_received"}.`,
+      evidence_refs: uniqueList([
+        "artifacts/candidate_pending.json",
+        ...(Array.isArray(item?.links) ? item.links : []),
+      ]),
+    });
+  }
+
+  const candidateDecisions = await safeReadJson("artifacts/candidate_decisions.json");
+  const decisionItems = Array.isArray(candidateDecisions?.decisions) ? candidateDecisions.decisions : [];
+  for (const item of decisionItems) {
+    const decision = asString(item?.decision).toLowerCase();
+    const status = decision === "candidate_rejected" ? "rejected" : "applied";
+    const risks = Array.isArray(item?.objective_risks) ? item.objective_risks : [];
+    const risksNote = risks.length > 0
+      ? `Риски: ${risks.map((risk) => asString(risk?.description) || asString(risk?.risk_id)).filter(Boolean).join("; ")}`
+      : "Риски не зафиксированы.";
+    pushEvent({
+      event_id: asString(item?.candidate_id) || createStableEventId("candidate_decision", item),
+      occurred_at:
+        asString(item?.decided_at)
+        || asString(candidateDecisions?.generated_at)
+        || "1970-01-01T00:00:00Z",
+      agent_id: asString(item?.agent_id) || "analyst-agent",
+      source_tool: inferSourceTool(item?.source_tool, item?.source_key),
+      source_ref: asString(item?.source_ref) || asString(item?.source_key) || null,
+      extracted_value: `Applicability: ${asString(item?.applicability) || "не зафиксировано"}.`,
+      applied_change: decision === "accept_for_ab"
+        ? `Кандидат допущен в A/B-проверку (${asNumber(item?.cycles_required) || 3} сессии).`
+        : `Кандидат отклонен (${decision || "не зафиксировано"}).`,
+      target_scope: asString(item?.candidate_id) || "candidate_assessment",
+      result_status: status,
+      result_note: risksNote,
+      metric_name: asString(item?.target_metric) || null,
+      metric_delta: parseDeltaToNumber(item?.expected_delta),
+      evidence_refs: ["artifacts/candidate_decisions.json"],
+    });
+  }
+
+  const agents = Array.isArray(agentsManifest?.agents) ? agentsManifest.agents : [];
+  for (const agent of agents) {
+    const agentId = asString(agent?.id);
+    if (!agentId) continue;
+
+    const improvements = Array.isArray(agent?.improvements) ? agent.improvements : [];
+    for (const item of improvements) {
+      const validationDate = asString(item?.validationDate);
+      const validationTs = Date.parse(validationDate);
+      const isVerified = Number.isFinite(validationTs) && validationTs <= Date.now();
+      const resultStatus = isVerified ? "verified" : "applied";
+      const occurredAt = isVerified
+        ? validationDate
+        : (asString(agent?.updatedAt) || nowIso);
+      const validationHint = validationDate ? ` Целевая валидация: ${validationDate}.` : "";
+      pushEvent({
+        event_id: createStableEventId("improvement", { agentId, title: item?.title, validationDate, promptPath: item?.promptPath }),
+        occurred_at: occurredAt,
+        agent_id: agentId,
+        source_tool: inferSourceTool(item?.source_tool, item?.detectionBasis, item?.promptSourceUrl, item?.promptPath),
+        source_ref: asString(item?.promptSourceUrl) || asString(item?.promptPath) || null,
+        extracted_value: asString(item?.detectionBasis) || asString(item?.problem),
+        applied_change: asString(item?.solution),
+        target_scope: asString(item?.ownerSection) || asString(item?.section) || asString(item?.promptPath) || "не зафиксировано",
+        result_status: resultStatus,
+        result_note: `${asString(item?.effect) || "Изменение добавлено в план улучшений."}${validationHint}`.trim(),
+        metric_name: asString(item?.targetMetric) || null,
+        metric_delta: parseDeltaToNumber(item?.expectedDelta),
+        evidence_refs: uniqueList(["docs/agents/registry.yaml", asString(item?.promptPath)]),
+      });
+    }
+
+    const candidates = Array.isArray(agent?.externalSkillCandidates) ? agent.externalSkillCandidates : [];
+    for (const item of candidates) {
+      const trialStatus = asString(item?.trialStatus).toLowerCase();
+      const promotionStatus = asString(item?.promotionStatus).toLowerCase();
+      let resultStatus = "captured";
+      if (trialStatus === "failed" || promotionStatus === "rejected") resultStatus = "rollback";
+      else if (trialStatus === "passed" && promotionStatus === "approved") resultStatus = "verified";
+      else if (trialStatus === "running" || trialStatus === "scheduled" || trialStatus === "passed") resultStatus = "applied";
+
+      const sourceRef = asString(item?.sourceUrl) || asString(item?.sourceTitle) || null;
+      pushEvent({
+        event_id: createStableEventId("skill_candidate", { agentId, candidateId: item?.id, trialStatus, promotionStatus }),
+        occurred_at: asString(item?.qualitySignals?.lastReviewedAt) || asString(agent?.updatedAt) || nowIso,
+        agent_id: agentId,
+        source_tool: inferSourceTool(item?.source_tool, sourceRef, item?.summary, item?.recommendationReason),
+        source_ref: sourceRef,
+        extracted_value: asString(item?.summary),
+        applied_change: asString(item?.recommendationReason) || asString(item?.expectedEffect) || "Кандидат добавлен в контур оценки.",
+        target_scope: uniqueList(Array.isArray(item?.targetSkills) ? item.targetSkills : []).join(", ") || "не зафиксировано",
+        result_status: resultStatus,
+        result_note: `trial=${trialStatus || "не зафиксировано"}, promotion=${promotionStatus || "не зафиксировано"}.`,
+        evidence_refs: uniqueList(["docs/agents/registry.yaml", sourceRef]),
+      });
+    }
+  }
+
+  const logDir = path.join(repoRoot, ".logs", "agents");
+  try {
+    const entries = await fs.readdir(logDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith(".jsonl")) continue;
+      const absolutePath = path.join(logDir, entry.name);
+      const relPath = path.relative(repoRoot, absolutePath).replace(/\\/g, "/");
+      const rows = await safeReadJsonlEntries(absolutePath);
+      for (const row of rows) {
+        const rawStatus = asString(row?.status);
+        const resultStatus = normalizeHistoryStatus(rawStatus);
+        if (!resultStatus) continue;
+
+        const readArtifacts = toArtifactPathList(row?.artifacts_read);
+        const writtenArtifacts = toArtifactPathList(row?.artifacts_written);
+        const evidenceRefs = uniqueList([...readArtifacts, ...writtenArtifacts, relPath]);
+        const sourceRef = (() => {
+          const explicit = asString(row?.source_ref);
+          if (explicit) return explicit;
+          const fromEvidence = evidenceRefs.find((item) => /^https?:\/\//i.test(item));
+          if (fromEvidence) return fromEvidence;
+          const sourceKey = asString(row?.source_key);
+          if (sourceKey) return sourceKey;
+          return asString(row?.task_id) || null;
+        })();
+        const metrics = row?.metrics && typeof row.metrics === "object" ? row.metrics : {};
+
+        pushEvent({
+          event_id: asString(row?.event_id) || createStableEventId("telemetry", row),
+          occurred_at: asString(row?.timestamp) || nowIso,
+          agent_id: asString(row?.agent_id) || entry.name.replace(/\.jsonl$/i, ""),
+          source_tool: inferSourceTool(row?.source_tool, sourceRef, row?.outcome, row?.process),
+          source_ref: sourceRef,
+          extracted_value: asString(row?.outcome) || `${asString(row?.step_label) || asString(row?.step)} / ${rawStatus}`,
+          applied_change:
+            resultStatus === "rollback" ? "Изменение откатили после проверки."
+            : resultStatus === "rejected" ? "Изменение отклонено по результатам цикла."
+            : resultStatus === "verified" ? "Результат подтвержден этапом verify."
+            : resultStatus === "applied" ? "Изменение применено в рабочем контуре."
+            : "Сигнал улучшения зафиксирован в цикле.",
+          target_scope:
+            (writtenArtifacts[0] || readArtifacts[0] || asString(row?.step_label) || asString(row?.step) || "не зафиксировано"),
+          result_status: resultStatus,
+          result_note: `process=${asString(row?.process) || "unknown"}, status=${rawStatus || "unknown"}`,
+          metric_name: asString(metrics?.target_metric || metrics?.metric_name || metrics?.metric || "") || null,
+          metric_delta: parseDeltaToNumber(metrics?.target_delta_pct ?? metrics?.delta_pct ?? metrics?.expected_delta ?? null),
+          evidence_refs: evidenceRefs,
+        });
+      }
+    }
+  } catch {
+    // Logs are optional for initial bootstrap.
+  }
+
+  events.sort((a, b) => {
+    const bTs = Date.parse(b.occurred_at);
+    const aTs = Date.parse(a.occurred_at);
+    if (Number.isFinite(bTs) && Number.isFinite(aTs)) return bTs - aTs;
+    if (Number.isFinite(bTs)) return 1;
+    if (Number.isFinite(aTs)) return -1;
+    return 0;
+  });
+
+  return {
+    generated_at: nowIso,
+    version: "improvement_history.v1",
+    source: "docs/agents/registry.yaml + artifacts/candidate_*.json + .logs/agents/*.jsonl",
+    events,
+  };
+}
+
 async function loadSkillShadowTrialArtifactsByAgent() {
   const legacyPlanRelPath = "artifacts/skill_shadow_trial_plan.json";
   const legacyJudgementRelPath = "artifacts/skill_shadow_trial_judgement.json";
@@ -2934,6 +3358,9 @@ async function main() {
   const oapKbRawLogs = await buildOapRawLogsIndex();
   const analystLatestCycle = await buildAnalystLatestCycleSnapshot();
   const agentBenchmarkSummary = await buildAgentBenchmarkSummarySnapshot();
+  const agentTelemetrySummary = await buildAgentTelemetrySummarySnapshot();
+  const hostAgentSmokeSummary = await buildHostAgentSmokeSnapshot();
+  const agentImprovementHistory = await buildAgentImprovementHistoryFeed(agentsManifest);
   const capabilityGlossary = await buildCapabilityGlossary();
 
   await writeJson("c4-manifest.json", c4Manifest);
@@ -2946,6 +3373,9 @@ async function main() {
   await writeJson("oap-kb-raw-logs.json", { documents: oapKbRawLogs });
   await writeJson("agent-latest-cycle-analyst.json", analystLatestCycle);
   await writeJson("agent-benchmark-summary.json", agentBenchmarkSummary);
+  await writeJson("agent-telemetry-summary.json", agentTelemetrySummary);
+  await writeJson("host-agent-smoke.json", hostAgentSmokeSummary);
+  await writeJson("agent-improvement-history.json", agentImprovementHistory);
   await writeJson("capability-glossary.json", capabilityGlossary);
   await writeJson("assistant-governance.json", assistantGovernance);
   await writeJson("ui-section-contract.json", uiSectionContract);
@@ -2958,6 +3388,21 @@ async function main() {
   await fs.writeFile(
     path.join(publicDir, "generated", "agent-benchmark-summary.json"),
     `${JSON.stringify(agentBenchmarkSummary, null, 2)}\n`,
+    "utf8",
+  );
+  await fs.writeFile(
+    path.join(publicDir, "generated", "agent-telemetry-summary.json"),
+    `${JSON.stringify(agentTelemetrySummary, null, 2)}\n`,
+    "utf8",
+  );
+  await fs.writeFile(
+    path.join(publicDir, "generated", "host-agent-smoke.json"),
+    `${JSON.stringify(hostAgentSmokeSummary, null, 2)}\n`,
+    "utf8",
+  );
+  await fs.writeFile(
+    path.join(publicDir, "generated", "agent-improvement-history.json"),
+    `${JSON.stringify(agentImprovementHistory, null, 2)}\n`,
     "utf8",
   );
   await fs.writeFile(

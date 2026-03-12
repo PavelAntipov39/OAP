@@ -110,6 +110,30 @@ function formatOriginCycleId(value: string | null | undefined): string {
   return normalized || "не зафиксировано";
 }
 
+function renderAgentCell(agentId: string | null | undefined, activeAgentIds: Set<string>, onOpenAgent: (agentId: string) => void) {
+  const normalized = String(agentId || "").trim();
+  if (!normalized) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        не зафиксировано
+      </Typography>
+    );
+  }
+  if (activeAgentIds.has(normalized)) {
+    return (
+      <Link component="button" type="button" underline="hover" onClick={() => onOpenAgent(normalized)}>
+        {normalized}
+      </Link>
+    );
+  }
+  return (
+    <Stack direction="row" spacing={0.5} alignItems="center" useFlexGap flexWrap="wrap">
+      <Typography variant="body2">{normalized}</Typography>
+      <Chip size="small" variant="outlined" label="архив" sx={{ height: 20 }} />
+    </Stack>
+  );
+}
+
 function sortTextValues(values: Set<string>, selected: string): string[] {
   const list = [...values].sort((a, b) => a.localeCompare(b));
   if (selected && !list.includes(selected)) list.unshift(selected);
@@ -221,6 +245,7 @@ export function TasksPage() {
 
   const agentsManifest = React.useMemo(() => getAgentsManifest(), []);
   const agents = React.useMemo(() => agentsManifest.agents || [], [agentsManifest.agents]);
+  const activeAgentIds = React.useMemo(() => new Set(agents.map((item) => item.id)), [agents]);
   const selectedAgent = React.useMemo<AgentSummary | null>(
     () => agents.find((item) => item.id === selectedAgentId) || null,
     [agents, selectedAgentId],
@@ -897,14 +922,10 @@ export function TasksPage() {
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        <Link component="button" type="button" underline="hover" onClick={() => setSelectedAgentId(row.source_agent_id)}>
-                          {row.source_agent_id}
-                        </Link>
+                        {renderAgentCell(row.source_agent_id, activeAgentIds, setSelectedAgentId)}
                       </TableCell>
                       <TableCell>
-                        <Link component="button" type="button" underline="hover" onClick={() => setSelectedAgentId(row.executor_agent_id)}>
-                          {row.executor_agent_id}
-                        </Link>
+                        {renderAgentCell(row.executor_agent_id, activeAgentIds, setSelectedAgentId)}
                       </TableCell>
                       <TableCell>
                         <Chip size="small" color={row.current_stage_ui === "closed" ? "success" : row.current_stage_ui === "review" ? "info" : row.current_stage_ui === "in_work" ? "warning" : "default"} label={row.stage_label} />

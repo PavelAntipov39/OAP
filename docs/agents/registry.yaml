@@ -1,8 +1,448 @@
 {
-  "updatedAt": "2026-02-24T18:40:00Z",
+  "updatedAt": "2026-03-11T12:30:00Z",
   "source": "registry-manual",
-  "sourceVersion": "v3",
+  "sourceVersion": "v4",
+  "hostLayer": {
+    "canonicalCatalogPath": "docs/agents/host_agnostic_agent_catalog.yaml",
+    "hostCapabilityMatrixPath": "docs/agents/host_capability_matrix.yaml",
+    "adapterPolicy": "generated_non_authoritative",
+    "crossHostExecutionPolicy": "dispatcher_first"
+  },
   "agents": [
+    {
+      "id": "orchestrator-agent",
+      "name": "Оркестратор",
+      "role": "Координационный автономный агент",
+      "shortDescription": "Принимает разнородные задачи, выбирает основного исполнителя, подключает process agents и возвращает управляемый orchestration plan без разрыва общего backbone.",
+      "status": "healthy",
+      "skills": [
+        "doc",
+        "playwright",
+        "agent-telemetry"
+      ],
+      "usedSkills": [
+        {
+          "name": "doc",
+          "usage": "Собирает source-of-truth контекст до routing и orchestration decision.",
+          "fullText": "Системно читает spec/contracts/runbooks и фиксирует, какой агент должен быть основным исполнителем и какие документы обязательны для задачи.",
+          "practicalTasks": [
+            "Routing backlog задачи",
+            "Подготовка orchestration plan",
+            "Синхронизация governance-изменений"
+          ]
+        },
+        {
+          "name": "playwright",
+          "usage": "Нужен для browser-aware orchestration задач, если verify зависит от реального UI.",
+          "fullText": "Подключается как bounded capability для понимания, нужен ли `ui-verification` и как проверить пользовательский сценарий после выполнения.",
+          "practicalTasks": [
+            "Проверка необходимости browser verify",
+            "Маршрутизация UI-задач"
+          ]
+        },
+        {
+          "name": "agent-telemetry",
+          "usage": "Проверяет, что orchestration trace reconstructable и все agent runs измеримы.",
+          "fullText": "Используется для выбора процесса по telemetry, оценки viability агентов и контроля routing/verify coverage.",
+          "practicalTasks": [
+            "Оценка orchestration KPI",
+            "Проверка связности coordinator/executor trace"
+          ]
+        }
+      ],
+      "availableSkills": [],
+      "usedTools": [
+        {
+          "name": "QMD retrieval",
+          "usage": "Собирает evidence-first контекст по spec/contracts/runbooks перед routing-решением.",
+          "fullText": "Ищет top-k подтверждающих фрагментов по source-of-truth и помогает выбрать primary executor и bounded process agents.",
+          "source": "AGENTS.md#qmd-retrieval-policy",
+          "practicalTasks": [
+            "Разбор задачи из backlog",
+            "Выбор agent routing по документации",
+            "Проверка governance перед orchestration"
+          ]
+        },
+        {
+          "name": "Telemetry report builder",
+          "usage": "Собирает telemetry summary для routing KPI и orchestration quality signals.",
+          "fullText": "Позволяет оценить, какие агенты реально полезны, где есть overlap и какие process agents стоит подключать чаще.",
+          "source": "docs/subservices/oap/AGENT_TELEMETRY.md",
+          "practicalTasks": [
+            "Проверка viability agents",
+            "Оценка routing accuracy",
+            "Контроль verify coverage"
+          ]
+        },
+        {
+          "name": "Dispatcher execution",
+          "usage": "Stage/run bounded child-runs в рамках одного collaboration plan.",
+          "fullText": "Использует dispatcher-backed execution, если нужно запустить process agent или передать bounded задачу другому автономному агенту.",
+          "source": "scripts/oap_agent_dispatcher.py",
+          "practicalTasks": [
+            "Запуск child-run",
+            "Маршрутизация в `reader-agent`",
+            "Подключение `contract-audit`"
+          ]
+        }
+      ],
+      "availableTools": [],
+      "repositories": [
+        {
+          "name": "oap",
+          "url": "https://github.com/example/oap",
+          "branch": "main"
+        }
+      ],
+      "mcpServers": [
+        {
+          "name": "qmd",
+          "status": "online"
+        },
+        {
+          "name": "context7",
+          "status": "online"
+        },
+        {
+          "name": "supabase",
+          "status": "online"
+        }
+      ],
+      "usedMcp": [
+        {
+          "name": "QMD",
+          "status": "active",
+          "note": "Используется как основной retrieval-layer для routing и evidence-first orchestration.",
+          "practicalTasks": [
+            "Поиск релевантных source-of-truth документов",
+            "Проверка evidence coverage перед routing"
+          ],
+          "impactInNumbers": "Снижает расход контекста и время старта сложной задачи на 20-35%."
+        },
+        {
+          "name": "Context7",
+          "status": "active",
+          "note": "Используется при library/tool-contract задачах для выбора корректного execution path.",
+          "practicalTasks": [
+            "Проверка docs по host adapters и tools",
+            "Сверка внешних best practices"
+          ],
+          "impactInNumbers": "Сокращает риск устаревших решений в orchestration и automation change-задачах."
+        }
+      ],
+      "availableMcp": [],
+      "contextRefs": [
+        {
+          "title": "Source of truth: спецификация проекта",
+          "filePath": ".specify/specs/001-oap/spec.md",
+          "pathHint": "Universal backbone, multi-agent invariant, runtime contracts"
+        },
+        {
+          "title": "Канонический каталог агентов",
+          "filePath": "docs/agents/host_agnostic_agent_catalog.yaml",
+          "pathHint": "Автономные и процессные агенты, host envelope"
+        },
+        {
+          "title": "Каталог process templates",
+          "filePath": "docs/agents/profile_templates.yaml",
+          "pathHint": "Runtime specialists и их capability contracts"
+        },
+        {
+          "title": "Governance мультиагентности",
+          "filePath": "docs/subservices/oap/MULTI_AGENT_GOVERNANCE.md",
+          "pathHint": "Критерии повышения роли и active set"
+        }
+      ],
+      "rulesApplied": [
+        {
+          "title": "Universal workflow backbone",
+          "location": ".specify/specs/001-oap/spec.md",
+          "description": "Общий backbone `0..9.1`, который orchestration не имеет права ломать.",
+          "fullText": "",
+          "sourceUrl": null
+        },
+        {
+          "title": "Universal Self-Improvement Loop",
+          "location": "AGENTS.md",
+          "description": "Любой orchestration cycle должен завершаться через verify/lesson gate.",
+          "fullText": "",
+          "sourceUrl": null
+        },
+        {
+          "title": "QMD Retrieval Policy",
+          "location": "AGENTS.md",
+          "description": "Правила evidence-first retrieval для многофайлового контекста.",
+          "fullText": "",
+          "sourceUrl": null
+        }
+      ],
+      "memoryContext": {
+        "currentTask": {
+          "task_id": "orchestration-routing",
+          "goal": "Определить основного исполнителя и bounded набор process agents",
+          "task_type": "orchestration",
+          "context_sla_seconds": 90
+        },
+        "contextAnchors": [
+          {
+            "anchor_id": "anchor-spec",
+            "category": "spec",
+            "title": "Source of truth: спецификация проекта",
+            "filePath": ".specify/specs/001-oap/spec.md",
+            "pathHint": "Universal backbone и contracts",
+            "whySelected": "Определяет границы orchestration и общий cycle invariant.",
+            "tokens_est": 360,
+            "sourceUrl": null,
+            "freshness": "fresh"
+          },
+          {
+            "anchor_id": "anchor-catalog",
+            "category": "contract",
+            "title": "Канонический каталог агентов",
+            "filePath": "docs/agents/host_agnostic_agent_catalog.yaml",
+            "pathHint": "Active autonomous agents и process agents",
+            "whySelected": "Нужен для выбора primary executor и handoff targets.",
+            "tokens_est": 260,
+            "sourceUrl": null,
+            "freshness": "fresh"
+          },
+          {
+            "anchor_id": "anchor-governance",
+            "category": "governance",
+            "title": "Governance мультиагентности",
+            "filePath": "docs/subservices/oap/MULTI_AGENT_GOVERNANCE.md",
+            "pathHint": "Правила повышения/понижения роли и active set",
+            "whySelected": "Ограничивает разрастание active set и свободную mesh-коммуникацию.",
+            "tokens_est": 220,
+            "sourceUrl": null,
+            "freshness": "fresh"
+          }
+        ],
+        "persistentRules": [
+          {
+            "mandatory": true,
+            "title": "Source of truth: спецификация проекта",
+            "location": ".specify/specs/001-oap/spec.md",
+            "description": "Главный источник правды по architecture/runtime contracts.",
+            "sourceUrl": null
+          },
+          {
+            "mandatory": true,
+            "title": "Governance мультиагентности",
+            "location": "docs/subservices/oap/MULTI_AGENT_GOVERNANCE.md",
+            "description": "Правила когда роль остается process-agent и когда может стать autonomous.",
+            "sourceUrl": null
+          }
+        ],
+        "retrieval": {
+          "mode": "hybrid",
+          "tool": "qmd",
+          "top_k": 8,
+          "latency_ms": null,
+          "qualitySignals": [
+            {
+              "score": null,
+              "line_refs": [
+                ".specify/specs/001-oap/spec.md:47"
+              ],
+              "coverage": 0.8
+            }
+          ]
+        },
+        "decisionUsage": {
+          "decisionLinks": [
+            {
+              "anchor_id": "anchor-spec",
+              "usedInDecision": true,
+              "taskEventIds": [
+                "orchestration-routing"
+              ],
+              "reviewErrorIds": [],
+              "improvementIds": [
+                "Ввести координационный agent routing"
+              ]
+            }
+          ]
+        },
+        "economics": {
+          "total_context_tokens": 840,
+          "useful_context_tokens": 620,
+          "context_efficiency": 0.7381,
+          "tokens_per_task": 210,
+          "cached_tokens": null,
+          "cache_hit_rate": null
+        },
+        "riskControl": {
+          "riskFlags": [
+            "over_orchestration",
+            "wrong_executor_selection"
+          ],
+          "toolPolicy": {
+            "profile": "balanced",
+            "allow": [
+              "read",
+              "search",
+              "bounded_dispatcher"
+            ],
+            "deny": [
+              "unbounded_mesh",
+              "parallel_writes"
+            ],
+            "approval_mode": "required_for_risky"
+          }
+        },
+        "nextActions": [
+          {
+            "title": "Проверить routing accuracy по новым типам задач",
+            "owner": "analyst-agent",
+            "due_date": "2026-03-18",
+            "expected_effect": "Более стабильный выбор primary executor без ручного перебора ролей."
+          }
+        ]
+      },
+      "processLink": {
+        "label": "Как работает orchestration",
+        "href": "#/agent-flow?agent=orchestrator-agent"
+      },
+      "tasks": [],
+      "taskEvents": [],
+      "analystRecommendations": [],
+      "improvements": [],
+      "operatingPlan": {
+        "mission": "Разбирать входящую задачу, выбирать автономного исполнителя и bounded process agents, фиксировать merge/verify policy и возвращать управляемый orchestration package.",
+        "dailyLoop": [
+          "intake входящей задачи",
+          "routing и выбор primary executor",
+          "bounded orchestration через dispatcher",
+          "проверка merge/verify coverage",
+          "обновление telemetry и уроков"
+        ],
+        "sourcePolicy": {
+          "trustOrder": [
+            ".specify/specs/001-oap/spec.md",
+            ".specify/specs/001-oap/contracts/*",
+            ".specify/specs/001-oap/decisions/*",
+            "docs/*",
+            "AGENTS.md"
+          ]
+        },
+        "notificationPolicy": {
+          "channels": [
+            "task_board",
+            "telemetry_summary"
+          ],
+          "criticalEscalation": "handoff_conflict_or_missing_executor"
+        },
+        "improvementLifecycle": [
+          "planned",
+          "verify_started",
+          "verify_passed",
+          "lesson_captured",
+          "completed"
+        ],
+        "metricsCatalog": [
+          "routing_accuracy_rate",
+          "handoff_contract_pass_rate",
+          "verification_coverage_rate",
+          "orchestration_cost_per_completed_task"
+        ],
+        "decisionRules": [
+          "Не выбирать multi-agent режим без измеримой пользы.",
+          "Для write/apply использовать одного merge/apply owner.",
+          "Если задача уже явно доменная, не добавлять orchestration-overhead."
+        ]
+      },
+      "workflowPolicy": {
+        "mode": "reuse_first",
+        "delegation": "bounded_dispatcher",
+        "parallelWritesAllowed": false
+      },
+      "workflowBackbone": {
+        "version": "universal_backbone_v1",
+        "commonCoreSteps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize",
+          "step_9_publish_snapshots"
+        ],
+        "roleWindow": {
+          "entryStep": "step_5_role_window",
+          "exitStep": "step_6_role_exit_decision",
+          "purpose": "Классифицировать задачу, выбрать primary executor/process agents и вернуть orchestration decision package.",
+          "internalSteps": [
+            "role_classify_task",
+            "role_select_executor_and_process_agents",
+            "role_prepare_orchestration_package"
+          ]
+        },
+        "stepExecutionPolicy": {
+          "skippedStepsAllowed": true,
+          "skippedStepStatus": "skipped"
+        },
+        "supportsDynamicInstances": true
+      },
+      "capabilityOptimization": {
+        "enabled": true,
+        "refreshMode": "on_run",
+        "sourcePolicy": "official_first",
+        "trialMode": "shadow",
+        "promotionMode": "human_approve",
+        "minShadowSampleSize": 3,
+        "staleAfterHours": 168
+      },
+      "learningArtifacts": {
+        "todoPath": "docs/subservices/oap/tasks/todo.md",
+        "lessonsPath": "docs/subservices/oap/tasks/lessons/orchestrator-agent.md",
+        "lastLessonAt": null
+      },
+      "workflowMetricsCatalog": [
+        "routing_accuracy_rate",
+        "handoff_contract_pass_rate",
+        "verification_coverage_rate",
+        "orchestration_cost_per_completed_task"
+      ],
+      "doneGatePolicy": {
+        "mode": "soft_warning",
+        "requiredChecks": [
+          "plan",
+          "verify",
+          "lesson"
+        ],
+        "fallbackStatus": "in_review"
+      },
+      "agentClass": "core",
+      "origin": "manual",
+      "specializationScope": "Control-plane orchestration for heterogeneous OAP tasks, including routing from backlog/chat/automation to the correct autonomous executor and bounded process agents.",
+      "lifecycle": "active",
+      "capabilityContract": {
+        "mission": "Choose the right execution path for each task and keep orchestration measurable, bounded, and auditable.",
+        "entryCriteria": [
+          "Задача поступила без очевидного доменного владельца или требует bounded multi-agent orchestration.",
+          "Нужно выбрать primary executor, process agents или safe orchestration mode."
+        ],
+        "doneCondition": "Primary executor and orchestration envelope are fixed, conflicts resolved, and verify ownership explicit.",
+        "outputSchema": "orchestration_decision_package.v1"
+      },
+      "source": {
+        "type": "manual",
+        "location": "docs/agents/registry.yaml"
+      },
+      "updatedAt": "2026-03-11T18:40:00Z",
+      "runbook": {
+        "label": "Открыть operating plan",
+        "filePath": "docs/subservices/oap/agents/orchestrator-agent/OPERATING_PLAN.md"
+      },
+      "trackerUrl": null
+    },
     {
       "id": "reader-agent",
       "name": "Разработчик",
@@ -462,411 +902,6 @@
       "updatedAt": "2026-02-24T18:35:00Z",
       "runbook": "Проверить ошибки deploy и состояние MCP-интеграций.",
       "trackerUrl": "https://github.com/example/oap-web/issues"
-    },
-    {
-      "id": "data-agent",
-      "name": "Data Agent",
-      "role": "ETL и качество данных",
-      "shortDescription": "Поддерживает ETL-пайплайн, качество данных и стабильность derived-таблиц.",
-      "status": "degraded",
-      "skills": [
-        "security-best-practices",
-        "doc",
-        "spreadsheet"
-      ],
-      "usedSkills": [
-        {
-          "name": "spreadsheet",
-          "usage": "Анализ QA-отчетов по синонимам и life facts.",
-          "fullText": "Анализ и сравнение табличных отчетов качества данных, поиск аномалий и drift между релизами.",
-          "practicalTasks": [
-            "Пересборка синонимов"
-          ]
-        }
-      ],
-      "availableSkills": [
-        {
-          "name": "playwright",
-          "benefit": "Проверка отображения ETL-результатов в UI.",
-          "fullText": "Проверка визуального результата ETL в интерфейсе после пересборки индексов и справочников.",
-          "recommendationBasis": "Позволяет поймать регрессии отображения данных после ETL, которые не видны по SQL-логам.",
-          "expectedEffect": "Снижение инцидентов \"данные есть в БД, но отображение сломано\".",
-          "practicalTasks": [
-            "Проверка карточек после ETL",
-            "Проверка фильтров и таблиц после пересчета данных"
-          ],
-          "link": "https://playwright.dev/docs/intro"
-        }
-      ],
-      "usedTools": [
-        {
-          "name": "QMD retrieval",
-          "usage": "Находит релевантные runbook/ADR/contracts фрагменты перед root-cause анализом ETL.",
-          "fullText": "Evidence-first retrieval по текстовым артефактам с фильтрацией top-k сигналов для инцидент-анализа.",
-          "source": "AGENTS.md#qmd-retrieval-policy",
-          "practicalTasks": [
-            "Разбор деградации Supabase",
-            "Диагностика проблем quality-check"
-          ]
-        }
-      ],
-      "availableTools": [],
-      "repositories": [
-        {
-          "name": "oap-etl",
-          "url": "https://github.com/example/oap-etl",
-          "branch": "main"
-        }
-      ],
-      "mcpServers": [
-        {
-          "name": "supabase",
-          "status": "degraded"
-        },
-        {
-          "name": "qmd",
-          "status": "online"
-        }
-      ],
-      "usedMcp": [
-        {
-          "name": "Supabase",
-          "status": "degraded",
-          "note": "Нестабильный ответ на части запросов.",
-          "practicalTasks": [
-            "Проверка health SQL",
-            "Проверка ETL-таблиц после пересборки"
-          ],
-          "impactInNumbers": "Позволяет сократить время диагностики сбоев ETL на 15-20%."
-        },
-        {
-          "name": "QMD",
-          "status": "active",
-          "note": "Используется для evidence-first поиска по текстовым артефактам ETL и runbook.",
-          "practicalTasks": [
-            "Поиск runbook шагов по восстановлению",
-            "Сбор контекста для root-cause"
-          ],
-          "impactInNumbers": "Экономия токенов при аналитике инцидента: ~18-30%."
-        }
-      ],
-      "availableMcp": [
-        {
-          "name": "Context7",
-          "whyUseful": "Актуальные примеры по SQL и tooling.",
-          "description": "Дает актуальные примеры по SQL/tooling и помогает быстро находить корректные паттерны.",
-          "whenToUse": "Когда нужно принять решение по библиотеке, SQL-инструменту или формату данных.",
-          "expectedEffect": "-10% времени на поиск рабочих решений по инструментам.",
-          "basis": "Часть ETL-задач требует быстрых проверок по актуальной документации.",
-          "practicalTasks": [
-            "Пересборка синонимов",
-            "Оптимизация ETL-пайплайна"
-          ],
-          "link": "https://context7.com/",
-          "installComplexity": "Низкая"
-        }
-      ],
-      "contextRefs": [
-        {
-          "title": "Контракт datasets",
-          "filePath": ".specify/specs/001-oap/contracts/datasets.md",
-          "pathHint": "Форматы входных датасетов"
-        },
-        {
-          "title": "QMD policy для текстового retrieval",
-          "filePath": "AGENTS.md",
-          "pathHint": "Раздел: QMD Retrieval Policy (Mandatory for large text context)"
-        }
-      ],
-      "rulesApplied": [
-        {
-          "title": "QMD Retrieval Policy",
-          "location": "AGENTS.md",
-          "description": "Правила evidence-first retrieval для длинного markdown-контекста.",
-          "fullText": "",
-          "sourceUrl": null
-        }
-      ],
-      "processLink": {
-        "title": "Схема работы ETL (BPMN)",
-        "url": "#/bpmn"
-      },
-      "tasks": {
-        "queued": 1,
-        "running": 1,
-        "retrying": 1,
-        "waiting_review": 2,
-        "blocked": 1,
-        "waiting_external": 0,
-        "overdue": 1
-      },
-      "taskEvents": [
-        {
-          "id": "data-task-1",
-          "title": "Пересборка синонимов",
-          "completedAt": "2026-02-24T10:20:00Z",
-          "reviewErrors": 1
-        }
-      ],
-      "analystRecommendations": [
-        "Добавить автоматическую проверку integrity после ETL шагов.",
-        "Использовать QMD перед разбором инцидентов ETL, чтобы извлекать только релевантные фрагменты из runbook и спецификаций."
-      ],
-      "improvements": [
-        {
-          "id": "imp-data-etl-checkpoints",
-          "title": "Разбивка длинных ETL-джоб",
-          "problem": "Сложно локализовать ошибку в большом пайплайне.",
-          "solution": "Разделить на этапы с явными checkpoints и retry policy.",
-          "effect": "Быстрее root-cause и меньше времени простоя.",
-          "priority": "Высокий"
-        }
-      ],
-      "workflowPolicy": {
-        "planDefault": true,
-        "replanOnDeviation": true,
-        "verifyBeforeDone": true,
-        "selfImprovementLoop": true,
-        "autonomousBugfix": true
-      },
-      "workflowBackbone": {
-        "version": "universal_backbone_v1",
-        "commonCoreSteps": ["step_0_intake", "step_1_start", "step_2_preflight", "step_3_orchestration", "step_4_context_sync", "step_5_role_window", "step_6_role_exit_decision", "step_7_apply_or_publish", "step_7_contract_gate", "step_8_verify", "step_8_error_channel", "step_9_finalize", "step_9_publish_snapshots"],
-        "roleWindow": {
-          "entryStep": "step_5_role_window",
-          "exitStep": "step_6_role_exit_decision",
-          "purpose": "Проверить качество данных и вернуть пакет действий по ETL или quality-control.",
-          "internalSteps": ["role_check_dataset_quality", "role_analyze_drift", "role_prepare_data_action"]
-        },
-        "stepExecutionPolicy": {
-          "skippedStepsAllowed": true,
-          "skippedStepStatus": "skipped"
-        },
-        "supportsDynamicInstances": true
-      },
-      "capabilityOptimization": {
-        "enabled": true,
-        "refreshMode": "on_run",
-        "sourcePolicy": "official_first",
-        "trialMode": "shadow",
-        "promotionMode": "human_approve",
-        "minShadowSampleSize": 3,
-        "staleAfterHours": 168
-      },
-      "learningArtifacts": {
-        "todoPath": "docs/subservices/oap/tasks/todo.md",
-        "lessonsPath": "docs/subservices/oap/tasks/lessons/data-agent.md",
-        "lastLessonAt": null
-      },
-      "workflowMetricsCatalog": [
-        "plan_coverage_rate",
-        "verification_pass_rate",
-        "lesson_capture_rate",
-        "replan_rate",
-        "autonomous_bugfix_rate",
-        "elegance_gate_rate"
-      ],
-      "doneGatePolicy": {
-        "mode": "soft_warning",
-        "requiredChecks": ["plan", "verify", "lesson"],
-        "fallbackStatus": "in_review"
-      },
-      "source": "registry+manual-ops",
-      "updatedAt": "2026-02-24T18:32:00Z",
-      "runbook": "Проверить latest ETL run, затем пересчитать FTS и QC.",
-      "trackerUrl": "https://github.com/example/oap-etl/issues"
-    },
-    {
-      "id": "ops-agent",
-      "name": "Ops Agent",
-      "role": "Деплой, мониторинг и инфраструктура",
-      "shortDescription": "Контролирует доставку релизов, доступность сервисов и инциденты.",
-      "status": "healthy",
-      "skills": [
-        "gh-address-comments",
-        "playwright",
-        "sentry"
-      ],
-      "usedSkills": [
-        {
-          "name": "sentry",
-          "usage": "Разбор production-инцидентов и ошибок.",
-          "fullText": "Чтение и анализ production-инцидентов, приоритизация исправлений и контроль регрессий.",
-          "practicalTasks": [
-            "Проверка Netlify deploy",
-            "Анализ инцидентов после релиза"
-          ]
-        }
-      ],
-      "availableSkills": [
-        {
-          "name": "security-best-practices",
-          "benefit": "Профилактика уязвимостей инфраструктуры.",
-          "fullText": "Проверка инфраструктурных рисков: управление токенами, доступами и безопасной конфигурацией окружений.",
-          "recommendationBasis": "Полезен для снижения риска инцидентов на уровне deploy и интеграций.",
-          "expectedEffect": "Снижение вероятности инцидентов из-за конфигурации окружений.",
-          "practicalTasks": [
-            "Настройка публичных сервисов",
-            "Ревью инфраструктурных изменений"
-          ],
-          "link": "https://owasp.org/"
-        }
-      ],
-      "usedTools": [],
-      "availableTools": [],
-      "repositories": [
-        {
-          "name": "oap-ops",
-          "url": "https://github.com/example/oap-ops",
-          "branch": "main"
-        }
-      ],
-      "mcpServers": [
-        {
-          "name": "netlify",
-          "status": "online"
-        },
-        {
-          "name": "github",
-          "status": "online"
-        }
-      ],
-      "usedMcp": [
-        {
-          "name": "Netlify",
-          "status": "active",
-          "note": "Деплой production и preview окружений.",
-          "practicalTasks": [
-            "Проверка production deploy",
-            "Проверка preview окружений"
-          ],
-          "impactInNumbers": "Ускоряет цикл публикации и проверки релиза до 20%."
-        }
-      ],
-      "availableMcp": [
-        {
-          "name": "Supabase",
-          "whyUseful": "Проверка health DB и RLS-политик.",
-          "description": "Проверка состояния БД и политик доступа для быстрого root-cause инцидентов данных.",
-          "whenToUse": "Когда инцидент связан с данными, правами доступа или деградацией RPC.",
-          "expectedEffect": "Снижение времени локализации инцидента на 15-25%.",
-          "basis": "Ops-задачи регулярно пересекаются с проверкой БД и правил доступа.",
-          "practicalTasks": [
-            "Разбор инцидентов после релиза",
-            "Проверка деградации API"
-          ],
-          "link": "https://supabase.com/docs",
-          "installComplexity": "Низкая"
-        },
-        {
-          "name": "QMD",
-          "whyUseful": "Быстрый поиск по runbook/документации инцидентов без ручного перебора файлов.",
-          "description": "Быстрый поиск по runbook и postmortem-документам без ручного перебора файлов.",
-          "whenToUse": "При инцидентах и на этапе подготовки чек-листа релиза.",
-          "expectedEffect": "-15% времени на сбор операционного контекста.",
-          "basis": "Часто требуется быстро найти точный шаг восстановления и связанные ограничения.",
-          "practicalTasks": [
-            "Реакция на инцидент",
-            "Подготовка release-checklist"
-          ],
-          "link": "https://github.com/tobi/qmd",
-          "installComplexity": "Низкая"
-        }
-      ],
-      "contextRefs": [
-        {
-          "title": "How to run",
-          "filePath": "docs/how-to-run.md",
-          "pathHint": "Ops Hub + деплой"
-        }
-      ],
-      "processLink": {
-        "title": "Схема release-процесса (BPMN)",
-        "url": "#/bpmn"
-      },
-      "tasks": {
-        "queued": 0,
-        "running": 1,
-        "retrying": 0,
-        "waiting_review": 1,
-        "blocked": 0,
-        "waiting_external": 0,
-        "overdue": 0
-      },
-      "taskEvents": [
-        {
-          "id": "ops-task-1",
-          "title": "Проверка Netlify deploy",
-          "completedAt": "2026-02-24T09:45:00Z",
-          "reviewErrors": 0
-        }
-      ],
-      "analystRecommendations": [
-        "Добавить ежедневный health-report по MCP серверу Netlify и Supabase."
-      ],
-      "improvements": [
-        {
-          "id": "imp-ops-deploy-smoke",
-          "title": "Автоматизация smoke после деплоя",
-          "problem": "Регрессии обнаруживаются после ручной проверки.",
-          "solution": "Запускать автоматический UI smoke сразу после production deploy.",
-          "effect": "Быстрее откат и меньше инцидентов для пользователей.",
-          "priority": "Средний"
-        }
-      ],
-      "workflowPolicy": {
-        "planDefault": true,
-        "replanOnDeviation": true,
-        "verifyBeforeDone": true,
-        "selfImprovementLoop": true,
-        "autonomousBugfix": true
-      },
-      "workflowBackbone": {
-        "version": "universal_backbone_v1",
-        "commonCoreSteps": ["step_0_intake", "step_1_start", "step_2_preflight", "step_3_orchestration", "step_4_context_sync", "step_5_role_window", "step_6_role_exit_decision", "step_7_apply_or_publish", "step_7_contract_gate", "step_8_verify", "step_8_error_channel", "step_9_finalize", "step_9_publish_snapshots"],
-        "roleWindow": {
-          "entryStep": "step_5_role_window",
-          "exitStep": "step_6_role_exit_decision",
-          "purpose": "Разобрать операционную проблему и вернуть runbook-based action package.",
-          "internalSteps": ["role_triage_operation", "role_select_runbook_action", "role_prepare_ops_resolution"]
-        },
-        "stepExecutionPolicy": {
-          "skippedStepsAllowed": true,
-          "skippedStepStatus": "skipped"
-        },
-        "supportsDynamicInstances": true
-      },
-      "capabilityOptimization": {
-        "enabled": true,
-        "refreshMode": "on_run",
-        "sourcePolicy": "official_first",
-        "trialMode": "shadow",
-        "promotionMode": "human_approve",
-        "minShadowSampleSize": 3,
-        "staleAfterHours": 168
-      },
-      "learningArtifacts": {
-        "todoPath": "docs/subservices/oap/tasks/todo.md",
-        "lessonsPath": "docs/subservices/oap/tasks/lessons/ops-agent.md",
-        "lastLessonAt": null
-      },
-      "workflowMetricsCatalog": [
-        "plan_coverage_rate",
-        "verification_pass_rate",
-        "lesson_capture_rate",
-        "replan_rate",
-        "autonomous_bugfix_rate",
-        "elegance_gate_rate"
-      ],
-      "doneGatePolicy": {
-        "mode": "soft_warning",
-        "requiredChecks": ["plan", "verify", "lesson"],
-        "fallbackStatus": "in_review"
-      },
-      "source": "registry+manual-ops",
-      "updatedAt": "2026-02-24T18:31:00Z",
-      "runbook": "При деградации MCP: проверка токена и перезапуск сервера.",
-      "trackerUrl": "https://github.com/example/oap-ops/issues"
     },
     {
       "id": "designer-agent",
@@ -2198,6 +2233,338 @@
       "updatedAt": "2026-03-02T10:00:00Z",
       "runbook": "Проверить данные задач, затем сформировать рекомендации с основанием и ожидаемым эффектом.",
       "trackerUrl": "https://github.com/example/oap-ops/issues",
+      "notes": null
+    },
+    {
+      "id": "retrieval-audit",
+      "name": "Retrieval Audit Specialist",
+      "role": "Процессный агент — аудит retrieval и полноты evidence",
+      "shortDescription": "Проверяет полноту evidence, качество retrieval и консистентность источников для решений.",
+      "status": "healthy",
+      "agentClass": "specialist",
+      "origin": "manual",
+      "lifecycle": "active",
+      "specializationScope": "Retrieval quality audit and evidence completeness verification",
+      "creationReason": "Process agent for retrieval evidence verification",
+      "createdByAgentId": null,
+      "parentTemplateId": "retrieval-audit",
+      "derivedFromAgentId": null,
+      "skills": ["doc"],
+      "usedSkills": [],
+      "availableSkills": [],
+      "usedTools": [],
+      "availableTools": [],
+      "repositories": [],
+      "mcpServers": [{ "name": "qmd", "status": "online" }],
+      "usedMcp": [],
+      "availableMcp": [],
+      "contextRefs": [],
+      "tasks": {},
+      "taskEvents": [],
+      "analystRecommendations": [],
+      "improvements": [],
+      "capabilityContract": {
+        "mission": "Verify that decisions are backed by correct, complete, and non-contradictory evidence from source-of-truth documents.",
+        "entryCriteria": ["Контекст задачи распределён по нескольким spec/contracts/runbook документам."],
+        "doneCondition": "Retrieval audit report is ready with evidence set, gap list, and coverage score.",
+        "outputSchema": "retrieval_audit_report.v1"
+      },
+      "auditDisposition": "keep",
+      "auditNote": null,
+      "learningArtifacts": {
+        "todoPath": "docs/subservices/oap/tasks/todo.md",
+        "lessonsPath": "docs/subservices/oap/tasks/lessons/retrieval-audit.md",
+        "lastLessonAt": "2026-03-11T12:30:00Z"
+      },
+      "updatedAt": "2026-03-11T12:30:00Z",
+      "source": "registry-manual",
+      "trackerUrl": null,
+      "runbook": null,
+      "notes": null
+    },
+    {
+      "id": "ui-verification",
+      "name": "UI Verification Specialist",
+      "role": "Процессный агент — верификация runtime UI-поведения",
+      "shortDescription": "Проверяет runtime UI-поведение в браузере и возвращает воспроизводимый verify package.",
+      "status": "healthy",
+      "agentClass": "specialist",
+      "origin": "manual",
+      "lifecycle": "active",
+      "specializationScope": "Browser-based runtime UI verification and regression detection",
+      "creationReason": "Process agent for UI runtime verification",
+      "createdByAgentId": null,
+      "parentTemplateId": "ui-verification",
+      "derivedFromAgentId": null,
+      "skills": ["playwright"],
+      "usedSkills": [],
+      "availableSkills": [],
+      "usedTools": [],
+      "availableTools": [],
+      "repositories": [],
+      "mcpServers": [{ "name": "playwright", "status": "online" }],
+      "usedMcp": [],
+      "availableMcp": [],
+      "contextRefs": [],
+      "tasks": {},
+      "taskEvents": [],
+      "analystRecommendations": [],
+      "improvements": [],
+      "capabilityContract": {
+        "mission": "Verify runtime UI behavior in browser and return a reproducible verify package with screenshot references.",
+        "entryCriteria": ["Изменение затрагивает маршруты, фильтры, модалки, табы, таблицы или контент в UI."],
+        "doneCondition": "UI verification report is ready with route, action sequence, expected vs actual, and screenshot ref.",
+        "outputSchema": "ui_verification_report.v1"
+      },
+      "auditDisposition": "keep",
+      "auditNote": null,
+      "learningArtifacts": {
+        "todoPath": "docs/subservices/oap/tasks/todo.md",
+        "lessonsPath": "docs/subservices/oap/tasks/lessons/ui-verification.md",
+        "lastLessonAt": "2026-03-11T12:30:00Z"
+      },
+      "updatedAt": "2026-03-11T12:30:00Z",
+      "source": "registry-manual",
+      "trackerUrl": null,
+      "runbook": null,
+      "notes": null
+    },
+    {
+      "id": "telemetry-audit",
+      "name": "Telemetry Audit Specialist",
+      "role": "Процессный агент — аудит telemetry и корректности KPI",
+      "shortDescription": "Проверяет полноту telemetry, reconstructability execution graph и корректность KPI.",
+      "status": "healthy",
+      "agentClass": "specialist",
+      "origin": "manual",
+      "lifecycle": "active",
+      "specializationScope": "Telemetry completeness audit, KPI correctness, and execution graph reconstructability",
+      "creationReason": "Process agent for telemetry and KPI audit",
+      "createdByAgentId": null,
+      "parentTemplateId": "telemetry-audit",
+      "derivedFromAgentId": null,
+      "skills": ["agent-telemetry"],
+      "usedSkills": [],
+      "availableSkills": [],
+      "usedTools": [],
+      "availableTools": [],
+      "repositories": [],
+      "mcpServers": [],
+      "usedMcp": [],
+      "availableMcp": [],
+      "contextRefs": [],
+      "tasks": {},
+      "taskEvents": [],
+      "analystRecommendations": [],
+      "improvements": [],
+      "capabilityContract": {
+        "mission": "Verify telemetry completeness, KPI correctness, and execution graph reconstructability for agent runs.",
+        "entryCriteria": ["Задача меняет lifecycle, orchestration, metrics или summaries."],
+        "doneCondition": "Telemetry audit report is ready with checked event list, gap list, and KPI coverage score.",
+        "outputSchema": "telemetry_audit_report.v1"
+      },
+      "auditDisposition": "keep",
+      "auditNote": null,
+      "learningArtifacts": {
+        "todoPath": "docs/subservices/oap/tasks/todo.md",
+        "lessonsPath": "docs/subservices/oap/tasks/lessons/telemetry-audit.md",
+        "lastLessonAt": "2026-03-11T12:30:00Z"
+      },
+      "updatedAt": "2026-03-11T12:30:00Z",
+      "source": "registry-manual",
+      "trackerUrl": null,
+      "runbook": null,
+      "notes": null
+    },
+    {
+      "id": "contract-audit",
+      "name": "Contract Audit Specialist",
+      "role": "Процессный агент — аудит schema/API/task-contract",
+      "shortDescription": "Проверяет schema/API/task-contract/routing-contract и явно фиксирует несоответствия между source-of-truth и runtime.",
+      "status": "healthy",
+      "agentClass": "specialist",
+      "origin": "manual",
+      "lifecycle": "active",
+      "specializationScope": "Schema, API contract, task-contract, and routing-contract audit against source-of-truth",
+      "creationReason": "Process agent for contract and schema audit",
+      "createdByAgentId": null,
+      "parentTemplateId": "contract-audit",
+      "derivedFromAgentId": null,
+      "skills": ["doc"],
+      "usedSkills": [],
+      "availableSkills": [],
+      "usedTools": [],
+      "availableTools": [],
+      "repositories": [],
+      "mcpServers": [
+        { "name": "qmd", "status": "online" },
+        { "name": "context7", "status": "online" }
+      ],
+      "usedMcp": [],
+      "availableMcp": [],
+      "contextRefs": [],
+      "tasks": {},
+      "taskEvents": [],
+      "analystRecommendations": [],
+      "improvements": [],
+      "capabilityContract": {
+        "mission": "Audit schema, API, task-contract, and routing-contract against source-of-truth and explicitly report breaking gaps.",
+        "entryCriteria": ["Задача меняет spec, contracts, routing, payload shape или generated manifests."],
+        "doneCondition": "Contract audit report is ready with findings by severity (P0-P3) and canonical source references.",
+        "outputSchema": "contract_audit_report.v1"
+      },
+      "auditDisposition": "keep",
+      "auditNote": null,
+      "learningArtifacts": {
+        "todoPath": "docs/subservices/oap/tasks/todo.md",
+        "lessonsPath": "docs/subservices/oap/tasks/lessons/contract-audit.md",
+        "lastLessonAt": "2026-03-11T12:30:00Z"
+      },
+      "updatedAt": "2026-03-11T12:30:00Z",
+      "source": "registry-manual",
+      "trackerUrl": null,
+      "runbook": null,
+      "notes": null
+    },
+    {
+      "id": "docs-spec-sync",
+      "name": "Docs & Spec Sync Specialist",
+      "role": "Процессный агент — синхронизация spec, ADR и README",
+      "shortDescription": "Проверяет консистентность между spec, ADR, README, glossary и generated docs после архитектурных и process changes.",
+      "status": "healthy",
+      "agentClass": "specialist",
+      "origin": "manual",
+      "lifecycle": "active",
+      "specializationScope": "Documentation consistency: spec/ADR/README/glossary/generated docs parity",
+      "creationReason": "Process agent for documentation consistency and sync",
+      "createdByAgentId": null,
+      "parentTemplateId": "docs-spec-sync",
+      "derivedFromAgentId": null,
+      "skills": ["doc"],
+      "usedSkills": [],
+      "availableSkills": [],
+      "usedTools": [],
+      "availableTools": [],
+      "repositories": [],
+      "mcpServers": [{ "name": "qmd", "status": "online" }],
+      "usedMcp": [],
+      "availableMcp": [],
+      "contextRefs": [],
+      "tasks": {},
+      "taskEvents": [],
+      "analystRecommendations": [],
+      "improvements": [],
+      "capabilityContract": {
+        "mission": "Verify consistency between spec, ADR, README, glossary, and generated docs after architectural and process changes.",
+        "entryCriteria": ["Задача меняет терминологию, operating model, docs contracts или source-of-truth набор документов."],
+        "doneCondition": "Docs sync report is ready with consistency gap list and canonical source references.",
+        "outputSchema": "docs_sync_report.v1"
+      },
+      "auditDisposition": "keep",
+      "auditNote": null,
+      "learningArtifacts": {
+        "todoPath": "docs/subservices/oap/tasks/todo.md",
+        "lessonsPath": "docs/subservices/oap/tasks/lessons/docs-spec-sync.md",
+        "lastLessonAt": "2026-03-11T12:30:00Z"
+      },
+      "updatedAt": "2026-03-11T12:30:00Z",
+      "source": "registry-manual",
+      "trackerUrl": null,
+      "runbook": null,
+      "notes": null
+    },
+    {
+      "id": "automation-governance",
+      "name": "Automation Governance Specialist",
+      "role": "Процессный агент — governance автоматизаций и scheduled runs",
+      "shortDescription": "Проверяет automation registry, schedule policy, stale/sync status и безопасный execution contract для scheduled runs.",
+      "status": "healthy",
+      "agentClass": "specialist",
+      "origin": "manual",
+      "lifecycle": "active",
+      "specializationScope": "Automation registry audit, schedule policy, stale/sync status, and safe execution contract",
+      "creationReason": "Process agent for automation governance",
+      "createdByAgentId": null,
+      "parentTemplateId": "automation-governance",
+      "derivedFromAgentId": null,
+      "skills": ["doc", "agent-telemetry"],
+      "usedSkills": [],
+      "availableSkills": [],
+      "usedTools": [],
+      "availableTools": [],
+      "repositories": [],
+      "mcpServers": [{ "name": "qmd", "status": "online" }],
+      "usedMcp": [],
+      "availableMcp": [],
+      "contextRefs": [],
+      "tasks": {},
+      "taskEvents": [],
+      "analystRecommendations": [],
+      "improvements": [],
+      "capabilityContract": {
+        "mission": "Audit automation registry, schedule policy, stale/sync status, and safe execution contract for scheduled runs.",
+        "entryCriteria": ["Задача меняет scheduled runs, automation registry, pause/resume/archive policy или Codex export model."],
+        "doneCondition": "Automation governance report is ready with schedule policy verdict and unsafe automation flags.",
+        "outputSchema": "automation_governance_report.v1"
+      },
+      "auditDisposition": "keep",
+      "auditNote": null,
+      "learningArtifacts": {
+        "todoPath": "docs/subservices/oap/tasks/todo.md",
+        "lessonsPath": "docs/subservices/oap/tasks/lessons/automation-governance.md",
+        "lastLessonAt": "2026-03-11T12:30:00Z"
+      },
+      "updatedAt": "2026-03-11T12:30:00Z",
+      "source": "registry-manual",
+      "trackerUrl": null,
+      "runbook": null,
+      "notes": null
+    },
+    {
+      "id": "terminology-consistency-audit",
+      "name": "Terminology Consistency Specialist",
+      "role": "Процессный агент — контроль консистентности терминов",
+      "shortDescription": "Контролирует консистентность терминов и glossary-driven лейблов между UI, docs и routing/governance контрактами.",
+      "status": "healthy",
+      "agentClass": "specialist",
+      "origin": "manual",
+      "lifecycle": "active",
+      "specializationScope": "Terminology consistency, glossary-driven label audit, UI/docs/contract terminology parity",
+      "creationReason": "Process agent for terminology and glossary consistency",
+      "createdByAgentId": null,
+      "parentTemplateId": "terminology-consistency-audit",
+      "derivedFromAgentId": null,
+      "skills": ["doc"],
+      "usedSkills": [],
+      "availableSkills": [],
+      "usedTools": [],
+      "availableTools": [],
+      "repositories": [],
+      "mcpServers": [{ "name": "qmd", "status": "online" }],
+      "usedMcp": [],
+      "availableMcp": [],
+      "contextRefs": [],
+      "tasks": {},
+      "taskEvents": [],
+      "analystRecommendations": [],
+      "improvements": [],
+      "capabilityContract": {
+        "mission": "Audit terminology consistency and glossary-driven labels across UI, docs, and routing/governance contracts.",
+        "entryCriteria": ["Задача меняет labels/chips/tooltip/semantic_layer/source_kind и требует канонизации терминов."],
+        "doneCondition": "Terminology audit report ready with drift list and canonical glossary references.",
+        "outputSchema": "terminology_consistency_report.v1"
+      },
+      "auditDisposition": "keep",
+      "auditNote": null,
+      "learningArtifacts": {
+        "todoPath": "docs/subservices/oap/tasks/todo.md",
+        "lessonsPath": "docs/subservices/oap/tasks/lessons/terminology-consistency-audit.md",
+        "lastLessonAt": "2026-03-11T12:30:00Z"
+      },
+      "updatedAt": "2026-03-11T12:30:00Z",
+      "source": "registry-manual",
+      "trackerUrl": null,
+      "runbook": null,
       "notes": null
     }
   ]

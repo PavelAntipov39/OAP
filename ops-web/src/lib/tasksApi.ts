@@ -303,7 +303,7 @@ const DEMO_HUMAN_TASK_SEEDS: DemoHumanTaskSeed[] = [
       "artifacts/agent_benchmark_summary.json",
     ],
     rationale: "Для analyst-agent правило запуска A/B окна должно быть явно согласовано человеком, иначе эксперимент стартует без явных ограничений.",
-    suggested_agents: ["analyst-agent", "ops-agent"],
+    suggested_agents: ["analyst-agent", "reader-agent"],
     selected_agents: ["analyst-agent"],
     target_metric: "pass_at_5",
     expected_delta_pct: 5,
@@ -577,6 +577,96 @@ function normalizeCollaborationSpawnedInstance(value: unknown) {
     output_refs: toStringArray(payload.output_refs),
     status: toText(payload.status).trim() || "planned",
     verify_status: toText(payload.verify_status).trim() || "pending",
+    phase_id: toNullableText(payload.phase_id),
+    execution_mode: toNullableText(payload.execution_mode),
+    execution_backend: toNullableText(payload.execution_backend),
+    context_window_id: toNullableText(payload.context_window_id),
+    isolation_mode: toNullableText(payload.isolation_mode),
+    read_only: toBoolean(payload.read_only, false),
+    ownership_scope: toStringArray(payload.ownership_scope),
+    depends_on: toStringArray(payload.depends_on),
+    merge_target: toNullableText(payload.merge_target),
+  };
+}
+
+function normalizeCollaborationPhase(value: unknown) {
+  const payload = toRecord(value);
+  const phaseId = toText(payload.phase_id).trim();
+  if (!phaseId) return null;
+  return {
+    phase_id: phaseId,
+    label: toText(payload.label).trim() || phaseId,
+    mode: toText(payload.mode).trim() || "sequential",
+    goal: toText(payload.goal).trim(),
+    participants: toStringArray(payload.participants),
+    depends_on: toStringArray(payload.depends_on),
+    outputs: toStringArray(payload.outputs),
+    status: toText(payload.status).trim() || "planned",
+    merge_into: toNullableText(payload.merge_into),
+  };
+}
+
+function normalizeRoundtablePolicy(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const payload = toRecord(value);
+  return {
+    enabled: toBoolean(payload.enabled, false),
+    moderated_by: toNullableText(payload.moderated_by),
+    max_rounds: Math.max(1, Math.round(toNumeric(payload.max_rounds, 4))),
+    transcript_visibility: toText(payload.transcript_visibility).trim() || "summary_only",
+    allow_free_chat: toBoolean(payload.allow_free_chat, false),
+    allow_position_sharing: toBoolean(payload.allow_position_sharing, true),
+    summary_required_each_round: toBoolean(payload.summary_required_each_round, true),
+  };
+}
+
+function normalizeDiscussionRound(value: unknown) {
+  const payload = toRecord(value);
+  const roundId = toText(payload.round_id).trim();
+  if (!roundId) return null;
+  return {
+    round_id: roundId,
+    round_index: Math.max(0, Math.round(toNumeric(payload.round_index, 0))),
+    participants: toStringArray(payload.participants),
+    summary: toText(payload.summary).trim(),
+    status: toText(payload.status).trim() || "planned",
+    next_owner_agent_id: toNullableText(payload.next_owner_agent_id),
+  };
+}
+
+function normalizeHostExecutionStrategy(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const payload = toRecord(value);
+  const rawPolicies = toRecord(payload.host_policies);
+  const hostPolicies = Object.entries(rawPolicies).reduce<Record<string, {
+    display_name: string;
+    execution_backend: string;
+    native_delegation: boolean;
+    isolated_context_windows: boolean;
+    dispatcher_required: boolean;
+    fallback_mode: string;
+    adapter_strategy: string;
+  }>>((acc, [hostId, hostValue]) => {
+    if (!hostValue || typeof hostValue !== "object" || Array.isArray(hostValue)) return acc;
+    const hostPayload = toRecord(hostValue);
+    const normalizedId = toText(hostId).trim();
+    if (!normalizedId) return acc;
+    acc[normalizedId] = {
+      display_name: toText(hostPayload.display_name).trim() || normalizedId,
+      execution_backend: toText(hostPayload.execution_backend).trim() || "dispatcher_backed_child_runs",
+      native_delegation: toBoolean(hostPayload.native_delegation, false),
+      isolated_context_windows: toBoolean(hostPayload.isolated_context_windows, false),
+      dispatcher_required: toBoolean(hostPayload.dispatcher_required, false),
+      fallback_mode: toText(hostPayload.fallback_mode).trim() || "dispatcher_backed",
+      adapter_strategy: toText(hostPayload.adapter_strategy).trim() || "unknown",
+    };
+    return acc;
+  }, {});
+  return {
+    default_host_id: toText(payload.default_host_id).trim() || "codex",
+    selected_backend_by_default: toText(payload.selected_backend_by_default).trim() || "dispatcher_backed_child_runs",
+    context_isolation_policy: toText(payload.context_isolation_policy).trim() || "per_instance_context_package",
+    host_policies: hostPolicies,
   };
 }
 
@@ -610,6 +700,12 @@ function normalizeCollaborationPlan(value: unknown): AgentTaskCollaborationPlan 
   const spawnedInstances = toUnknownArray(payload.spawned_instances)
     .map(normalizeCollaborationSpawnedInstance)
     .filter((item): item is NonNullable<ReturnType<typeof normalizeCollaborationSpawnedInstance>> => Boolean(item));
+  const interactionPhases = toUnknownArray(payload.interaction_phases)
+    .map(normalizeCollaborationPhase)
+    .filter((item): item is NonNullable<ReturnType<typeof normalizeCollaborationPhase>> => Boolean(item));
+  const discussionRounds = toUnknownArray(payload.discussion_rounds)
+    .map(normalizeDiscussionRound)
+    .filter((item): item is NonNullable<ReturnType<typeof normalizeDiscussionRound>> => Boolean(item));
   const delegationDepthRaw = Number(payload.delegation_depth);
   const delegationDepth = Number.isFinite(delegationDepthRaw) ? Math.max(0, Math.round(delegationDepthRaw)) : undefined;
   return {
@@ -621,6 +717,18 @@ function normalizeCollaborationPlan(value: unknown): AgentTaskCollaborationPlan 
     strategy,
     reuse_candidates: reuseCandidates,
     created_profiles: createdProfiles,
+    primary_coordinator_agent_id: toNullableText(payload.primary_coordinator_agent_id),
+    final_synthesizer_agent_id: toNullableText(payload.final_synthesizer_agent_id),
+    merge_owner_agent_id: toNullableText(payload.merge_owner_agent_id),
+    interaction_mode: toNullableText(payload.interaction_mode),
+    interaction_phases: interactionPhases,
+    selection_basis: toStringArray(payload.selection_basis),
+    merge_strategy: toNullableText(payload.merge_strategy),
+    conflict_policy: toNullableText(payload.conflict_policy),
+    host_execution_strategy: normalizeHostExecutionStrategy(payload.host_execution_strategy),
+    context_isolation_policy: toNullableText(payload.context_isolation_policy),
+    roundtable_policy: normalizeRoundtablePolicy(payload.roundtable_policy),
+    discussion_rounds: discussionRounds,
     spawned_instances: spawnedInstances,
     orchestration_budget: normalizeCollaborationBudget(payload.orchestration_budget),
     delegation_depth: delegationDepth,

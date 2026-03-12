@@ -18,6 +18,7 @@
 | `2026-03-02 - analyst-agent - cycle-20260303-1` | active | 2026-03-06 | Правило по обязательности `memoryContext/operatingPlan` применимо к текущим изменениям схемы | Проверить повторяемость нарушения в следующих 2 циклах | — |
 | `2026-03-03 - analyst-agent - cycle-20260303-2` | active | 2026-03-06 | Правило про реакцию на `degraded` MCP критично для health-check шага | При повторе задержки перевести в `outdated` и открыть задачу на усиление контроля SLA | — |
 | `2026-03-10 - analyst-agent - task-card-routing` | active | 2026-03-10 | Роутинг карточки задачи учитывает `service_mode`, а не только allowlist ID | Убедиться что паттерн применяется при добавлении новых режимов карточки | — |
+| `2026-03-11 - analyst-agent - host-subagent-availability` | active | 2026-03-11 | Нужно разделять repo-level наличие агента и host-level callable availability, но не объявлять недоступность без проверки фактического agent catalog в runtime prompt/tools | Перед утверждением о недоступности subagent сначала проверять текущий список доступных агентов в runtime и только потом делать вывод | — |
 
 ## 2026-02-28 - analyst-agent - bootstrap
 - Correction:
@@ -118,3 +119,26 @@
   - ops-web/src/pages/AgentsPage.tsx
   - ops-web/src/components/analyst-card/AnalystCardDrawer.tsx
   - ops-web/tests/task-card-canary.spec.ts
+
+## 2026-03-11 - analyst-agent - host-subagent-availability
+- Correction:
+  - Нельзя утверждать, что `designer-agent` недоступен как callable subagent, не проверив фактический agent catalog, переданный в runtime текущей сессии.
+- Root cause:
+  - Я смешал два уровня: наличие `designer-agent` в repo/OAP и callable availability в chat-host. Затем сделал слишком сильный вывод о недоступности, хотя в текущем runtime-описании список агентов уже содержал `designer-agent`.
+- Preventive rule:
+  - При вопросах про доступность subagent сначала сверять фактический список доступных агентов/инструментов в runtime prompt текущей сессии. Только после этого делать вывод о host-level недоступности. Repo docs использовать как вторичный источник, а не как доказательство availability в чате.
+- Status evidence:
+  - planned -> verify_started -> verify_passed -> lesson_captured -> completed
+- Retrieval tags:
+  - subagents
+  - host-runtime
+  - availability
+  - designer-agent
+- Apply in:
+  - Любые ответы про то, каких агентов я могу реально вызвать в текущей сессии.
+- Validation:
+  - Исправление зафиксировано после пользовательского уточнения; дальнейшие выводы о callable agents должны опираться на runtime agent list.
+- Related artifacts:
+  - AGENTS.md
+  - docs/agents/registry.yaml
+  - docs/subservices/oap/AGENT_OPERATIONS_RULES.md

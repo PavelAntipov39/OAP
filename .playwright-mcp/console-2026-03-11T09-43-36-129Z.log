@@ -1,0 +1,2 @@
+[   10007ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:4174/favicon.ico:0
+[  264260ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:4174/' failed: Error during WebSocket handshake: Unexpected response code: 200 @ http://127.0.0.1:4174/@vite/client:1034

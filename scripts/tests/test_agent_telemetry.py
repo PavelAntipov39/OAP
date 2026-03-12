@@ -857,6 +857,63 @@ class AgentTelemetryTests(unittest.TestCase):
         self.assertIn("legacy_unknown_step", agent["missing_canonical_steps"][0]["non_canonical_steps"])
         self.assertEqual(summary["totals"]["non_canonical_events_total"], 1)
 
+    def test_summarize_adds_agent_viability_metrics(self):
+        events = [
+            {
+                "agent_id": "analyst-agent",
+                "task_id": "task-shared",
+                "timestamp": "2026-03-10T10:00:00Z",
+                "step": "step_3_orchestration",
+                "status": "started",
+                "run_id": "run-analyst-1",
+                "trace_id": "trace-shared",
+                "metrics": {},
+            },
+            {
+                "agent_id": "reader-agent",
+                "task_id": "task-shared",
+                "timestamp": "2026-03-10T10:01:00Z",
+                "step": "step_3_orchestration",
+                "status": "agent_instance_spawned",
+                "run_id": "run-reader-1",
+                "trace_id": "trace-shared",
+                "metrics": {},
+            },
+            {
+                "agent_id": "reader-agent",
+                "task_id": "task-shared",
+                "timestamp": "2026-03-10T10:02:00Z",
+                "step": "step_9_finalize",
+                "status": "completed",
+                "run_id": "run-reader-1",
+                "trace_id": "trace-shared",
+                "metrics": {},
+            },
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".claude" / "agents").mkdir(parents=True, exist_ok=True)
+            (root / ".github" / "agents").mkdir(parents=True, exist_ok=True)
+            (root / ".claude" / "agents" / "reader-agent.md").write_text("---\n---\n", encoding="utf-8")
+            (root / ".github" / "agents" / "reader-agent.agent.md").write_text("---\n---\n", encoding="utf-8")
+            (root / ".claude" / "agents" / "analyst-agent.md").write_text("---\n---\n", encoding="utf-8")
+            original_root = telemetry.REPO_ROOT
+            telemetry.REPO_ROOT = root
+            try:
+                summary = telemetry.summarize(events=events, invalid_lines=0, log_dir=Path(".logs/agents"))
+            finally:
+                telemetry.REPO_ROOT = original_root
+
+        reader_agent = next(item for item in summary["agents"] if item["agent_id"] == "reader-agent")
+        analyst_agent = next(item for item in summary["agents"] if item["agent_id"] == "analyst-agent")
+        self.assertEqual(reader_agent["invocation_count"], 1)
+        self.assertEqual(reader_agent["completed_task_count"], 1)
+        self.assertEqual(reader_agent["handoff_use_rate"], 100.0)
+        self.assertEqual(reader_agent["overlap_with_analyst_rate"], 100.0)
+        self.assertEqual(reader_agent["host_adapter_sync_status"], "synced")
+        self.assertEqual(analyst_agent["host_adapter_sync_status"], "partial")
+        self.assertIsNone(analyst_agent["overlap_with_analyst_rate"])
+
     def test_summarize_tracks_capability_refresh_metrics(self):
         events = [
             {
@@ -930,6 +987,57 @@ class AgentTelemetryTests(unittest.TestCase):
         self.assertEqual(agent["capability_refresh_counts"]["started"], 1)
         self.assertEqual(agent["capability_refresh_counts"]["completed"], 1)
         self.assertEqual(summary["totals"]["promotion_blocked_by_stale_total"], 1)
+
+    def test_summarize_caps_verification_pass_rate_by_unique_verify_started_tasks(self):
+        events = [
+            {
+                "agent_id": "analyst-agent",
+                "task_id": "task-verify-1",
+                "timestamp": "2026-03-09T11:00:00Z",
+                "step": "step_8_verify",
+                "status": "verify_started",
+                "run_id": "run-verify-1",
+                "trace_id": "trace-verify",
+                "metrics": {},
+            },
+            {
+                "agent_id": "analyst-agent",
+                "task_id": "task-verify-1",
+                "timestamp": "2026-03-09T11:00:10Z",
+                "step": "step_8_verify",
+                "status": "verify_passed",
+                "run_id": "run-verify-1",
+                "trace_id": "trace-verify",
+                "metrics": {},
+            },
+            {
+                "agent_id": "analyst-agent",
+                "task_id": "task-verify-1",
+                "timestamp": "2026-03-09T11:00:20Z",
+                "step": "step_8_verify",
+                "status": "verify_passed",
+                "run_id": "run-verify-1",
+                "trace_id": "trace-verify",
+                "metrics": {},
+            },
+            {
+                "agent_id": "analyst-agent",
+                "task_id": "task-verify-without-start",
+                "timestamp": "2026-03-09T11:00:30Z",
+                "step": "step_8_verify",
+                "status": "verify_passed",
+                "run_id": "run-verify-2",
+                "trace_id": "trace-verify",
+                "metrics": {},
+            },
+        ]
+
+        summary = telemetry.summarize(events=events, invalid_lines=0, log_dir=Path(".logs/agents"))
+        agent = summary["agents"][0]
+        self.assertEqual(agent["status_counts"]["verify_started"], 1)
+        self.assertEqual(agent["status_counts"]["verify_passed"], 3)
+        self.assertEqual(agent["verification_pass_rate"], 100.0)
+        self.assertEqual(summary["totals"]["verification_pass_rate"], 100.0)
 
     def test_summarize_adds_taxonomy_unknown_rates_and_warnings(self):
         events = [

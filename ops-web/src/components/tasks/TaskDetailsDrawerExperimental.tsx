@@ -20,7 +20,7 @@ import {
   Typography,
 } from "@mui/material";
 
-import { getDocsIndex } from "../../lib/generatedData";
+import { getAgentsManifest, getDocsIndex } from "../../lib/generatedData";
 import {
   getAgentTaskDetails,
   TASK_UI_STAGE_META,
@@ -36,6 +36,7 @@ import {
 import { TASK_RULES_PATH } from "../../lib/taskRulesContent";
 import { TextContentModal } from "../TextContentModal";
 import { SkillToolMcpTooltip } from "../skill-tooltip/SkillToolMcpTooltip";
+import { AgentInstanceGraph } from "./AgentInstanceGraph";
 import { TaskTimeline } from "./TaskTimeline";
 
 const WUUNU_DEV_MODE = import.meta.env.DEV;
@@ -88,6 +89,7 @@ const READINESS_CHECK_ALIASES: Record<string, string[]> = {
 };
 
 const RU_SHORT_MONTHS = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+const ACTIVE_AGENT_IDS = new Set(getAgentsManifest().agents.map((agent) => agent.id));
 
 function formatDateTimeShort(value: string | null): string {
   if (!value) return "не зафиксировано";
@@ -262,11 +264,38 @@ function renderAgentLinks(agentIds: string[], onOpenAgent: (agentId: string) => 
   }
   return (
     <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap">
-      {agentIds.map((agentId) => (
-        <Link key={agentId} component="button" type="button" underline="hover" onClick={() => onOpenAgent(agentId)}>
-          {agentId}
-        </Link>
-      ))}
+      {agentIds.map((agentId) => renderAgentRef(agentId, onOpenAgent, agentId))}
+    </Stack>
+  );
+}
+
+function isActiveAgentId(agentId: string | null | undefined): agentId is string {
+  const normalized = (agentId || "").trim();
+  return normalized.length > 0 && ACTIVE_AGENT_IDS.has(normalized);
+}
+
+function renderAgentRef(agentId: string | null | undefined, onOpenAgent: (agentId: string) => void, emptyText = "не зафиксировано") {
+  const normalized = (agentId || "").trim();
+  if (!normalized) {
+    return (
+      <Typography component="span" variant="body2" color="text.secondary">
+        {emptyText}
+      </Typography>
+    );
+  }
+  if (isActiveAgentId(normalized)) {
+    return (
+      <Link component="button" type="button" underline="hover" onClick={() => onOpenAgent(normalized)}>
+        {normalized}
+      </Link>
+    );
+  }
+  return (
+    <Stack component="span" direction="row" spacing={0.5} alignItems="center" useFlexGap flexWrap="wrap">
+      <Typography component="span" variant="body2">
+        {normalized}
+      </Typography>
+      <Chip size="small" variant="outlined" label="архив" sx={{ height: 20 }} />
     </Stack>
   );
 }
@@ -629,9 +658,7 @@ export function TaskDetailsDrawerExperimental({ open, taskId, onClose, onOpenAge
                       <Typography variant="body2">
                         <strong>{role.label}:</strong>{" "}
                         {role.agentId ? (
-                          <Link component="button" type="button" underline="hover" onClick={() => onOpenAgent(role.agentId!)}>
-                            {role.agentId}
-                          </Link>
+                          renderAgentRef(role.agentId, onOpenAgent)
                         ) : (
                           <Typography component="span" variant="body2" color="text.secondary">
                             {role.emptyText}
@@ -716,11 +743,7 @@ export function TaskDetailsDrawerExperimental({ open, taskId, onClose, onOpenAge
                           Зачем здесь: {linkedElementPurposeText(item.type)}
                         </Typography>
                         <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 0.45 }}>
-                          {item.source_agent_id ? (
-                            <Link component="button" type="button" underline="hover" onClick={() => onOpenAgent(item.source_agent_id as string)}>
-                              Открыть агента-источник
-                            </Link>
-                          ) : null}
+                          {item.source_agent_id ? renderAgentRef(item.source_agent_id, onOpenAgent, "агент не зафиксирован") : null}
                           {item.source_url ? (
                             <Link href={item.source_url} target="_blank" rel="noopener noreferrer">
                               Открыть источник
@@ -730,6 +753,14 @@ export function TaskDetailsDrawerExperimental({ open, taskId, onClose, onOpenAge
                       </Paper>
                     ))}
                   </Stack>
+                )}
+              </SectionCard>
+
+              <SectionCard title="Схема работы агентов">
+                {!collaborationPlan ? (
+                  <EmptyValue text="План оркестрации не зафиксирован." />
+                ) : (
+                  <AgentInstanceGraph collaborationPlan={collaborationPlan} onOpenAgent={onOpenAgent} />
                 )}
               </SectionCard>
 
@@ -824,32 +855,11 @@ export function TaskDetailsDrawerExperimental({ open, taskId, onClose, onOpenAge
                           ))}
                         </Stack>
                       )}
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        План подключения агентов
-                      </Typography>
-                      {!collaborationPlan ? (
-                        <EmptyValue />
-                      ) : (
-                        <Stack spacing={0.6}>
-                          <Typography variant="body2">
-                            <strong>Анализ обязателен:</strong> {yesNoLabel(collaborationPlan.analysis_required)}
-                          </Typography>
-                          <Typography variant="body2">
-                            <strong>Рекомендованные агенты:</strong>
-                          </Typography>
-                          {renderAgentLinks(collaborationPlan.suggested_agents, onOpenAgent)}
-                          <Typography variant="body2">
-                            <strong>Выбранные агенты:</strong>
-                          </Typography>
-                          {renderAgentLinks(collaborationPlan.selected_agents, onOpenAgent)}
-                          <Typography variant="body2">
-                            <strong>Стратегия оркестрации:</strong> {collaborationStrategyLabel(collaborationPlan.strategy)}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            Проверено: {formatDateTimeShort(collaborationPlan.reviewed_at)}
-                          </Typography>
-                        </Stack>
-                      )}
+                      {collaborationPlan ? (
+                        <Typography variant="caption" color="text.secondary">
+                          Схема взаимодействия агентов вынесена в отдельный блок карточки, чтобы не смешивать orchestration с evidence.
+                        </Typography>
+                      ) : null}
                     </Stack>
                   </Collapse>
                 </Stack>

@@ -1,11 +1,29 @@
+import React from "react";
 import { Box, Divider, Link, Stack, Tooltip, Typography } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import type { AgentMemoryContext } from "../../../lib/generatedData";
+import type { SessionFileOperation } from "../../../lib/analystCardData";
 import { SectionBlock } from "../SectionBlock";
 import { FilePathLink } from "../FilePathLink";
+import { OperativeMemoryModal } from "../modals/OperativeMemoryModal";
 
 const DEFAULT_LESSONS_PATH = "docs/subservices/oap/tasks/lessons/analyst-agent.md";
-type MemoryEntry = { title: string; path: string };
+
+type MemoryEntry = {
+  title: string;
+  path: string;
+  status?: "read" | "write";
+  lastReadAt?: string | null;
+  lastWriteAt?: string | null;
+  lastTouchedAt?: string | null;
+  sourceStep?: string;
+  sourceKind?: string;
+  semanticLayer?: string;
+  reason?: string;
+  label?: string;
+};
+
+type FilePreviewResolver = (path: string) => { path: string; content: string; updatedAt: string | null } | null;
 
 function MemorySubsectionTitle({
   title,
@@ -26,10 +44,39 @@ function MemorySubsectionTitle({
   );
 }
 
+function buildFallbackOperations(entries: MemoryEntry[]): SessionFileOperation[] {
+  return entries
+    .map((entry): SessionFileOperation | null => {
+      const path = String(entry.path || "").trim();
+      if (!path) return null;
+      return {
+        path,
+        op: entry.status === "write" ? "write" : "read",
+        timestamp: entry.lastTouchedAt || entry.lastWriteAt || entry.lastReadAt || "",
+        step: entry.sourceStep || "",
+        taskId: "",
+        runId: "",
+        source: "fallback",
+        sourceKind: entry.sourceKind || "unknown",
+        semanticLayer: entry.semanticLayer || "unknown",
+        reason: entry.reason || "оперативная память",
+        label: entry.label || entry.title || path,
+      };
+    })
+    .filter((entry): entry is SessionFileOperation => Boolean(entry));
+}
+
 export function MemorySection({
   memoryContext,
   onOpenFile,
   operativeMemoryEntries,
+  operativeMemoryTrace,
+  operativeMemorySessionId,
+  operativeMemoryDefaultSessionId,
+  operativeMemoryModalOpen,
+  onOpenOperativeMemoryModal,
+  onCloseOperativeMemoryModal,
+  resolveFilePreview,
   persistentMemoryEntries,
   isPathOpenable,
   selfImprovementLessonsPath = DEFAULT_LESSONS_PATH,
@@ -40,6 +87,13 @@ export function MemorySection({
   memoryContext: AgentMemoryContext | null | undefined;
   onOpenFile: (path: string) => void;
   operativeMemoryEntries?: MemoryEntry[];
+  operativeMemoryTrace?: SessionFileOperation[];
+  operativeMemorySessionId?: string | null;
+  operativeMemoryDefaultSessionId?: string | null;
+  operativeMemoryModalOpen?: boolean;
+  onOpenOperativeMemoryModal?: (sessionId: string | null) => void;
+  onCloseOperativeMemoryModal?: () => void;
+  resolveFilePreview?: FilePreviewResolver;
   persistentMemoryEntries?: MemoryEntry[];
   isPathOpenable?: (path: string) => boolean;
   selfImprovementLessonsPath?: string;
@@ -47,18 +101,47 @@ export function MemorySection({
   selfImprovementTasksLoading?: boolean;
   onOpenSelfImprovementTasks?: () => void;
 }) {
-  const operative = operativeMemoryEntries ?? (memoryContext?.contextAnchors ?? []).map((anchor) => ({
-    title: anchor.title,
-    path: anchor.filePath,
-  }));
-  const persistent = persistentMemoryEntries ?? (memoryContext?.persistentRules ?? []).map((rule) => ({
-    title: rule.title,
-    path: rule.location,
-  }));
-  const openableOperative = isPathOpenable ? operative.filter((entry) => isPathOpenable(entry.path)) : operative;
+  const [localOperativeMemoryModalOpen, setLocalOperativeMemoryModalOpen] = React.useState(false);
+
+  const operative: MemoryEntry[] =
+    operativeMemoryEntries ??
+    (memoryContext?.contextAnchors ?? []).map((anchor) => ({
+      title: anchor.title,
+      path: anchor.filePath,
+    }));
+  const persistent: MemoryEntry[] =
+    persistentMemoryEntries ??
+    (memoryContext?.persistentRules ?? []).map((rule) => ({
+      title: rule.title,
+      path: rule.location,
+    }));
   const openablePersistent = isPathOpenable ? persistent.filter((entry) => isPathOpenable(entry.path)) : persistent;
   const lessonsOpenable = isPathOpenable ? isPathOpenable(selfImprovementLessonsPath) : true;
   const tasksCountLabel = selfImprovementTasksLoading ? "загрузка..." : `${selfImprovementTasksCount} задач`;
+  const readCount = operative.filter((entry) => (entry.status || "read") !== "write").length;
+  const writeCount = operative.filter((entry) => entry.status === "write").length;
+  const traceOperations = React.useMemo<SessionFileOperation[]>(() => {
+    const fromTrace = (operativeMemoryTrace ?? []).filter((entry) => String(entry.path || "").trim().length > 0);
+    if (fromTrace.length > 0) return fromTrace;
+    return buildFallbackOperations(operative);
+  }, [operative, operativeMemoryTrace]);
+  const deleteCount = traceOperations.filter((entry) => entry.op === "delete").length;
+  const isOperativeMemoryModalOpen = operativeMemoryModalOpen ?? localOperativeMemoryModalOpen;
+  const openOperativeMemoryModal = React.useCallback(() => {
+    const sessionId = operativeMemoryDefaultSessionId || operativeMemorySessionId || null;
+    if (onOpenOperativeMemoryModal) {
+      onOpenOperativeMemoryModal(sessionId);
+      return;
+    }
+    setLocalOperativeMemoryModalOpen(true);
+  }, [onOpenOperativeMemoryModal, operativeMemoryDefaultSessionId, operativeMemorySessionId]);
+  const closeOperativeMemoryModal = React.useCallback(() => {
+    if (onCloseOperativeMemoryModal) {
+      onCloseOperativeMemoryModal();
+      return;
+    }
+    setLocalOperativeMemoryModalOpen(false);
+  }, [onCloseOperativeMemoryModal]);
 
   return (
     <SectionBlock
@@ -69,16 +152,23 @@ export function MemorySection({
         title="Оперативная память"
         tooltip="Документы и контекст, которые агент подгружает на текущий цикл работы, чтобы решить задачу здесь и сейчас."
       />
-      {openableOperative.length === 0 ? (
+      {operative.length === 0 ? (
         <Typography variant="body2" color="text.secondary">не зафиксировано</Typography>
       ) : (
-        <Stack spacing={0.5}>
-          {openableOperative.map((entry) => (
-            <Stack key={`${entry.title}:${entry.path}`} spacing={0.15}>
-              <Typography variant="body2">{entry.title}</Typography>
-              <FilePathLink path={entry.path} onClick={onOpenFile} />
-            </Stack>
-          ))}
+        <Stack spacing={0.35}>
+          <Link
+            component="button"
+            type="button"
+            variant="body2"
+            underline="hover"
+            sx={{ textAlign: "left", width: "fit-content" }}
+            onClick={openOperativeMemoryModal}
+          >
+            Документов: {operative.length}
+          </Link>
+          <Typography variant="caption" color="text.secondary">
+            {`active-набор: read ${readCount} · write ${writeCount}. Журнал операций: ${traceOperations.length} (delete: ${deleteCount}).`}
+          </Typography>
         </Stack>
       )}
 
@@ -145,6 +235,17 @@ export function MemorySection({
       >
         Список актуальных задач, созданных для самоулучшения агента: {tasksCountLabel}
       </Link>
+
+      <OperativeMemoryModal
+        open={isOperativeMemoryModalOpen}
+        onClose={closeOperativeMemoryModal}
+        documentCount={operative.length}
+        sessionId={operativeMemorySessionId || null}
+        operations={traceOperations}
+        onOpenFile={onOpenFile}
+        isPathOpenable={isPathOpenable}
+        resolveFilePreview={resolveFilePreview}
+      />
     </SectionBlock>
   );
 }

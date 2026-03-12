@@ -19,6 +19,16 @@ def _load_module():
 
 validator = _load_module()
 
+MIN_OPERATING_PLAN = """## Universal Backbone Mapping
+## Capability Selection Contract (Mandatory)
+<!-- contract-marker: baseline-minimum -->
+<!-- contract-marker: dynamic-capability-selection -->
+## Self-Improvement and Lesson Gate (Mandatory)
+<!-- contract-marker: self-improvement-gate -->
+## Capability Refresh Note (Mandatory)
+<!-- contract-marker: capability-refresh -->
+"""
+
 
 class ValidateAgentOperatingPlansTests(unittest.TestCase):
     def test_extract_agent_ids(self):
@@ -50,7 +60,7 @@ class ValidateAgentOperatingPlansTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
             (root / "reader-agent").mkdir(parents=True)
-            (root / "reader-agent" / "OPERATING_PLAN.md").write_text("# x\n", encoding="utf-8")
+            (root / "reader-agent" / "OPERATING_PLAN.md").write_text(MIN_OPERATING_PLAN, encoding="utf-8")
             errors = validator.validate_operating_plan_layout(["reader-agent", "ops-agent"], root)
             self.assertEqual(len(errors), 1)
             self.assertIn("ops-agent/OPERATING_PLAN.md", errors[0])
@@ -59,12 +69,21 @@ class ValidateAgentOperatingPlansTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
             (root / "analyst-agent").mkdir(parents=True)
-            (root / "analyst-agent" / "OPERATING_PLAN.md").write_text("# analyst\n", encoding="utf-8")
+            (root / "analyst-agent" / "OPERATING_PLAN.md").write_text(MIN_OPERATING_PLAN, encoding="utf-8")
             errors = validator.validate_operating_plan_layout(["analyst-agent"], root)
             self.assertEqual(len(errors), 3)
             self.assertTrue(any("CARD_DATA_SOURCES_MAP.md" in item for item in errors))
             self.assertTrue(any("FLOW.md" in item for item in errors))
             self.assertTrue(any("CARD_FULL_FLOW.md" in item for item in errors))
+
+    def test_validate_layout_reports_missing_operating_plan_markers(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            (root / "reader-agent").mkdir(parents=True)
+            (root / "reader-agent" / "OPERATING_PLAN.md").write_text("# missing markers\n", encoding="utf-8")
+            errors = validator.validate_operating_plan_layout(["reader-agent"], root)
+            self.assertTrue(any("missing operating plan marker" in item for item in errors))
+            self.assertTrue(any("baseline-minimum" in item for item in errors))
 
     def test_load_registry_and_full_check(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -72,7 +91,7 @@ class ValidateAgentOperatingPlansTests(unittest.TestCase):
             registry_path = root / "registry.yaml"
             agents_root = root / "agents"
             (agents_root / "reader-agent").mkdir(parents=True)
-            (agents_root / "reader-agent" / "OPERATING_PLAN.md").write_text("# reader\n", encoding="utf-8")
+            (agents_root / "reader-agent" / "OPERATING_PLAN.md").write_text(MIN_OPERATING_PLAN, encoding="utf-8")
             registry_path.write_text(json.dumps({"agents": [{"id": "reader-agent"}]}, ensure_ascii=False), encoding="utf-8")
 
             registry = validator.load_registry(registry_path)
@@ -87,7 +106,8 @@ class ValidateAgentOperatingPlansTests(unittest.TestCase):
             agents_root = root / "agents"
             (agents_root / "analyst-agent").mkdir(parents=True)
             for relative_name in ["OPERATING_PLAN.md", "CARD_DATA_SOURCES_MAP.md", "FLOW.md", "CARD_FULL_FLOW.md"]:
-                (agents_root / "analyst-agent" / relative_name).write_text(f"# {relative_name}\n", encoding="utf-8")
+                content = MIN_OPERATING_PLAN if relative_name == "OPERATING_PLAN.md" else f"# {relative_name}\n"
+                (agents_root / "analyst-agent" / relative_name).write_text(content, encoding="utf-8")
             registry_path.write_text(json.dumps({"agents": [{"id": "analyst-agent"}]}, ensure_ascii=False), encoding="utf-8")
 
             registry = validator.load_registry(registry_path)

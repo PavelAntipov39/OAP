@@ -1,0 +1,203 @@
+{
+  "generated_at": "2026-03-12T06:34:05.232Z",
+  "version": "host_agent_smoke_report.v1",
+  "available": true,
+  "ok": true,
+  "command": "python3 scripts/export_host_agents.py smoke-active-set",
+  "active_top_level_agents": [
+    "orchestrator-agent",
+    "analyst-agent",
+    "designer-agent",
+    "reader-agent"
+  ],
+  "hosts": {
+    "claude_code": {
+      "ok": true,
+      "agents": [
+        {
+          "agent_id": "orchestrator-agent",
+          "ok": true,
+          "specs": [
+            {
+              "path": "/Users/pavelantipov/Downloads/VSCode/ОАП/.claude/agents/orchestrator-agent.md",
+              "exists": true,
+              "matches": true
+            }
+          ]
+        },
+        {
+          "agent_id": "analyst-agent",
+          "ok": true,
+          "specs": [
+            {
+              "path": "/Users/pavelantipov/Downloads/VSCode/ОАП/.claude/agents/analyst-agent.md",
+              "exists": true,
+              "matches": true
+            }
+          ]
+        },
+        {
+          "agent_id": "designer-agent",
+          "ok": true,
+          "specs": [
+            {
+              "path": "/Users/pavelantipov/Downloads/VSCode/ОАП/.claude/agents/designer-agent.md",
+              "exists": true,
+              "matches": true
+            }
+          ]
+        },
+        {
+          "agent_id": "reader-agent",
+          "ok": true,
+          "specs": [
+            {
+              "path": "/Users/pavelantipov/Downloads/VSCode/ОАП/.claude/agents/reader-agent.md",
+              "exists": true,
+              "matches": true
+            }
+          ]
+        }
+      ]
+    },
+    "github_copilot": {
+      "ok": true,
+      "agents": [
+        {
+          "agent_id": "orchestrator-agent",
+          "ok": true,
+          "specs": [
+            {
+              "path": "/Users/pavelantipov/Downloads/VSCode/ОАП/.github/agents/orchestrator-agent.agent.md",
+              "exists": true,
+              "matches": true
+            }
+          ]
+        },
+        {
+          "agent_id": "analyst-agent",
+          "ok": true,
+          "specs": [
+            {
+              "path": "/Users/pavelantipov/Downloads/VSCode/ОАП/.github/agents/analyst-agent.agent.md",
+              "exists": true,
+              "matches": true
+            }
+          ]
+        },
+        {
+          "agent_id": "designer-agent",
+          "ok": true,
+          "specs": [
+            {
+              "path": "/Users/pavelantipov/Downloads/VSCode/ОАП/.github/agents/designer-agent.agent.md",
+              "exists": true,
+              "matches": true
+            }
+          ]
+        },
+        {
+          "agent_id": "reader-agent",
+          "ok": true,
+          "specs": [
+            {
+              "path": "/Users/pavelantipov/Downloads/VSCode/ОАП/.github/agents/reader-agent.agent.md",
+              "exists": true,
+              "matches": true
+            }
+          ]
+        }
+      ]
+    },
+    "codex": {
+      "ok": true,
+      "agents": [
+        {
+          "agent_id": "orchestrator-agent",
+          "ok": true,
+          "written": [
+            "/var/folders/1r/k_5rfmc55rvd6fmjrqrglpz80000gn/T/tmpgtidzh1v/skills-generated/orchestrator-agent/SKILL.md",
+            "/var/folders/1r/k_5rfmc55rvd6fmjrqrglpz80000gn/T/tmpgtidzh1v/skills-generated/orchestrator-agent/agents/openai.yaml"
+          ],
+          "specs": [
+            {
+              "path": "/var/folders/1r/k_5rfmc55rvd6fmjrqrglpz80000gn/T/tmpgtidzh1v/skills-generated/orchestrator-agent/SKILL.md",
+              "exists": true,
+              "matches": true
+            },
+            {
+              "path": "/var/folders/1r/k_5rfmc55rvd6fmjrqrglpz80000gn/T/tmpgtidzh1v/skills-generated/orchestrator-agent/agents/openai.yaml",
+              "exists": true,
+              "matches": true
+            }
+          ]
+        },
+        {
+          "agent_id": "analyst-agent",
+          "ok": true,
+          "written": [
+            "/var/folders/1r/k_5rfmc55rvd6fmjrqrglpz80000gn/T/tmpgtidzh1v/skills-generated/analyst-agent/SKILL.md",
+            "/var/folders/1r/k_5rfmc55rvd6fmjrqrglpz80000gn/T/tmpgtidzh1v/skills-generated/analyst-agent/agents/openai.yaml"
+          ],
+          "specs": [
+            {
+              "path": "/var/folders/1r/k_5rfmc55rvd6fmjrqrglpz80000gn/T/tmpgtidzh1v/skills-generated/analyst-agent/SKILL.md",
+              "exists": true,
+              "matches": true
+            },
+            {
+              "path": "/var/folders/1r/k_5rfmc55rvd6fmjrqrglpz80000gn/T/tmpgtidzh1v/skills-generated/analyst-agent/agents/openai.yaml",
+              "exists": true,
+              "matches": true
+            }
+          ]
+        },
+        {
+          "agent_id": "designer-agent",
+          "ok": true,
+          "written": [
+            "/var/folders/1r/k_5rfmc55rvd6fmjrqrglpz80000gn/T/tmpgtidzh1v/skills-generated/designer-agent/SKILL.md",
+            "/var/folders/1r/k_5rfmc55rvd6fmjrqrglpz80000gn/T/tmpgtidzh1v/skills-generated/designer-agent/agents/openai.yaml"
+          ],
+          "specs": [
+            {
+              "path": "/var/folders/1r/k_5rfmc55rvd6fmjrqrglpz80000gn/T/tmpgtidzh1v/skills-generated/designer-agent/SKILL.md",
+              "exists": true,
+              "matches": true
+            },
+            {
+              "path": "/var/folders/1r/k_5rfmc55rvd6fmjrqrglpz80000gn/T/tmpgtidzh1v/skills-generated/designer-agent/agents/openai.yaml",
+              "exists": true,
+              "matches": true
+            }
+          ]
+        },
+        {
+          "agent_id": "reader-agent",
+          "ok": true,
+          "written": [
+            "/var/folders/1r/k_5rfmc55rvd6fmjrqrglpz80000gn/T/tmpgtidzh1v/skills-generated/reader-agent/SKILL.md",
+            "/var/folders/1r/k_5rfmc55rvd6fmjrqrglpz80000gn/T/tmpgtidzh1v/skills-generated/reader-agent/agents/openai.yaml"
+          ],
+          "specs": [
+            {
+              "path": "/var/folders/1r/k_5rfmc55rvd6fmjrqrglpz80000gn/T/tmpgtidzh1v/skills-generated/reader-agent/SKILL.md",
+              "exists": true,
+              "matches": true
+            },
+            {
+              "path": "/var/folders/1r/k_5rfmc55rvd6fmjrqrglpz80000gn/T/tmpgtidzh1v/skills-generated/reader-agent/agents/openai.yaml",
+              "exists": true,
+              "matches": true
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "handoff_validation": {
+    "ok": true,
+    "issues": []
+  },
+  "error": null
+}

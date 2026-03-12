@@ -1,0 +1,996 @@
+{
+  "generated_at": "2026-03-12T06:34:05.233Z",
+  "version": "improvement_history.v1",
+  "source": "docs/agents/registry.yaml + artifacts/candidate_*.json + .logs/agents/*.jsonl",
+  "events": [
+    {
+      "event_id": "e1a50000-1001-4000-a000-100000000003",
+      "occurred_at": "2026-03-10T14:11:00.000Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-card-waiting-human-rollout-20260310",
+      "extracted_value": "all checks passed: tsc 0 errors, playwright 3/3, build ok",
+      "applied_change": "Результат подтвержден этапом verify.",
+      "target_scope": "verification passed",
+      "result_status": "verified",
+      "result_note": "process=task_card_routing, status=verify_passed",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        ".logs/agents/analyst-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "95cc19a9-35a8-4f11-a743-6cca525dd412",
+      "occurred_at": "2026-03-10T07:24:10.010Z",
+      "agent_id": "designer-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-designer-agent-20260310072410",
+      "extracted_value": "top priority applied",
+      "applied_change": "Изменение применено в рабочем контуре.",
+      "target_scope": "7) apply / publish",
+      "result_status": "applied",
+      "result_note": "process=designer-agent_cycle_runner, status=recommendation_applied",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        ".logs/agents/designer-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "173d053c-30b8-4144-8029-732bbc9ccee1",
+      "occurred_at": "2026-03-10T07:24:10.010Z",
+      "agent_id": "designer-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-designer-agent-20260310072410",
+      "extracted_value": "verify passed",
+      "applied_change": "Результат подтвержден этапом verify.",
+      "target_scope": "8) verify",
+      "result_status": "verified",
+      "result_note": "process=designer-agent_cycle_runner, status=verify_passed",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        ".logs/agents/designer-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "8ebd76ec-53db-4b1e-a5cd-e99e96b4d077",
+      "occurred_at": "2026-03-10T07:24:10.009Z",
+      "agent_id": "designer-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-designer-agent-20260310072410",
+      "extracted_value": "candidate list scored",
+      "applied_change": "Сигнал улучшения зафиксирован в цикле.",
+      "target_scope": "5) role window",
+      "result_status": "captured",
+      "result_note": "process=designer-agent_cycle_runner, status=recommendation_suggested",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        ".logs/agents/designer-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "0223cead-138c-439f-bccd-94d17362ded5",
+      "occurred_at": "2026-03-10T07:24:10.009Z",
+      "agent_id": "reader-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-reader-agent-20260310072410",
+      "extracted_value": "candidate list scored",
+      "applied_change": "Сигнал улучшения зафиксирован в цикле.",
+      "target_scope": "5) role window",
+      "result_status": "captured",
+      "result_note": "process=reader-agent_cycle_runner, status=recommendation_suggested",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        ".logs/agents/reader-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "59aeba28-9432-4516-9f9e-ab2a929f726c",
+      "occurred_at": "2026-03-10T07:24:10.009Z",
+      "agent_id": "reader-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-reader-agent-20260310072410",
+      "extracted_value": "top priority applied",
+      "applied_change": "Изменение применено в рабочем контуре.",
+      "target_scope": "7) apply / publish",
+      "result_status": "applied",
+      "result_note": "process=reader-agent_cycle_runner, status=recommendation_applied",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        ".logs/agents/reader-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "1b4fdb13-6c72-41c7-9d17-3833562ed8df",
+      "occurred_at": "2026-03-10T07:24:10.009Z",
+      "agent_id": "reader-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-reader-agent-20260310072410",
+      "extracted_value": "verify passed",
+      "applied_change": "Результат подтвержден этапом verify.",
+      "target_scope": "8) verify",
+      "result_status": "verified",
+      "result_note": "process=reader-agent_cycle_runner, status=verify_passed",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        ".logs/agents/reader-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "f204bb68-114c-4e78-92e3-e76029de2c0b",
+      "occurred_at": "2026-03-10T06:37:06.609Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-20260310063706",
+      "extracted_value": "verify passed",
+      "applied_change": "Результат подтвержден этапом verify.",
+      "target_scope": "artifacts/agent_cycle_validation_report.json",
+      "result_status": "verified",
+      "result_note": "process=analyst_cycle_runner, status=verify_passed",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        ".logs/agents/analyst-agent.jsonl",
+        "artifacts/agent_telemetry_summary.json",
+        "artifacts/agent_cycle_validation_report.json"
+      ]
+    },
+    {
+      "event_id": "f24be622-45ac-49a9-9d97-e7d869081a82",
+      "occurred_at": "2026-03-10T06:37:06.608Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-20260310063706",
+      "extracted_value": "top priority applied",
+      "applied_change": "Изменение применено в рабочем контуре.",
+      "target_scope": "docs/agents/registry.yaml",
+      "result_status": "applied",
+      "result_note": "process=analyst_cycle_runner, status=recommendation_applied",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "docs/agents/registry.yaml",
+        "docs/subservices/oap/agents-card.schema.json",
+        "ops-web/scripts/build_content_index.mjs",
+        "ops-web/src/generated/agents-manifest.json",
+        "ops-web/src/generated/docs-index.json",
+        "ops-web/src/generated/search-index.json",
+        ".logs/agents/analyst-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "8ab65168-bf5c-4cca-9cfe-9f535fe12264",
+      "occurred_at": "2026-03-10T06:37:06.607Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-20260310063706",
+      "extracted_value": "candidate list scored",
+      "applied_change": "Сигнал улучшения зафиксирован в цикле.",
+      "target_scope": ".logs/agents/analyst-agent.jsonl",
+      "result_status": "captured",
+      "result_note": "process=analyst_cycle_runner, status=recommendation_suggested",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "artifacts/agent_telemetry_summary.json",
+        "docs/subservices/oap/DESIGN_RULES.md",
+        ".logs/agents/analyst-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "31bf3748-aebd-4ca4-b402-7902dbf7d387",
+      "occurred_at": "2026-03-10T05:40:36.559Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-20260310054036",
+      "extracted_value": "top priority applied",
+      "applied_change": "Изменение применено в рабочем контуре.",
+      "target_scope": "docs/agents/registry.yaml",
+      "result_status": "applied",
+      "result_note": "process=analyst_cycle_runner, status=recommendation_applied",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "docs/agents/registry.yaml",
+        "docs/subservices/oap/agents-card.schema.json",
+        "ops-web/scripts/build_content_index.mjs",
+        "ops-web/src/generated/agents-manifest.json",
+        "ops-web/src/generated/docs-index.json",
+        "ops-web/src/generated/search-index.json",
+        ".logs/agents/analyst-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "40335532-3638-4566-a017-6833fbe4abe2",
+      "occurred_at": "2026-03-10T05:40:36.559Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-20260310054036",
+      "extracted_value": "verify passed",
+      "applied_change": "Результат подтвержден этапом verify.",
+      "target_scope": "artifacts/agent_cycle_validation_report.json",
+      "result_status": "verified",
+      "result_note": "process=analyst_cycle_runner, status=verify_passed",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        ".logs/agents/analyst-agent.jsonl",
+        "artifacts/agent_telemetry_summary.json",
+        "artifacts/agent_cycle_validation_report.json"
+      ]
+    },
+    {
+      "event_id": "52e0d2d4-6645-4ff6-883b-dfe085d2f044",
+      "occurred_at": "2026-03-10T05:40:36.558Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-20260310054036",
+      "extracted_value": "candidate list scored",
+      "applied_change": "Сигнал улучшения зафиксирован в цикле.",
+      "target_scope": ".logs/agents/analyst-agent.jsonl",
+      "result_status": "captured",
+      "result_note": "process=analyst_cycle_runner, status=recommendation_suggested",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "artifacts/agent_telemetry_summary.json",
+        "docs/subservices/oap/DESIGN_RULES.md",
+        ".logs/agents/analyst-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "992f2065-54e4-4930-919e-2450a60e561b",
+      "occurred_at": "2026-03-10T05:09:07.473Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-20260310050907",
+      "extracted_value": "candidate list scored",
+      "applied_change": "Сигнал улучшения зафиксирован в цикле.",
+      "target_scope": ".logs/agents/analyst-agent.jsonl",
+      "result_status": "captured",
+      "result_note": "process=analyst_cycle_runner, status=recommendation_suggested",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "artifacts/agent_telemetry_summary.json",
+        "docs/subservices/oap/DESIGN_RULES.md",
+        ".logs/agents/analyst-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "7f611add-0970-4c98-807e-fea14364756f",
+      "occurred_at": "2026-03-10T05:09:07.473Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-20260310050907",
+      "extracted_value": "top priority applied",
+      "applied_change": "Изменение применено в рабочем контуре.",
+      "target_scope": "docs/agents/registry.yaml",
+      "result_status": "applied",
+      "result_note": "process=analyst_cycle_runner, status=recommendation_applied",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "docs/agents/registry.yaml",
+        "docs/subservices/oap/agents-card.schema.json",
+        "ops-web/scripts/build_content_index.mjs",
+        "ops-web/src/generated/agents-manifest.json",
+        "ops-web/src/generated/docs-index.json",
+        "ops-web/src/generated/search-index.json",
+        ".logs/agents/analyst-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "5f7e923f-65ab-4e1a-a33e-9c4101f37578",
+      "occurred_at": "2026-03-10T05:09:07.473Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-20260310050907",
+      "extracted_value": "verify passed",
+      "applied_change": "Результат подтвержден этапом verify.",
+      "target_scope": "artifacts/agent_cycle_validation_report.json",
+      "result_status": "verified",
+      "result_note": "process=analyst_cycle_runner, status=verify_passed",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        ".logs/agents/analyst-agent.jsonl",
+        "artifacts/agent_telemetry_summary.json",
+        "artifacts/agent_cycle_validation_report.json"
+      ]
+    },
+    {
+      "event_id": "2a4aaed0-13c5-425b-a523-e724fd501062",
+      "occurred_at": "2026-03-10T04:05:57.986Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-20260310040557",
+      "extracted_value": "candidate list scored",
+      "applied_change": "Сигнал улучшения зафиксирован в цикле.",
+      "target_scope": ".logs/agents/analyst-agent.jsonl",
+      "result_status": "captured",
+      "result_note": "process=analyst_cycle_runner, status=recommendation_suggested",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "artifacts/agent_telemetry_summary.json",
+        "docs/subservices/oap/DESIGN_RULES.md",
+        ".logs/agents/analyst-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "772fcba8-7f2a-41b3-803b-1e28ff025cd2",
+      "occurred_at": "2026-03-10T04:05:57.986Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-20260310040557",
+      "extracted_value": "top priority applied",
+      "applied_change": "Изменение применено в рабочем контуре.",
+      "target_scope": "docs/agents/registry.yaml",
+      "result_status": "applied",
+      "result_note": "process=analyst_cycle_runner, status=recommendation_applied",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "docs/agents/registry.yaml",
+        "docs/subservices/oap/agents-card.schema.json",
+        "ops-web/scripts/build_content_index.mjs",
+        "ops-web/src/generated/agents-manifest.json",
+        "ops-web/src/generated/docs-index.json",
+        "ops-web/src/generated/search-index.json",
+        ".logs/agents/analyst-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "ff08b845-f8ba-431d-8b1a-3cceef9f7678",
+      "occurred_at": "2026-03-10T04:05:57.986Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-20260310040557",
+      "extracted_value": "verify passed",
+      "applied_change": "Результат подтвержден этапом verify.",
+      "target_scope": "artifacts/agent_cycle_validation_report.json",
+      "result_status": "verified",
+      "result_note": "process=analyst_cycle_runner, status=verify_passed",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        ".logs/agents/analyst-agent.jsonl",
+        "artifacts/agent_telemetry_summary.json",
+        "artifacts/agent_cycle_validation_report.json"
+      ]
+    },
+    {
+      "event_id": "0161853e-d8ff-4114-b0ee-956cfbd46ab2",
+      "occurred_at": "2026-03-09T15:09:05.728Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-20260309150905",
+      "extracted_value": "verify passed",
+      "applied_change": "Результат подтвержден этапом verify.",
+      "target_scope": "artifacts/agent_cycle_validation_report.json",
+      "result_status": "verified",
+      "result_note": "process=analyst_cycle_runner, status=verify_passed",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        ".logs/agents/analyst-agent.jsonl",
+        "artifacts/agent_telemetry_summary.json",
+        "artifacts/agent_cycle_validation_report.json"
+      ]
+    },
+    {
+      "event_id": "d7384f4d-5943-4b00-94c5-3150f6f16836",
+      "occurred_at": "2026-03-09T15:09:05.727Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-20260309150905",
+      "extracted_value": "candidate list scored",
+      "applied_change": "Сигнал улучшения зафиксирован в цикле.",
+      "target_scope": ".logs/agents/analyst-agent.jsonl",
+      "result_status": "captured",
+      "result_note": "process=analyst_cycle_runner, status=recommendation_suggested",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "artifacts/agent_telemetry_summary.json",
+        "docs/subservices/oap/DESIGN_RULES.md",
+        ".logs/agents/analyst-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "551d6d15-e24b-43ff-9f40-4bdcf7b156d9",
+      "occurred_at": "2026-03-09T15:09:05.727Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-20260309150905",
+      "extracted_value": "top priority applied",
+      "applied_change": "Изменение применено в рабочем контуре.",
+      "target_scope": "docs/agents/registry.yaml",
+      "result_status": "applied",
+      "result_note": "process=analyst_cycle_runner, status=recommendation_applied",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "docs/agents/registry.yaml",
+        "docs/subservices/oap/agents-card.schema.json",
+        "ops-web/scripts/build_content_index.mjs",
+        "ops-web/src/generated/agents-manifest.json",
+        "ops-web/src/generated/docs-index.json",
+        "ops-web/src/generated/search-index.json",
+        ".logs/agents/analyst-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "b1912c26-8a9a-4fae-9ef2-eefe79039447",
+      "occurred_at": "2026-03-09T15:04:26.787Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-20260309150426",
+      "extracted_value": "verify passed",
+      "applied_change": "Результат подтвержден этапом verify.",
+      "target_scope": "artifacts/agent_cycle_validation_report.json",
+      "result_status": "verified",
+      "result_note": "process=analyst_cycle_runner, status=verify_passed",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        ".logs/agents/analyst-agent.jsonl",
+        "artifacts/agent_telemetry_summary.json",
+        "artifacts/agent_cycle_validation_report.json"
+      ]
+    },
+    {
+      "event_id": "2a0bc838-f64c-4ac3-aacd-f82f5de0f383",
+      "occurred_at": "2026-03-09T15:04:26.786Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-20260309150426",
+      "extracted_value": "candidate list scored",
+      "applied_change": "Сигнал улучшения зафиксирован в цикле.",
+      "target_scope": ".logs/agents/analyst-agent.jsonl",
+      "result_status": "captured",
+      "result_note": "process=analyst_cycle_runner, status=recommendation_suggested",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "artifacts/agent_telemetry_summary.json",
+        "docs/subservices/oap/DESIGN_RULES.md",
+        ".logs/agents/analyst-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "b24fd5de-5aa9-40a9-a318-fbb9b5877948",
+      "occurred_at": "2026-03-09T15:04:26.786Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-20260309150426",
+      "extracted_value": "top priority applied",
+      "applied_change": "Изменение применено в рабочем контуре.",
+      "target_scope": "docs/agents/registry.yaml",
+      "result_status": "applied",
+      "result_note": "process=analyst_cycle_runner, status=recommendation_applied",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "docs/agents/registry.yaml",
+        "docs/subservices/oap/agents-card.schema.json",
+        "ops-web/scripts/build_content_index.mjs",
+        "ops-web/src/generated/agents-manifest.json",
+        "ops-web/src/generated/docs-index.json",
+        "ops-web/src/generated/search-index.json",
+        ".logs/agents/analyst-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "skill_candidate_ea3a3bfabbc3be39",
+      "occurred_at": "2026-03-08T19:15:00.000Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "https://docs.sentry.io/",
+      "extracted_value": "Trusted candidate для production-evidence задач analyst-agent.",
+      "applied_change": "Сильный production-evidence кандидат, но пока без measured gain для analyst-agent.",
+      "target_scope": "sentry",
+      "result_status": "captured",
+      "result_note": "trial=not_started, promotion=human_review_required.",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "docs/agents/registry.yaml",
+        "https://docs.sentry.io/"
+      ]
+    },
+    {
+      "event_id": "skill_candidate_e1a43c8791a28311",
+      "occurred_at": "2026-03-08T19:12:00.000Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "https://playwright.dev/docs/intro",
+      "extracted_value": "Trusted candidate для перехода из availableSkills в usedSkills на UI-heavy задачах analyst-agent.",
+      "applied_change": "Кандидат соответствует official-first policy, но должен пройти shadow-run до enablement.",
+      "target_scope": "playwright",
+      "result_status": "captured",
+      "result_note": "trial=not_started, promotion=human_review_required.",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "docs/agents/registry.yaml",
+        "https://playwright.dev/docs/intro"
+      ]
+    },
+    {
+      "event_id": "skill_candidate_cccca1f8449ca177",
+      "occurred_at": "2026-03-08T19:10:00.000Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "https://platform.openai.com/docs/guides/tools",
+      "extracted_value": "Официальный skill для задач, где аналитический вывод зависит от свежих OpenAI API/product guidance.",
+      "applied_change": "Кандидат релевантен только части doc-задач, но обещает лучшее качество на vendor-specific вопросах.",
+      "target_scope": "doc",
+      "result_status": "applied",
+      "result_note": "trial=scheduled, promotion=human_review_required.",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "docs/agents/registry.yaml",
+        "https://platform.openai.com/docs/guides/tools"
+      ]
+    },
+    {
+      "event_id": "6cc01618-fb26-49a0-877b-4c70ce5f5676",
+      "occurred_at": "2026-03-08T18:08:38.973Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "codex",
+      "source_ref": "routing-rollout-20260308",
+      "extracted_value": "router parity validator and unit tests passed",
+      "applied_change": "Результат подтвержден этапом verify.",
+      "target_scope": "docs/subservices/oap/tasks/todo.md",
+      "result_status": "verified",
+      "result_note": "process=codex-routing-parity, status=verify_passed",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "scripts/tests/test_validate_request_router.py",
+        "docs/subservices/oap/tasks/todo.md",
+        ".logs/agents/analyst-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "b775250e-112a-4e71-87d7-23916f3f9d97",
+      "occurred_at": "2026-03-08T13:25:07.176Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "codex",
+      "source_ref": "routing-rollout-20260308",
+      "extracted_value": "routing rollout verification passed",
+      "applied_change": "Результат подтвержден этапом verify.",
+      "target_scope": "artifacts/agent_cycle_validation_report.json",
+      "result_status": "verified",
+      "result_note": "process=codex-routing-rollout, status=verify_passed",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "docs/subservices/oap/REQUEST_ROUTER_CONTRACT.yaml",
+        "ops-web/scripts/build_content_index.mjs",
+        "artifacts/agent_cycle_validation_report.json",
+        ".logs/agents/analyst-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "39d2db9c-9628-4667-84a6-28ab6d244c15",
+      "occurred_at": "2026-03-07T20:49:08.794Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-20260307204908",
+      "extracted_value": "candidate list scored",
+      "applied_change": "Сигнал улучшения зафиксирован в цикле.",
+      "target_scope": ".logs/agents/analyst-agent.jsonl",
+      "result_status": "captured",
+      "result_note": "process=analyst_cycle_runner, status=recommendation_suggested",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "artifacts/agent_telemetry_summary.json",
+        "docs/subservices/oap/DESIGN_RULES.md",
+        ".logs/agents/analyst-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "f7e60a62-fc6e-4de7-a5d2-9adc15644281",
+      "occurred_at": "2026-03-07T20:49:08.794Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-20260307204908",
+      "extracted_value": "top priority applied",
+      "applied_change": "Изменение применено в рабочем контуре.",
+      "target_scope": "docs/agents/registry.yaml",
+      "result_status": "applied",
+      "result_note": "process=analyst_cycle_runner, status=recommendation_applied",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "docs/agents/registry.yaml",
+        "docs/subservices/oap/agents-card.schema.json",
+        "ops-web/scripts/build_content_index.mjs",
+        "ops-web/src/generated/agents-manifest.json",
+        "ops-web/src/generated/docs-index.json",
+        "ops-web/src/generated/search-index.json",
+        ".logs/agents/analyst-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "dea90e3b-9a15-40b9-ba36-fa855b1ff034",
+      "occurred_at": "2026-03-07T20:49:08.794Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-20260307204908",
+      "extracted_value": "verify passed",
+      "applied_change": "Результат подтвержден этапом verify.",
+      "target_scope": "artifacts/agent_cycle_validation_report.json",
+      "result_status": "verified",
+      "result_note": "process=analyst_cycle_runner, status=verify_passed",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        ".logs/agents/analyst-agent.jsonl",
+        "artifacts/agent_telemetry_summary.json",
+        "artifacts/agent_cycle_validation_report.json"
+      ]
+    },
+    {
+      "event_id": "34c1a319-b8d3-4b61-a898-0180f834be18",
+      "occurred_at": "2026-03-07T20:48:46.858Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-20260307204846",
+      "extracted_value": "verify passed",
+      "applied_change": "Результат подтвержден этапом verify.",
+      "target_scope": "artifacts/agent_cycle_validation_report.json",
+      "result_status": "verified",
+      "result_note": "process=analyst_cycle_runner, status=verify_passed",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        ".logs/agents/analyst-agent.jsonl",
+        "artifacts/agent_telemetry_summary.json",
+        "artifacts/agent_cycle_validation_report.json"
+      ]
+    },
+    {
+      "event_id": "db815634-c699-4edf-b424-f109ca6440b0",
+      "occurred_at": "2026-03-07T20:48:46.857Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-20260307204846",
+      "extracted_value": "candidate list scored",
+      "applied_change": "Сигнал улучшения зафиксирован в цикле.",
+      "target_scope": ".logs/agents/analyst-agent.jsonl",
+      "result_status": "captured",
+      "result_note": "process=analyst_cycle_runner, status=recommendation_suggested",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "artifacts/agent_telemetry_summary.json",
+        "docs/subservices/oap/DESIGN_RULES.md",
+        ".logs/agents/analyst-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "4a0e4f08-fb56-4cee-898c-591b5cfa26b3",
+      "occurred_at": "2026-03-07T20:48:46.857Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "task-canonical-cycle-20260307204846",
+      "extracted_value": "top priority applied",
+      "applied_change": "Изменение применено в рабочем контуре.",
+      "target_scope": "docs/agents/registry.yaml",
+      "result_status": "applied",
+      "result_note": "process=analyst_cycle_runner, status=recommendation_applied",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "docs/agents/registry.yaml",
+        "docs/subservices/oap/agents-card.schema.json",
+        "ops-web/scripts/build_content_index.mjs",
+        "ops-web/src/generated/agents-manifest.json",
+        "ops-web/src/generated/docs-index.json",
+        "ops-web/src/generated/search-index.json",
+        ".logs/agents/analyst-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "849251aa-678d-4cf5-bad6-e6508115054f",
+      "occurred_at": "2026-03-06T22:04:24.854Z",
+      "agent_id": "designer-agent",
+      "source_tool": "other",
+      "source_ref": "task-board-cycle-entity-fix-20260306",
+      "extracted_value": "success",
+      "applied_change": "Результат подтвержден этапом verify.",
+      "target_scope": "artifacts/agent_telemetry_summary.json",
+      "result_status": "verified",
+      "result_note": "process=vibe_coding, status=verify_passed",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "artifacts/agent_telemetry_summary.json",
+        ".logs/agents/designer-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "2241868f-1271-4198-8d5d-bfbc52609142",
+      "occurred_at": "2026-03-06T21:48:50.547Z",
+      "agent_id": "designer-agent",
+      "source_tool": "other",
+      "source_ref": "task-board-cycle-column-20260306",
+      "extracted_value": "success",
+      "applied_change": "Результат подтвержден этапом verify.",
+      "target_scope": "ops-web/tests/tasks-cycle-column.spec.ts",
+      "result_status": "verified",
+      "result_note": "process=vibe_coding, status=verify_passed",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "ops-web/tests/tasks-cycle-column.spec.ts",
+        "ops-web/src/components/tasks/TaskDetailsDrawer.tsx",
+        ".logs/agents/designer-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "b3f732b9-689c-4175-811a-bc0a4f54d5c8",
+      "occurred_at": "2026-03-06T20:54:48.109Z",
+      "agent_id": "reader-agent",
+      "source_tool": "codex",
+      "source_ref": "task-20260306-remove-benchmark-block",
+      "extracted_value": "UI-удаление benchmark-блока прошло: prepare-content, check-agents и build успешны",
+      "applied_change": "Результат подтвержден этапом verify.",
+      "target_scope": "ops-web/dist/index.html",
+      "result_status": "verified",
+      "result_note": "process=codex_desktop, status=verify_passed",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "ops-web/src/components/analyst-card/AnalystCardDrawer.tsx",
+        "ops-web/dist/index.html",
+        ".logs/agents/reader-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "47e298f2-b39d-468a-a09d-47b49bcaf223",
+      "occurred_at": "2026-03-06T19:53:27.782Z",
+      "agent_id": "reader-agent",
+      "source_tool": "codex",
+      "source_ref": "task-20260306-memory-section-tooltips",
+      "extracted_value": "prepare-content, check-agents и build прошли; Playwright browser verification недоступна из-за локального запуска Chrome в среде",
+      "applied_change": "Результат подтвержден этапом verify.",
+      "target_scope": "ops-web/dist/index.html",
+      "result_status": "verified",
+      "result_note": "process=codex_desktop, status=verify_passed",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "ops-web/src/components/analyst-card/sections/MemorySection.tsx",
+        "AGENTS.md",
+        "ops-web/dist/index.html",
+        ".logs/agents/reader-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "aae3c764-ac2d-4223-9a78-d2b6f390dc11",
+      "occurred_at": "2026-03-06T19:11:52.175Z",
+      "agent_id": "reader-agent",
+      "source_tool": "codex",
+      "source_ref": "task-20260306-skill-source-check",
+      "extracted_value": "Подтверждено: usedSkills берутся из registry и могут отображаться без найденного SKILL.md; текущий пример qmd-memory-retrieval",
+      "applied_change": "Результат подтвержден этапом verify.",
+      "target_scope": "ops-web/src/generated/agents-manifest.json",
+      "result_status": "verified",
+      "result_note": "process=codex_desktop, status=verify_passed",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "ops-web/src/generated/agents-manifest.json",
+        ".logs/agents/reader-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "cand_e76301ab95e8b2c2",
+      "occurred_at": "2026-03-06T09:45:53.741Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "claude",
+      "source_ref": "https://github.com/phuryn/pm-skills",
+      "extracted_value": "В копилку oпенсорс скиллов: PM Skills для Claude\n\n100+ скиллов и команд, которые превращают ИИ в полноценного партнера для product management.\n\nНе просто шаблонные промпты. Это структурированные скиллы, которые понимают PM-фреймворки.\n\n8 плагинов, покрывающих весь PM лайфцикл:\n\n→ Product Discovery: исследование problem space и solution space\n→ Product Strategy: vision, business model, strategy docs\n→ Execution: PRD, OKR, roadmap, sprint planning, user stories\n→ Market Research: персоны, сегментация, TAM/SAM/SOM\n→ Data & Analytics: когорты, A/B-тесты, анализ удержания\n→ Go-to-Market: GTM-стратегия, beachhead, ICP, growth loops\n→ Marketing & Growth: позиционирование, North Star Metric\n→ PM Toolkit: включая ревью PM-резюме\n\nСделано для Claude Code и Cowork. Совместимо с Gemini CLI, Cursor, Codex CLI и Kiro. ✈️",
+      "applied_change": "Кандидат добавлен в очередь оценки практик.",
+      "target_scope": "candidate_inbox",
+      "result_status": "captured",
+      "result_note": "Статус: candidate_received.",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        "artifacts/candidate_pending.json",
+        "https://github.com/phuryn/pm-skills"
+      ]
+    },
+    {
+      "event_id": "38348936-a07e-44bd-bb2c-30b1e9e5cd03",
+      "occurred_at": "2026-03-03T10:01:00.000Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "cycle-20260303-2",
+      "extracted_value": "Изменения корректны, регрессий нет, usedSkills прошёл schema check",
+      "applied_change": "Результат подтвержден этапом verify.",
+      "target_scope": "verify",
+      "result_status": "verified",
+      "result_note": "process=vibe_coding, status=verify_passed",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        ".logs/agents/analyst-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "910f7e00-d4ac-4722-af45-89bea2b7e16a",
+      "occurred_at": "2026-03-02T10:05:00.000Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "cycle-20260303-1",
+      "extracted_value": "Изменения верифицированы, регрессий нет",
+      "applied_change": "Результат подтвержден этапом verify.",
+      "target_scope": "verify",
+      "result_status": "verified",
+      "result_note": "process=vibe_coding, status=verify_passed",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        ".logs/agents/analyst-agent.jsonl"
+      ]
+    },
+    {
+      "event_id": "improvement_89c3b19fe9da1f0e",
+      "occurred_at": "2026-03-02T10:00:00.000Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "codex",
+      "source_ref": "https://github.com/PavelAntipov39/pervoe-slovo/blob/codex/universal-entity-modal/docs/subservices/oap/agents-card.schema.json",
+      "extracted_value": "Наблюдение по review-ошибкам и ручным доработкам карточек: отсутствуют обязательные поля у рекомендаций.",
+      "applied_change": "Добавить JSON Schema и блокирующую проверку в CI для карточки агента.",
+      "target_scope": "Логика работы всех карточек (общая рекомендация)",
+      "result_status": "applied",
+      "result_note": "Повышение прозрачности и снижение неоднозначных рекомендаций. Целевая валидация: 2026-03-15.",
+      "metric_name": "recommendation_action_rate",
+      "metric_delta": 15,
+      "evidence_refs": [
+        "docs/agents/registry.yaml",
+        "docs/subservices/oap/agents-card.schema.json"
+      ]
+    },
+    {
+      "event_id": "improvement_7b2f01e092839f0d",
+      "occurred_at": "2026-03-02T10:00:00.000Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "codex",
+      "source_ref": "https://github.com/PavelAntipov39/pervoe-slovo/blob/codex/universal-entity-modal/docs/subservices/oap/README.md",
+      "extracted_value": "Нет стабильной метрики, показывающей, какие рекомендации действительно внедрены и дали эффект.",
+      "applied_change": "Связать рекомендации с task outcomes и считать recommendation_action_rate.",
+      "target_scope": "Навыки и правила",
+      "result_status": "applied",
+      "result_note": "Фокус на улучшениях с максимальной практической отдачей. Целевая валидация: 2026-03-15.",
+      "metric_name": "recommendation_action_rate",
+      "metric_delta": 20,
+      "evidence_refs": [
+        "docs/agents/registry.yaml",
+        "docs/subservices/oap/README.md"
+      ]
+    },
+    {
+      "event_id": "improvement_2cdc30c45cf0e787",
+      "occurred_at": "2026-02-26T21:00:00.000Z",
+      "agent_id": "designer-agent",
+      "source_tool": "other",
+      "source_ref": "https://github.com/PavelAntipov39/OAP/blob/main/docs/subservices/oap/DESIGN_RULES.md",
+      "extracted_value": "Повторяющиеся замечания в ревью о непонятных label/метриках и действиях.",
+      "applied_change": "Ввести обязательный UX-гейт: для неоднозначных терминов добавлять tooltip/inline-help с кратким объяснением.",
+      "target_scope": "Навыки и правила",
+      "result_status": "applied",
+      "result_note": "Снижение количества уточняющих вопросов и ошибок интерпретации UI. Целевая валидация: 2026-03-20.",
+      "metric_name": "ux_clarity_score",
+      "metric_delta": 20,
+      "evidence_refs": [
+        "docs/agents/registry.yaml",
+        "docs/subservices/oap/DESIGN_RULES.md"
+      ]
+    },
+    {
+      "event_id": "improvement_d04e1937f8c95cee",
+      "occurred_at": "2026-02-26T21:00:00.000Z",
+      "agent_id": "designer-agent",
+      "source_tool": "other",
+      "source_ref": "https://github.com/PavelAntipov39/OAP/blob/main/docs/subservices/oap/README.md",
+      "extracted_value": "Часть карточек перегружена деталями в первом экране без явного приоритета.",
+      "applied_change": "Утвердить правило: приоритетные данные показываются сразу, детали — через progressive disclosure.",
+      "target_scope": "Логика работы всех карточек (общая рекомендация)",
+      "result_status": "applied",
+      "result_note": "Более быстрый обзор состояния агента и меньше когнитивной нагрузки. Целевая валидация: 2026-03-20.",
+      "metric_name": "ui_kit_compliance_rate",
+      "metric_delta": 15,
+      "evidence_refs": [
+        "docs/agents/registry.yaml",
+        "docs/subservices/oap/README.md"
+      ]
+    },
+    {
+      "event_id": "improvement_5d4cba19e3adb05a",
+      "occurred_at": "2026-02-24T18:35:00.000Z",
+      "agent_id": "reader-agent",
+      "source_tool": "other",
+      "source_ref": "https://github.com/PavelAntipov39/OAP/blob/main/docs/subservices/oap/README.md",
+      "extracted_value": "Выявлено по задачам, review-ошибкам и telemetry за период.",
+      "applied_change": "Добавить линт-правило на ключевые статусные чипы и e2e ассерты по русским текстам.",
+      "target_scope": "Навыки и правила",
+      "result_status": "applied",
+      "result_note": "Снижение регрессий в UX и быстреее принятие изменений ревьюером. Целевая валидация: 2026-03-26.",
+      "metric_name": "recommendation_action_rate",
+      "metric_delta": 10,
+      "evidence_refs": [
+        "docs/agents/registry.yaml",
+        "docs/subservices/oap/README.md"
+      ]
+    },
+    {
+      "event_id": "improvement_cad0d0531545f056",
+      "occurred_at": "2026-02-24T18:35:00.000Z",
+      "agent_id": "reader-agent",
+      "source_tool": "other",
+      "source_ref": "https://github.com/PavelAntipov39/OAP/blob/main/docs/subservices/oap/README.md",
+      "extracted_value": "Выявлено по задачам, review-ошибкам и telemetry за период.",
+      "applied_change": "Добавить единый стартовый шаблон: spec -> contracts -> целевая страница -> тесты.",
+      "target_scope": "Задачи и качество",
+      "result_status": "applied",
+      "result_note": "Стабильное время старта и меньше пропущенных зависимостей. Целевая валидация: 2026-03-26.",
+      "metric_name": "review_error_rate",
+      "metric_delta": 10,
+      "evidence_refs": [
+        "docs/agents/registry.yaml",
+        "docs/subservices/oap/README.md"
+      ]
+    },
+    {
+      "event_id": "improvement_b624b32c4c5f790d",
+      "occurred_at": "2026-02-24T18:35:00.000Z",
+      "agent_id": "reader-agent",
+      "source_tool": "other",
+      "source_ref": "https://github.com/PavelAntipov39/OAP/blob/main/docs/subservices/oap/README.md",
+      "extracted_value": "Выявлено по задачам, review-ошибкам и telemetry за период.",
+      "applied_change": "Построить автоматический отчет по review findings и сопоставление с навыками.",
+      "target_scope": "Навыки и правила",
+      "result_status": "applied",
+      "result_note": "Быстрая персональная прокачка агента по фактическим ошибкам. Целевая валидация: 2026-03-26.",
+      "metric_name": "recommendation_action_rate",
+      "metric_delta": 10,
+      "evidence_refs": [
+        "docs/agents/registry.yaml",
+        "docs/subservices/oap/README.md"
+      ]
+    },
+    {
+      "event_id": "cand_1e4f5e5875e3ec42",
+      "occurred_at": "1970-01-01T00:00:00.000Z",
+      "agent_id": "analyst-agent",
+      "source_tool": "other",
+      "source_ref": "telegram:354559081:21",
+      "extracted_value": "Applicability: high.",
+      "applied_change": "Кандидат допущен в A/B-проверку (4 сессии).",
+      "target_scope": "cand_1e4f5e5875e3ec42",
+      "result_status": "applied",
+      "result_note": "Риски: Требуется адаптер формата логов перед rollout",
+      "metric_name": "recommendation_action_rate",
+      "metric_delta": 11.4,
+      "evidence_refs": [
+        "artifacts/candidate_decisions.json"
+      ]
+    }
+  ]
+}

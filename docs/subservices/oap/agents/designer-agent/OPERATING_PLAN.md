@@ -13,6 +13,28 @@
 - Область: UI kit, UX copy, tooltip/inline-help, структура экранов, визуальная согласованность состояний.
 - Ограничение: не выпускать UI-изменение без проверки на понятность и соответствие дизайн-правилам.
 
+## Universal Backbone Mapping
+- `designer-agent` работает по `Universal Session Backbone v1` (`step_0 .. step_9_publish_snapshots`).
+- Уникальная доменная ветка дизайнера ограничена `roleWindow`:
+  - `entryStep = step_5_role_window`
+  - `exitStep = step_6_role_exit_decision`
+- Неиспользуемые core-шаги не удаляются, а фиксируются как `skipped`.
+
+## Capability Selection Contract (Mandatory)
+<!-- contract-marker: baseline-minimum -->
+<!-- contract-marker: dynamic-capability-selection -->
+- Step-level `Навыки/Инструменты/MCP` задают baseline minimum.
+- Runtime-capabilities выбираются динамически из capability-first контура:
+  - `workflowBackbone`,
+  - `collaboration_plan.spawned_instances.allowed_skills/allowed_tools/allowed_mcp`,
+  - `docs/agents/registry.yaml` (`used*`/`available*`),
+  - `artifacts/capability_trials/designer-agent/capability_snapshot.json`.
+- Policy-gates обязательны:
+  - `official-first`,
+  - `shadow trial`,
+  - `human approve`.
+- Dynamic fallback при недоступности capability должен быть явным и зафиксированным в telemetry.
+
 ## 2. Ежедневный цикл `designer-agent`
 1. `started`: запуск дизайн-цикла с telemetry run.
 2. Проверка входящих UI-изменений на соответствие UI kit.
@@ -20,9 +42,13 @@
 4. Проверка текста интерфейса на однозначность и понятность.
 5. Добавление tooltip/inline-help в местах с риском неоднозначной трактовки.
 6. Проверка консистентности состояний компонентов и интеракций.
-7. Формирование обязательных UX-рекомендаций с основанием и метрикой.
+7. Формирование UX-рекомендаций с основанием и метрикой.
 8. Проверка эффекта изменений и фиксация результата.
 9. `completed` или `failed`: завершение цикла с telemetry.
+
+Формат capabilities для каждого шага:
+- Baseline capabilities: минимум для выполнения шага.
+- Dynamic capabilities (runtime-selected): подключаемые runtime-инструменты/навыки по policy-gates.
 
 ## 3. Политика источников
 - Режим: whitelist + verification.
@@ -61,6 +87,19 @@
   - запрещена подмена на другой документ с похожим названием или расположением;
   - если показан путь `.codex/skills/doc/SKILL.md`, в модалке должен открываться этот же файл.
 
+## Self-Improvement and Lesson Gate (Mandatory)
+<!-- contract-marker: self-improvement-gate -->
+- Learning-core done-gate обязателен:
+  `planned|started -> verify_started -> verify_passed|verify_failed -> lesson_captured|lesson_not_applicable -> completed|failed|review_passed`.
+- Пользовательская коррекция должна фиксироваться в lessons с `root cause` + `preventive rule`.
+- Lesson governance check обязателен перед финальным статусом.
+
+## Capability Refresh Note (Mandatory)
+<!-- contract-marker: capability-refresh -->
+- Для production-like run обязателен `capability_refresh` в режиме `on_run`.
+- Source-of-truth capability-table: `artifacts/capability_trials/designer-agent/capability_snapshot.json`.
+- При stale/fingerprint drift promotion/replace решения блокируются до следующего refresh.
+
 ## 6. Метрики эффективности
 ### Метрики по агенту
 - `review_error_rate`
@@ -92,6 +131,9 @@
 - `started`
 - `recommendation_suggested` (если есть новые UX-рекомендации)
 - `recommendation_applied` (если внедрение выполнено)
+- `verify_started`
+- `verify_passed` или `verify_failed`
+- `lesson_captured` или `lesson_not_applicable`
 - `completed` или `failed`
 
 Обязательные поля:

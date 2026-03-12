@@ -15,10 +15,12 @@ import {
   Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 
+import { getAgentsManifest, getAgentTelemetrySummaryByAgent, type AgentTelemetrySummaryAgent } from "../../lib/generatedData";
 import { getAgentTaskDetails, HUMAN_DECISION_LABEL, TASK_UI_STAGE_ORDER, TASK_UI_STAGE_META, type AgentTaskDetails, type AgentTaskHumanDecisionType, type AgentTaskServiceMode } from "../../lib/tasksApi";
 import {
   formatReadinessSummary,
@@ -30,6 +32,7 @@ import {
 import { TASK_RULES_CONTENT, TASK_RULES_PATH } from "../../lib/taskRulesContent";
 import { TextContentModal } from "../TextContentModal";
 import { SkillToolMcpTooltip } from "../skill-tooltip/SkillToolMcpTooltip";
+import { AgentInstanceGraph } from "./AgentInstanceGraph";
 import { TaskDetailsDrawerExperimental } from "./TaskDetailsDrawerExperimental";
 import { TaskTimeline } from "./TaskTimeline";
 
@@ -46,6 +49,13 @@ const TASK_STATUS_LABEL: Record<AgentTaskDetails["task"]["status"], string> = {
 
 const WUUNU_DEV_MODE = import.meta.env.DEV;
 const EXPERIMENTAL_TASK_CARD_IDS = new Set(["demo-human-approve"]);
+const ACTIVE_AGENT_IDS = new Set(getAgentsManifest().agents.map((agent) => agent.id));
+const HOST_SYNC_LABEL: Record<string, string> = {
+  synced: "synced",
+  partial: "partial",
+  missing: "missing",
+  archived: "archived",
+};
 
 type TaskDetailsDrawerProps = {
   open: boolean;
@@ -203,12 +213,123 @@ function renderAgentLinks(agentIds: string[], onOpenAgent: (agentId: string) => 
   }
   return (
     <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap">
-      {agentIds.map((agentId) => (
-        <Link key={agentId} component="button" type="button" underline="hover" onClick={() => onOpenAgent(agentId)}>
-          {agentId}
-        </Link>
-      ))}
+      {agentIds.map((agentId) => renderAgentRef(agentId, onOpenAgent, agentId))}
     </Stack>
+  );
+}
+
+function isActiveAgentId(agentId: string | null | undefined): agentId is string {
+  const normalized = (agentId || "").trim();
+  return normalized.length > 0 && ACTIVE_AGENT_IDS.has(normalized);
+}
+
+function renderAgentRef(agentId: string | null | undefined, onOpenAgent: (agentId: string) => void, emptyText = "не зафиксировано") {
+  const normalized = (agentId || "").trim();
+  if (!normalized) {
+    return (
+      <Typography component="span" variant="body2" color="text.secondary">
+        {emptyText}
+      </Typography>
+    );
+  }
+  if (isActiveAgentId(normalized)) {
+    return (
+      <Link component="button" type="button" underline="hover" onClick={() => onOpenAgent(normalized)}>
+        {normalized}
+      </Link>
+    );
+  }
+  return (
+    <Stack component="span" direction="row" spacing={0.5} alignItems="center" useFlexGap flexWrap="wrap">
+      <Typography component="span" variant="body2">
+        {normalized}
+      </Typography>
+      <Chip size="small" variant="outlined" label="архив" sx={{ height: 20 }} />
+    </Stack>
+  );
+}
+
+function formatPercentMetric(value: number | null | undefined, emptyText = "не зафиксировано"): string {
+  return typeof value === "number" ? `${value}%` : emptyText;
+}
+
+function formatCostMetric(value: number | null | undefined, unit: string | null | undefined): string {
+  if (typeof value !== "number") return "не зафиксировано";
+  return `${value} ${unit || ""}`.trim();
+}
+
+function MetricLine({ label, value, hint }: { label: string; value: string; hint: string }) {
+  return (
+    <Typography variant="body2">
+      <strong>{label}:</strong> {value}{" "}
+      <Tooltip title={hint} placement="top" arrow>
+        <Typography component="span" variant="caption" sx={{ textDecoration: "underline dotted", cursor: "help" }}>
+          Как считается
+        </Typography>
+      </Tooltip>
+    </Typography>
+  );
+}
+
+function AgentViabilityCard(
+  props: {
+    agentId: string;
+    telemetry: AgentTelemetrySummaryAgent | null;
+    roleLabel: string;
+    onOpenAgent: (agentId: string) => void;
+  },
+) {
+  const { agentId, telemetry, roleLabel, onOpenAgent } = props;
+  const hostSyncStatus = telemetry?.host_adapter_sync_status || "missing";
+  return (
+    <Paper variant="outlined" sx={{ p: 1 }}>
+      <Stack spacing={0.6}>
+        <Stack direction="row" spacing={0.8} alignItems="center" useFlexGap flexWrap="wrap">
+          <Typography variant="body2">
+            <strong>{roleLabel}:</strong> {renderAgentRef(agentId, onOpenAgent, agentId)}
+          </Typography>
+          <Chip size="small" variant="outlined" label={`Adapters: ${HOST_SYNC_LABEL[hostSyncStatus] || hostSyncStatus}`} />
+        </Stack>
+        {!telemetry ? (
+          <Typography variant="body2" color="text.secondary">
+            Телеметрия по агенту пока не собрана.
+          </Typography>
+        ) : (
+          <Stack spacing={0.45}>
+            <MetricLine
+              label="Запусков"
+              value={String(telemetry.invocation_count ?? telemetry.tasks_total ?? 0)}
+              hint="Количество отдельных запусков агента. Формула: count(distinct run_id), если run_id отсутствует — fallback на tasks_total."
+            />
+            <MetricLine
+              label="Завершено задач"
+              value={String(telemetry.completed_task_count ?? telemetry.completed_tasks ?? 0)}
+              hint="Сколько задач агент довел до terminal success. Формула: completed_tasks."
+            />
+            <MetricLine
+              label="Использование делегирования"
+              value={formatPercentMetric(telemetry.handoff_use_rate)}
+              hint="Доля задач, где агент реально создавал child-run. Формула: tasks_with_agent_instance_spawned / tasks_total * 100."
+            />
+            <MetricLine
+              label="Пересечение с analyst-agent"
+              value={formatPercentMetric(telemetry.overlap_with_analyst_rate, "не применимо")}
+              hint="Как часто агент участвовал в тех же task_id, что и analyst-agent. Формула: shared_tasks_with_analyst / tasks_total * 100."
+            />
+            <MetricLine
+              label="Verify pass rate"
+              value={formatPercentMetric(telemetry.verification_pass_rate)}
+              hint="Доля verify_passed среди verify_started для этого агента."
+            />
+            <MetricLine
+              label="Стоимость на завершенную задачу"
+              value={formatCostMetric(telemetry.orchestration_cost_per_completed_task, telemetry.orchestration_cost_unit)}
+              hint="Средняя стоимость на одну завершенную задачу. Формула: cost_total / completed_tasks, либо token proxy / completed_tasks."
+            />
+          </Stack>
+        )}
+      </Stack>
+    </Paper>
   );
 }
 
@@ -501,25 +622,11 @@ function TaskDetailsDrawerLegacy({ open, taskId, onClose, onOpenAgent }: TaskDet
                   </Typography>
                   <Typography variant="body2">
                     <strong>Постановщик:</strong>{" "}
-                    <Link
-                      component="button"
-                      type="button"
-                      underline="hover"
-                      onClick={() => onOpenAgent(details.origin.source_agent_id)}
-                    >
-                      {details.origin.source_agent_id || "не зафиксировано"}
-                    </Link>
+                    {renderAgentRef(details.origin.source_agent_id, onOpenAgent)}
                   </Typography>
                   <Typography variant="body2">
                     <strong>Исполнитель:</strong>{" "}
-                    <Link
-                      component="button"
-                      type="button"
-                      underline="hover"
-                      onClick={() => onOpenAgent(details.task.executor_agent_id)}
-                    >
-                      {details.task.executor_agent_id || "не зафиксировано"}
-                    </Link>
+                    {renderAgentRef(details.task.executor_agent_id, onOpenAgent)}
                   </Typography>
                 </Stack>
               </Paper>
@@ -534,28 +641,14 @@ function TaskDetailsDrawerLegacy({ open, taskId, onClose, onOpenAgent }: TaskDet
                     <Typography component="span" variant="caption" color="text.secondary">
                       — тот, кто ставит задачу:
                     </Typography>{" "}
-                    <Link
-                      component="button"
-                      type="button"
-                      underline="hover"
-                      onClick={() => onOpenAgent(details.origin.source_agent_id)}
-                    >
-                      {details.origin.source_agent_id || "не зафиксировано"}
-                    </Link>
+                    {renderAgentRef(details.origin.source_agent_id, onOpenAgent)}
                   </Typography>
                   <Typography variant="body2">
                     <strong>Исполнитель</strong>{" "}
                     <Typography component="span" variant="caption" color="text.secondary">
                       — основной ответственный:
                     </Typography>{" "}
-                    <Link
-                      component="button"
-                      type="button"
-                      underline="hover"
-                      onClick={() => onOpenAgent(details.task.executor_agent_id)}
-                    >
-                      {details.task.executor_agent_id || "не зафиксировано"}
-                    </Link>
+                    {renderAgentRef(details.task.executor_agent_id, onOpenAgent)}
                   </Typography>
                   <Typography variant="body2">
                     <strong>Соисполнители</strong>{" "}
@@ -575,6 +668,33 @@ function TaskDetailsDrawerLegacy({ open, taskId, onClose, onOpenAgent }: TaskDet
                       не зафиксировано
                     </Typography>
                   </Typography>
+                </Stack>
+              </Paper>
+
+              <Paper variant="outlined" sx={{ p: 1.25 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.8 }}>
+                  Жизнеспособность задействованных агентов
+                </Typography>
+                <Stack spacing={0.8}>
+                  {Array.from(
+                    new Map(
+                      [
+                        { roleLabel: "Постановщик", agentId: details.origin.source_agent_id || details.task.source_agent_id || "" },
+                        { roleLabel: "Исполнитель", agentId: details.task.executor_agent_id || "" },
+                      ]
+                        .map((entry) => ({ ...entry, agentId: (entry.agentId || "").trim() }))
+                        .filter((entry) => entry.agentId.length > 0)
+                        .map((entry) => [entry.agentId, entry] as const),
+                    ).values(),
+                  ).map((entry) => (
+                    <AgentViabilityCard
+                      key={`${entry.roleLabel}-${entry.agentId}`}
+                      agentId={entry.agentId}
+                      telemetry={getAgentTelemetrySummaryByAgent(entry.agentId)}
+                      roleLabel={entry.roleLabel}
+                      onOpenAgent={onOpenAgent}
+                    />
+                  ))}
                 </Stack>
               </Paper>
 
@@ -651,11 +771,7 @@ function TaskDetailsDrawerLegacy({ open, taskId, onClose, onOpenAgent }: TaskDet
                           </Typography>
                         ) : null}
                         <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 0.45 }}>
-                          {item.source_agent_id ? (
-                            <Link component="button" type="button" underline="hover" onClick={() => onOpenAgent(item.source_agent_id as string)}>
-                              Открыть агента-источник
-                            </Link>
-                          ) : null}
+                          {item.source_agent_id ? renderAgentRef(item.source_agent_id, onOpenAgent, "агент не зафиксирован") : null}
                           {item.source_url ? (
                             <Link href={item.source_url} target="_blank" rel="noopener noreferrer">
                               Открыть источник
@@ -811,6 +927,9 @@ function TaskDetailsDrawerLegacy({ open, taskId, onClose, onOpenAgent }: TaskDet
                             <strong>Стратегия оркестрации:</strong> {collaborationStrategyLabel(collaborationPlan.strategy)}
                           </Typography>
                           <Typography variant="body2">
+                            <strong>Режим взаимодействия:</strong> {collaborationPlan.interaction_mode || "sequential"}
+                          </Typography>
+                          <Typography variant="body2">
                             <strong>Глубина делегирования:</strong>{" "}
                             {Number.isFinite(Number(collaborationPlan.delegation_depth))
                               ? Math.max(0, Math.round(Number(collaborationPlan.delegation_depth)))
@@ -876,34 +995,9 @@ function TaskDetailsDrawerLegacy({ open, taskId, onClose, onOpenAgent }: TaskDet
                             </Stack>
                           )}
                           <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            Graph инстансов
+                            Схема работы агентов
                           </Typography>
-                          {!collaborationPlan.spawned_instances || collaborationPlan.spawned_instances.length === 0 ? (
-                            <Typography variant="body2" color="text.secondary">
-                              не зафиксировано
-                            </Typography>
-                          ) : (
-                            <Stack spacing={0.5}>
-                              {collaborationPlan.spawned_instances.map((instance) => (
-                                <Paper key={instance.instance_id} variant="outlined" sx={{ p: 0.7 }}>
-                                  <Typography variant="body2">
-                                    <strong>{instance.instance_id}</strong>
-                                    {" -> "}
-                                    {instance.profile_id}
-                                  </Typography>
-                                  <Typography variant="caption" color="text.secondary" component="div">
-                                    depth={instance.depth} | parent={instance.parent_instance_id || "root"} | status={instance.status} | verify={instance.verify_status}
-                                  </Typography>
-                                  <Typography variant="caption" color="text.secondary" component="div">
-                                    purpose={instance.purpose || "не зафиксировано"}
-                                  </Typography>
-                                  <Typography variant="caption" color="text.secondary" component="div">
-                                    tools={instance.allowed_tools.join(", ") || "none"} | mcp={instance.allowed_mcp.join(", ") || "none"}
-                                  </Typography>
-                                </Paper>
-                              ))}
-                            </Stack>
-                          )}
+                          <AgentInstanceGraph collaborationPlan={collaborationPlan} onOpenAgent={onOpenAgent} />
                         </Stack>
                       )}
 

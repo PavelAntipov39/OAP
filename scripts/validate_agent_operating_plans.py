@@ -21,6 +21,12 @@ AGENT_REQUIRED_FILES: dict[str, list[str]] = {
         "CARD_FULL_FLOW.md",
     ],
 }
+REQUIRED_OPERATING_PLAN_MARKERS = [
+    "<!-- contract-marker: baseline-minimum -->",
+    "<!-- contract-marker: dynamic-capability-selection -->",
+    "<!-- contract-marker: self-improvement-gate -->",
+    "<!-- contract-marker: capability-refresh -->",
+]
 
 
 def load_registry(path: Path) -> dict[str, Any]:
@@ -53,6 +59,23 @@ def required_files_for_agent(agent_id: str) -> list[str]:
     return AGENT_REQUIRED_FILES.get(agent_id, DEFAULT_REQUIRED_FILES)
 
 
+def validate_operating_plan_content(path: Path) -> list[str]:
+    try:
+        content = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        return [f"cannot read agent doc: {path} ({exc})"]
+
+    missing_markers = [
+        marker
+        for marker in REQUIRED_OPERATING_PLAN_MARKERS
+        if marker not in content
+    ]
+    return [
+        f"missing operating plan marker: {path} :: {marker}"
+        for marker in missing_markers
+    ]
+
+
 def validate_operating_plan_layout(agent_ids: list[str], agents_root: Path) -> list[str]:
     errors: list[str] = []
     for agent_id in agent_ids:
@@ -60,6 +83,9 @@ def validate_operating_plan_layout(agent_ids: list[str], agents_root: Path) -> l
             expected = agents_root / agent_id / relative_name
             if not expected.exists():
                 errors.append(f"missing agent doc: {expected}")
+                continue
+            if relative_name == "OPERATING_PLAN.md":
+                errors.extend(validate_operating_plan_content(expected))
     return errors
 
 

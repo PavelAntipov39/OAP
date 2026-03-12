@@ -1,0 +1,305 @@
+{
+  "updatedAt": "2026-03-11T12:30:00Z",
+  "source": "repo-host-agnostic-agent-catalog",
+  "version": "v1",
+  "sourceRefs": {
+    "profiles": "docs/agents/registry.yaml",
+    "templates": "docs/agents/profile_templates.yaml",
+    "governance": ".specify/specs/001-oap/spec.md"
+  },
+  "agents": [
+    {
+      "id": "orchestrator-agent",
+      "displayName": "Оркестратор",
+      "kind": "top_level",
+      "sourceProfileId": "orchestrator-agent",
+      "mission": "Принимать разнородные задачи, выбирать основного исполнителя, подключать bounded process agents и возвращать управляемый orchestration plan без нарушения общего backbone.",
+      "useWhen": [
+        "Нужно разобрать задачу из backlog, чата или automation, где заранее неочевидно, кто должен быть основным исполнителем.",
+        "Нужно маршрутизировать multi-agent задачу, выбрать режим взаимодействия и зафиксировать coordinator/executor/process-agents envelope."
+      ],
+      "avoidWhen": [
+        "Задача уже однозначно относится к одному доменному автономному агенту и не требует orchestration-overhead.",
+        "Нужна глубокая доменная реализация или review, а не routing/coordinator decision."
+      ],
+      "inputContract": "orchestration_request.v1 + task_brief.v1 + origin_context",
+      "outputContract": "orchestration_decision_package.v1",
+      "allowedSkills": ["doc", "playwright", "agent-telemetry"],
+      "allowedTools": ["QMD retrieval", "Telemetry report builder", "Dispatcher execution"],
+      "allowedMcp": ["qmd", "context7", "supabase"],
+      "allowedRules": ["Universal workflow backbone", "Universal Self-Improvement Loop", "QMD Retrieval Policy"],
+      "handoffTargets": ["analyst-agent", "designer-agent", "reader-agent", "retrieval-audit", "ui-verification", "telemetry-audit", "contract-audit", "docs-spec-sync", "automation-governance", "terminology-consistency-audit"],
+      "executionMode": "sequential",
+      "supportedHosts": ["codex", "claude_code", "github_copilot"],
+      "supportedScopes": ["repo", "session"],
+      "stopConditions": ["executor_selected", "orchestration_plan_ready", "budget_exhausted", "no_progress_detected"]
+    },
+    {
+      "id": "analyst-agent",
+      "displayName": "Аналитик",
+      "kind": "top_level",
+      "sourceProfileId": "analyst-agent",
+      "mission": "Анализировать качество агентной системы и выпускать проверяемые рекомендации с evidence и метриками эффекта.",
+      "useWhen": [
+        "Нужно оценить влияние изменения на workflow, KPI, telemetry или self-improvement контур.",
+        "Нужно определить приоритет, критерии успеха или decision package перед внедрением."
+      ],
+      "avoidWhen": [
+        "Нужна только узкая реализация UI без аналитической оценки эффекта.",
+        "Задача сводится к изолированному infra/data инциденту без product-анализа."
+      ],
+      "inputContract": "task_brief.v1 + context_package + evidence_refs[]",
+      "outputContract": "analyst_decision_package.v1",
+      "allowedSkills": ["doc", "spreadsheet", "security-best-practices"],
+      "allowedTools": ["QMD retrieval", "Telemetry report builder"],
+      "allowedMcp": ["qmd", "context7", "supabase"],
+      "allowedRules": ["Universal workflow backbone", "Universal Self-Improvement Loop", "QMD Retrieval Policy"],
+      "handoffTargets": ["designer-agent", "reader-agent", "retrieval-audit", "ui-verification", "telemetry-audit", "terminology-consistency-audit"],
+      "executionMode": "sequential",
+      "supportedHosts": ["codex", "claude_code", "github_copilot"],
+      "supportedScopes": ["repo", "session"],
+      "stopConditions": ["decision_package_ready", "budget_exhausted", "no_progress_detected"]
+    },
+    {
+      "id": "designer-agent",
+      "displayName": "Продакт дизайнер",
+      "kind": "top_level",
+      "sourceProfileId": "designer-agent",
+      "mission": "Проверять UX/UI понятность, визуальную консистентность и соответствие UI kit перед выпуском изменений.",
+      "useWhen": [
+        "Изменение затрагивает структуру экрана, терминологию, tooltip/help, layout или visual hierarchy.",
+        "Нужно провести UX/UI review и вернуть пакет дизайн-действий."
+      ],
+      "avoidWhen": [
+        "Изменение чисто backend/schema-only и не влияет на runtime UI.",
+        "Нужна только ETL или infra диагностика."
+      ],
+      "inputContract": "ui_change_brief.v1 + screenshot_refs[] + deep_links[]",
+      "outputContract": "design_review_package.v1",
+      "allowedSkills": ["figma-implement-design", "playwright", "doc"],
+      "allowedTools": ["Browser verification", "QMD retrieval"],
+      "allowedMcp": ["figma", "playwright", "qmd"],
+      "allowedRules": ["OAP Design Rule", "Universal workflow backbone", "Universal Self-Improvement Loop"],
+      "handoffTargets": ["analyst-agent", "reader-agent", "ui-verification", "terminology-consistency-audit"],
+      "executionMode": "sequential",
+      "supportedHosts": ["codex", "claude_code", "github_copilot"],
+      "supportedScopes": ["repo", "session"],
+      "stopConditions": ["design_actions_ready", "verify_blocked", "budget_exhausted"]
+    },
+    {
+      "id": "reader-agent",
+      "displayName": "Разработчик",
+      "kind": "top_level",
+      "sourceProfileId": "reader-agent",
+      "mission": "Реализовывать UI/backend изменения и проверять сценарии через рабочие контракты и E2E.",
+      "useWhen": [
+        "Нужно внести кодовые изменения в UI или backend OAP.",
+        "Нужна реализация по уже согласованному decision package."
+      ],
+      "avoidWhen": [
+        "Нужен только product-analysis без code execution.",
+        "Нужна изолированная ETL или infra экспертиза."
+      ],
+      "inputContract": "implementation_task.v1 + target_paths[] + verify_requirements[]",
+      "outputContract": "implementation_result_package.v1",
+      "allowedSkills": ["playwright", "doc", "gh-address-comments"],
+      "allowedTools": ["QMD retrieval"],
+      "allowedMcp": ["qmd", "supabase", "context7", "netlify"],
+      "allowedRules": ["Universal workflow backbone", "Universal Self-Improvement Loop", "QMD Retrieval Policy"],
+      "handoffTargets": ["designer-agent", "analyst-agent", "ui-verification", "retrieval-audit", "terminology-consistency-audit"],
+      "executionMode": "sequential",
+      "supportedHosts": ["codex", "claude_code", "github_copilot"],
+      "supportedScopes": ["repo", "session"],
+      "stopConditions": ["implementation_ready", "verify_failed", "budget_exhausted"]
+    },
+    {
+      "id": "retrieval-audit",
+      "displayName": "Retrieval Audit Specialist",
+      "kind": "runtime_specialist",
+      "sourceProfileId": null,
+      "sourceTemplateId": "retrieval-audit",
+      "mission": "Проверять полноту evidence, качество retrieval и консистентность источников для решений.",
+      "useWhen": [
+        "Контекст задачи распределен по нескольким spec/contracts/runbook документам.",
+        "Нужно доказать, что решение опирается на корректный evidence set."
+      ],
+      "avoidWhen": [
+        "Известен точный файл и строка, manual retrieval не дает выигрыша.",
+        "Нужна code-symbol навигация, а не document retrieval."
+      ],
+      "inputContract": "retrieval_audit_request.v1",
+      "outputContract": "retrieval_audit_report.v1",
+      "allowedSkills": ["doc"],
+      "allowedTools": ["QMD retrieval"],
+      "allowedMcp": ["qmd"],
+      "allowedRules": ["QMD Retrieval Policy", "Universal workflow backbone"],
+      "handoffTargets": [],
+      "executionMode": "parallel_read_only",
+      "supportedHosts": ["codex", "claude_code", "github_copilot"],
+      "supportedScopes": ["session"],
+      "stopConditions": ["audit_report_ready", "evidence_contradiction_reported", "budget_exhausted"]
+    },
+    {
+      "id": "ui-verification",
+      "displayName": "UI Verification Specialist",
+      "kind": "runtime_specialist",
+      "sourceProfileId": null,
+      "sourceTemplateId": "ui-verification",
+      "mission": "Проверять runtime UI-поведение в браузере и возвращать воспроизводимый verify package.",
+      "useWhen": [
+        "Изменение затрагивает маршруты, фильтры, модалки, табы, таблицы или контент в UI.",
+        "Нужен воспроизводимый browser-based verify."
+      ],
+      "avoidWhen": [
+        "Изменение не имеет runtime UI-поведения.",
+        "Верификация возможна статически без браузера."
+      ],
+      "inputContract": "ui_verification_request.v1",
+      "outputContract": "ui_verification_report.v1",
+      "allowedSkills": ["playwright"],
+      "allowedTools": ["Browser verification"],
+      "allowedMcp": ["playwright"],
+      "allowedRules": ["OAP Design Rule", "Universal workflow backbone"],
+      "handoffTargets": [],
+      "executionMode": "parallel_read_only",
+      "supportedHosts": ["codex", "claude_code", "github_copilot"],
+      "supportedScopes": ["session"],
+      "stopConditions": ["verification_report_ready", "critical_regression_found", "budget_exhausted"]
+    },
+    {
+      "id": "telemetry-audit",
+      "displayName": "Telemetry Audit Specialist",
+      "kind": "runtime_specialist",
+      "sourceProfileId": null,
+      "sourceTemplateId": "telemetry-audit",
+      "mission": "Проверять полноту telemetry, reconstructability execution graph и корректность KPI.",
+      "useWhen": [
+        "Задача меняет lifecycle, orchestration, metrics или summaries.",
+        "Нужно проверить, что telemetry достаточно для вычисления KPI и UI traceability."
+      ],
+      "avoidWhen": [
+        "Задача не затрагивает telemetry, evals или instance graph.",
+        "Нет новых telemetry expectations."
+      ],
+      "inputContract": "telemetry_audit_request.v1",
+      "outputContract": "telemetry_audit_report.v1",
+      "allowedSkills": ["agent-telemetry"],
+      "allowedTools": ["Telemetry report builder"],
+      "allowedMcp": [],
+      "allowedRules": ["Agent Telemetry Logging", "Universal Self-Improvement Loop", "Universal workflow backbone"],
+      "handoffTargets": [],
+      "executionMode": "parallel_read_only",
+      "supportedHosts": ["codex", "claude_code", "github_copilot"],
+      "supportedScopes": ["session"],
+      "stopConditions": ["telemetry_report_ready", "contract_gap_reported", "budget_exhausted"]
+    },
+    {
+      "id": "contract-audit",
+      "displayName": "Contract Audit Specialist",
+      "kind": "runtime_specialist",
+      "sourceProfileId": null,
+      "sourceTemplateId": "contract-audit",
+      "mission": "Проверять schema/API/task-contract/routing-contract и явно фиксировать несоответствия между source-of-truth и runtime.",
+      "useWhen": [
+        "Задача меняет spec, contracts, routing, payload shape или generated manifests.",
+        "Нужно доказать, что изменение не ломает task-contract, frontend contract или orchestration contract."
+      ],
+      "avoidWhen": [
+        "Изменение чисто визуальное и не меняет контракты данных или поведения.",
+        "Проверка может быть полностью покрыта существующим UI verify без анализа контрактов."
+      ],
+      "inputContract": "contract_audit_request.v1",
+      "outputContract": "contract_audit_report.v1",
+      "allowedSkills": ["doc"],
+      "allowedTools": ["Contract validator", "QMD retrieval"],
+      "allowedMcp": ["qmd", "context7"],
+      "allowedRules": ["Source of truth: спецификация проекта", "Universal workflow backbone"],
+      "handoffTargets": [],
+      "executionMode": "parallel_read_only",
+      "supportedHosts": ["codex", "claude_code", "github_copilot"],
+      "supportedScopes": ["session"],
+      "stopConditions": ["contract_report_ready", "breaking_gap_reported", "budget_exhausted"]
+    },
+    {
+      "id": "docs-spec-sync",
+      "displayName": "Docs & Spec Sync Specialist",
+      "kind": "runtime_specialist",
+      "sourceProfileId": null,
+      "sourceTemplateId": "docs-spec-sync",
+      "mission": "Проверять консистентность между spec, ADR, README, glossary и generated docs после архитектурных и process changes.",
+      "useWhen": [
+        "Задача меняет терминологию, operating model, docs contracts или source-of-truth набор документов.",
+        "Нужно синхронизировать human-readable и machine-readable описание одного и того же operational факта."
+      ],
+      "avoidWhen": [
+        "Изменение локально и не затрагивает documentation/source-of-truth слой.",
+        "Никакие docs или glossary не входят в acceptance criteria."
+      ],
+      "inputContract": "docs_sync_request.v1",
+      "outputContract": "docs_sync_report.v1",
+      "allowedSkills": ["doc"],
+      "allowedTools": ["QMD retrieval"],
+      "allowedMcp": ["qmd"],
+      "allowedRules": ["Source of truth: спецификация проекта", "Consistency sync rule (mandatory)"],
+      "handoffTargets": [],
+      "executionMode": "parallel_read_only",
+      "supportedHosts": ["codex", "claude_code", "github_copilot"],
+      "supportedScopes": ["session"],
+      "stopConditions": ["docs_sync_report_ready", "consistency_gap_reported", "budget_exhausted"]
+    },
+    {
+      "id": "automation-governance",
+      "displayName": "Automation Governance Specialist",
+      "kind": "runtime_specialist",
+      "sourceProfileId": null,
+      "sourceTemplateId": "automation-governance",
+      "mission": "Проверять automation registry, schedule policy, stale/sync status и безопасный execution contract для scheduled runs.",
+      "useWhen": [
+        "Задача меняет scheduled runs, automation registry, pause/resume/archive policy или Codex export model.",
+        "Нужно оценить, можно ли безопасно запускать автономного агента по расписанию."
+      ],
+      "avoidWhen": [
+        "Задача не затрагивает automations или scheduled execution.",
+        "Нужна только разовая ручная задача без persistent automation definition."
+      ],
+      "inputContract": "automation_governance_request.v1",
+      "outputContract": "automation_governance_report.v1",
+      "allowedSkills": ["doc", "agent-telemetry"],
+      "allowedTools": ["Telemetry report builder", "QMD retrieval"],
+      "allowedMcp": ["qmd"],
+      "allowedRules": ["Universal workflow backbone", "Universal Self-Improvement Loop"],
+      "handoffTargets": [],
+      "executionMode": "parallel_read_only",
+      "supportedHosts": ["codex", "claude_code", "github_copilot"],
+      "supportedScopes": ["session"],
+      "stopConditions": ["automation_report_ready", "unsafe_schedule_reported", "budget_exhausted"]
+    },
+    {
+      "id": "terminology-consistency-audit",
+      "displayName": "Terminology Consistency Specialist",
+      "kind": "runtime_specialist",
+      "sourceProfileId": null,
+      "sourceTemplateId": "terminology-consistency-audit",
+      "mission": "Контролировать консистентность терминов и glossary-driven лейблов между UI, docs и routing/governance контрактами.",
+      "useWhen": [
+        "Задача меняет labels/chips/tooltip/semantic_layer/source_kind и требует канонизации терминов.",
+        "Нужно доказать, что UI показывает только glossary-driven названия без локальных дублей."
+      ],
+      "avoidWhen": [
+        "Изменение не затрагивает терминологию, taxonomy или UI-лейблы.",
+        "Проверка сводится к чисто техническому fix без user-facing naming."
+      ],
+      "inputContract": "terminology_consistency_request.v1",
+      "outputContract": "terminology_consistency_report.v1",
+      "allowedSkills": ["doc"],
+      "allowedTools": ["Terminology consistency audit", "QMD retrieval"],
+      "allowedMcp": ["qmd"],
+      "allowedRules": ["OAP Design Rule", "Consistency Sync", "Universal workflow backbone"],
+      "handoffTargets": [],
+      "executionMode": "parallel_read_only",
+      "supportedHosts": ["codex", "claude_code", "github_copilot"],
+      "supportedScopes": ["session"],
+      "stopConditions": ["terminology_report_ready", "drift_reported", "budget_exhausted"]
+    }
+  ]
+}

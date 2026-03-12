@@ -16,7 +16,8 @@
     "validate-agent-docs": "python3 ../scripts/validate_agent_operating_plans.py",
     "validate-verification": "python3 ../scripts/validate_verification_contract.py",
     "check-agents": "node ./scripts/check_agents_manifest.mjs",
-    "check": "npm run prepare-c4 && npm run prepare-content && npm run validate-router && npm run validate-agent-docs && npm run validate-verification && npm run check-agents && npm run build"
+    "check": "npm run prepare-c4 && npm run prepare-content && npm run validate-router && npm run validate-agent-docs && npm run validate-verification && npm run check-agents && npm run build",
+    "check:release": "npm run check && npm run test:e2e:smoke"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

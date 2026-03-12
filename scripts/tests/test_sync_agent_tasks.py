@@ -90,6 +90,9 @@ class SyncAgentTasksTests(unittest.TestCase):
         self.assertIn("ab_test_plan", context_package)
         self.assertIn("strategy", context_package["collaboration_plan"])
         self.assertIn("spawned_instances", context_package["collaboration_plan"])
+        self.assertIn("interaction_mode", context_package["collaboration_plan"])
+        self.assertIn("interaction_phases", context_package["collaboration_plan"])
+        self.assertIn("roundtable_policy", context_package["collaboration_plan"])
         self.assertIn("orchestration_budget", context_package["collaboration_plan"])
         self.assertEqual(context_package["ab_test_plan"]["pass_rule"], "target_plus_guardrails")
         self.assertGreaterEqual(context_package["ab_test_plan"]["sessions_required"], 3)
@@ -105,6 +108,7 @@ class SyncAgentTasksTests(unittest.TestCase):
         self.assertIn("ab_test_plan", rec_context)
         self.assertIn("reuse_candidates", rec_context["collaboration_plan"])
         self.assertIn("created_profiles", rec_context["collaboration_plan"])
+        self.assertIn("host_execution_strategy", rec_context["collaboration_plan"])
 
     def test_recommendation_object_links_improvement_explicitly(self):
         registry = {
@@ -291,13 +295,12 @@ class SyncAgentTasksTests(unittest.TestCase):
         suggested = sync.suggest_collaboration_agents(
             source_agent_id="reader-agent",
             executor_agent_id="analyst-agent",
-            available_agent_ids={"analyst-agent", "reader-agent", "designer-agent", "ops-agent"},
-            hint_text="UI redesign for MCP integration and quality metrics",
+            available_agent_ids={"analyst-agent", "reader-agent", "designer-agent"},
+            hint_text="UI redesign for retrieval quality metrics",
         )
         self.assertNotIn("analyst-agent", suggested)
         self.assertIn("reader-agent", suggested)
         self.assertIn("designer-agent", suggested)
-        self.assertIn("ops-agent", suggested)
 
     def test_task_context_fixture_contract(self):
         fixture_path = Path(__file__).resolve().parent / "fixtures" / "task_context_package_v2.json"

@@ -1,0 +1,67 @@
+{
+  "updatedAt": "2026-03-11T12:30:00Z",
+  "source": "repo-host-capability-matrix",
+  "version": "v1",
+  "hosts": [
+    {
+      "id": "claude_code",
+      "displayName": "Claude Code",
+      "adapterStrategy": "repo_project_agents",
+      "agentDefinitionPaths": [".claude/agents/*.md", "~/.claude/agents/*.md"],
+      "capabilities": {
+        "repoScopedAgents": true,
+        "userScopedAgents": true,
+        "nativeDelegation": true,
+        "isolatedContextWindows": true,
+        "perAgentToolEnvelope": true,
+        "mcpToolAccess": true,
+        "dispatcherRequiredForDelegation": false
+      },
+      "fallbackMode": "dispatcher_backed",
+      "notes": [
+        "Project-scoped agents are preferred over user-level agents for team-shared governance.",
+        "If native delegation cannot satisfy the bounded execution contract, use dispatcher fallback without changing the workflow backbone."
+      ]
+    },
+    {
+      "id": "github_copilot",
+      "displayName": "GitHub Copilot",
+      "adapterStrategy": "repo_custom_agents",
+      "agentDefinitionPaths": [".github/agents/*.agent.md"],
+      "capabilities": {
+        "repoScopedAgents": true,
+        "userScopedAgents": false,
+        "nativeDelegation": true,
+        "isolatedContextWindows": true,
+        "perAgentToolEnvelope": true,
+        "mcpToolAccess": true,
+        "dispatcherRequiredForDelegation": false
+      },
+      "fallbackMode": "dispatcher_backed",
+      "notes": [
+        "Repository agents are the canonical team-visible entrypoint for Copilot.",
+        "If a required capability is outside the host-native delegation surface, route execution through the shared dispatcher."
+      ]
+    },
+    {
+      "id": "codex",
+      "displayName": "Codex",
+      "adapterStrategy": "dispatcher_first",
+      "agentDefinitionPaths": ["~/.codex/skills/*/agents/openai.yaml", "~/.codex/skills-generated/*/agents/openai.yaml"],
+      "capabilities": {
+        "repoScopedAgents": false,
+        "userScopedAgents": true,
+        "nativeDelegation": false,
+        "isolatedContextWindows": false,
+        "perAgentToolEnvelope": true,
+        "mcpToolAccess": true,
+        "dispatcherRequiredForDelegation": true
+      },
+      "fallbackMode": "dispatcher_only",
+      "notes": [
+        "Home-level generated entries are adapter outputs for this machine and are not source-of-truth.",
+        "Cross-agent execution should go through the shared dispatcher even if host-visible skill wrappers are generated."
+      ]
+    }
+  ]
+}

@@ -124,6 +124,26 @@
   - `strategy`
   - `reuse_candidates[]`
   - `created_profiles[]`
+  - `primary_coordinator_agent_id`
+  - `final_synthesizer_agent_id`
+  - `merge_owner_agent_id`
+  - `interaction_mode`
+  - `interaction_phases[]`
+  - `selection_basis[]`
+  - `merge_strategy`
+  - `conflict_policy`
+  - `host_execution_strategy`
+  - `context_isolation_policy`
+  - `roundtable_policy`
+  - `discussion_rounds[]`
   - `spawned_instances[]`
   - `orchestration_budget`
   - `delegation_depth`
+- `interaction_phases[]` dataset contract:
+  - `{ phase_id, label, mode, goal, participants[], depends_on[], outputs[], status, merge_into? }`
+  - V1 phase `mode`: `sequential|parallel_read_only|roundtable`
+- `spawned_instances[]` dataset contract extensions:
+  - `phase_id`, `execution_mode`, `execution_backend`, `context_window_id`, `isolation_mode`, `read_only`, `ownership_scope[]`, `depends_on[]`, `merge_target`
+- V1 orchestration safety policy:
+  - `parallel_read_only` branches may not directly mutate shared artifacts;
+  - any `write/apply/merge` must be routed through one `merge_owner_agent_id`.

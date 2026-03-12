@@ -4,6 +4,217 @@
   "version": "v1",
   "templates": [
     {
+      "id": "contract-audit",
+      "name": "Contract Audit Specialist",
+      "specializationScope": "Validate spec/contracts/task payloads/generated manifests and report contract drift before apply/verify.",
+      "defaultSkills": [
+        "doc"
+      ],
+      "defaultTools": [
+        "Contract validator",
+        "QMD retrieval"
+      ],
+      "defaultMcp": [
+        "qmd",
+        "context7"
+      ],
+      "defaultRules": [
+        "Source of truth: спецификация проекта",
+        "Universal workflow backbone"
+      ],
+      "capabilityOptimization": {
+        "enabled": true,
+        "refreshMode": "on_run",
+        "sourcePolicy": "official_first",
+        "trialMode": "shadow",
+        "promotionMode": "human_approve",
+        "minShadowSampleSize": 3,
+        "staleAfterHours": 168
+      },
+      "workflowBackbone": {
+        "version": "universal_backbone_v1",
+        "commonCoreSteps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize",
+          "step_9_publish_snapshots"
+        ],
+        "roleWindow": {
+          "entryStep": "step_5_role_window",
+          "exitStep": "step_6_role_exit_decision",
+          "purpose": "Проверить контрактный слой и вернуть bounded report о нарушениях и safe apply envelope.",
+          "internalSteps": [
+            "role_collect_contract_sources",
+            "role_compare_contract_shapes",
+            "role_prepare_result_package"
+          ]
+        },
+        "stepExecutionPolicy": {
+          "skippedStepsAllowed": true,
+          "skippedStepStatus": "skipped"
+        },
+        "supportsDynamicInstances": true
+      },
+      "capabilityContract": {
+        "mission": "Detect contract mismatches early and return a precise safe-to-apply decision.",
+        "entryCriteria": [
+          "Task changes spec, contracts, payload shape, routing, or generated manifest semantics.",
+          "At least one source-of-truth contract must stay consistent after the change."
+        ],
+        "doneCondition": "All contract gaps are classified and a clear apply/verify decision is returned.",
+        "outputSchema": "contract_audit_report.v1"
+      }
+    },
+    {
+      "id": "docs-spec-sync",
+      "name": "Docs & Spec Sync Specialist",
+      "specializationScope": "Ensure spec, ADR, README, glossary, and generated docs stay consistent after process or terminology changes.",
+      "defaultSkills": [
+        "doc"
+      ],
+      "defaultTools": [
+        "QMD retrieval"
+      ],
+      "defaultMcp": [
+        "qmd"
+      ],
+      "defaultRules": [
+        "Source of truth: спецификация проекта",
+        "Consistency sync rule (mandatory)"
+      ],
+      "capabilityOptimization": {
+        "enabled": true,
+        "refreshMode": "on_run",
+        "sourcePolicy": "official_first",
+        "trialMode": "shadow",
+        "promotionMode": "human_approve",
+        "minShadowSampleSize": 3,
+        "staleAfterHours": 168
+      },
+      "workflowBackbone": {
+        "version": "universal_backbone_v1",
+        "commonCoreSteps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize",
+          "step_9_publish_snapshots"
+        ],
+        "roleWindow": {
+          "entryStep": "step_5_role_window",
+          "exitStep": "step_6_role_exit_decision",
+          "purpose": "Проверить синхронность source-of-truth документов и вернуть report по gaps и required updates.",
+          "internalSteps": [
+            "role_collect_docs_sources",
+            "role_compare_human_machine_contracts",
+            "role_prepare_result_package"
+          ]
+        },
+        "stepExecutionPolicy": {
+          "skippedStepsAllowed": true,
+          "skippedStepStatus": "skipped"
+        },
+        "supportsDynamicInstances": true
+      },
+      "capabilityContract": {
+        "mission": "Keep docs and specs aligned so the runtime model and human-readable model do not drift apart.",
+        "entryCriteria": [
+          "Task changes terms, workflow, governance, contracts, or generated docs.",
+          "Multiple docs are expected to repeat the same operational fact."
+        ],
+        "doneCondition": "All required source updates are identified and consistency status is explicit.",
+        "outputSchema": "docs_sync_report.v1"
+      }
+    },
+    {
+      "id": "automation-governance",
+      "name": "Automation Governance Specialist",
+      "specializationScope": "Validate scheduled-run definitions, sync state, stale automation config, and safe automation execution contracts.",
+      "defaultSkills": [
+        "doc",
+        "agent-telemetry"
+      ],
+      "defaultTools": [
+        "Telemetry report builder",
+        "QMD retrieval"
+      ],
+      "defaultMcp": [
+        "qmd"
+      ],
+      "defaultRules": [
+        "Universal workflow backbone",
+        "Universal Self-Improvement Loop"
+      ],
+      "capabilityOptimization": {
+        "enabled": true,
+        "refreshMode": "on_run",
+        "sourcePolicy": "official_first",
+        "trialMode": "shadow",
+        "promotionMode": "human_approve",
+        "minShadowSampleSize": 3,
+        "staleAfterHours": 168
+      },
+      "workflowBackbone": {
+        "version": "universal_backbone_v1",
+        "commonCoreSteps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize",
+          "step_9_publish_snapshots"
+        ],
+        "roleWindow": {
+          "entryStep": "step_5_role_window",
+          "exitStep": "step_6_role_exit_decision",
+          "purpose": "Проверить safe automation execution contract и вернуть policy-ready результат для scheduler-слоя.",
+          "internalSteps": [
+            "role_collect_automation_sources",
+            "role_check_schedule_policy",
+            "role_prepare_result_package"
+          ]
+        },
+        "stepExecutionPolicy": {
+          "skippedStepsAllowed": true,
+          "skippedStepStatus": "skipped"
+        },
+        "supportsDynamicInstances": true
+      },
+      "capabilityContract": {
+        "mission": "Ensure scheduled agent runs are safe, auditable, and synchronized with current governance.",
+        "entryCriteria": [
+          "Task introduces or changes automations, schedules, or automation-backed runs.",
+          "Execution host and stale/sync policy must be validated."
+        ],
+        "doneCondition": "Automation decision includes sync status, stale status, and allowed execution path.",
+        "outputSchema": "automation_governance_report.v1"
+      }
+    },
+    {
       "id": "retrieval-audit",
       "name": "Retrieval Audit Specialist",
       "specializationScope": "Audit retrieval quality, evidence coverage, and source consistency for decision-making tasks.",
@@ -208,6 +419,76 @@
         ],
         "doneCondition": "Telemetry report passes consistency checks and KPI formulas resolve without manual prompt inspection.",
         "outputSchema": "telemetry_audit_report.v1"
+      }
+    },
+    {
+      "id": "terminology-consistency-audit",
+      "name": "Terminology Consistency Specialist",
+      "specializationScope": "Validate glossary-driven labels/chips/taxonomy and prevent terminology drift across UI, docs, and routing contracts.",
+      "defaultSkills": [
+        "doc"
+      ],
+      "defaultTools": [
+        "Terminology consistency audit",
+        "QMD retrieval"
+      ],
+      "defaultMcp": [
+        "qmd"
+      ],
+      "defaultRules": [
+        "OAP Design Rule",
+        "Consistency Sync"
+      ],
+      "capabilityOptimization": {
+        "enabled": true,
+        "refreshMode": "on_run",
+        "sourcePolicy": "official_first",
+        "trialMode": "shadow",
+        "promotionMode": "human_approve",
+        "minShadowSampleSize": 3,
+        "staleAfterHours": 168
+      },
+      "workflowBackbone": {
+        "version": "universal_backbone_v1",
+        "commonCoreSteps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize",
+          "step_9_publish_snapshots"
+        ],
+        "roleWindow": {
+          "entryStep": "step_5_role_window",
+          "exitStep": "step_6_role_exit_decision",
+          "purpose": "Проверить консистентность терминов и taxonomy между glossary, UI и governance-контрактами.",
+          "internalSteps": [
+            "role_collect_term_sources",
+            "role_validate_label_consistency",
+            "role_prepare_result_package"
+          ]
+        },
+        "stepExecutionPolicy": {
+          "skippedStepsAllowed": true,
+          "skippedStepStatus": "skipped"
+        },
+        "supportsDynamicInstances": true
+      },
+      "capabilityContract": {
+        "mission": "Keep terminology and chip labels canonical so UI remains consistent with glossary source-of-truth.",
+        "entryCriteria": [
+          "Task changes labels, chips, taxonomy, glossary entries, or terminology rules.",
+          "At least two sources can drift on naming (UI/docs/contracts/routes)."
+        ],
+        "doneCondition": "Glossary-driven labels are canonical and all cross-source terminology drifts are explicitly reported.",
+        "outputSchema": "terminology_consistency_report.v1"
       }
     }
   ]

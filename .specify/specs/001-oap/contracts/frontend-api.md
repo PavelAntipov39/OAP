@@ -24,6 +24,19 @@
     - run-level stability metrics (`pass_at_5`, `fact_coverage_mean`, `schema_valid_rate`, `trajectory_compliance_rate`, `judge_disagreement_rate`, `cost_per_success`);
     - impact metrics (`recommendation_executability_rate`, `evidence_link_coverage`, `time_to_action_p50`, `validated_impact_rate`);
     - gate result (`passed|warning|failed`) with thresholds and failed metrics.
+- `agent-improvement-history.json`
+  - source: unified feed from `docs/agents/registry.yaml` + `artifacts/candidate_*.json` + `.logs/agents/*.jsonl` in `ops-web/scripts/build_content_index.mjs`.
+  - contains normalized `improvement_history_event[]`:
+    - `event_id`, `occurred_at`, `agent_id`
+    - `source_tool`: `codex|copilot|claude|other`
+    - `source_ref`
+    - `extracted_value`
+    - `applied_change`
+    - `target_scope`
+    - `result_status`: `captured|applied|verified|rollback|rejected`
+    - `result_note`
+    - optional: `metric_name`, `metric_delta`
+    - `evidence_refs[]`
 
 ## 3. Stability Rules
 - Required card fields are defined by `docs/subservices/oap/agents-card.schema.json`.
@@ -46,7 +59,18 @@
       - `strategy`: `reuse_existing|create_new|mixed`
       - `reuse_candidates[]`: `{ profile_id, name, score, decision, rationale }`
       - `created_profiles[]`: `{ id, name, created_by_agent_id, parent_template_id?, derived_from_agent_id?, specialization_scope, lifecycle, creation_reason, capability_contract }`
-      - `spawned_instances[]`: `{ instance_id, profile_id, parent_instance_id?, root_agent_id, task_id, purpose, depth, allowed_skills[], allowed_tools[], allowed_mcp[], applied_rules[], input_refs[], output_refs[], status, verify_status }`
+      - `primary_coordinator_agent_id`, `final_synthesizer_agent_id`, `merge_owner_agent_id`
+      - `interaction_mode`: `sequential|parallel_read_only|mixed_phased`
+      - `interaction_phases[]`: `{ phase_id, label, mode, goal, participants[], depends_on[], outputs[], status, merge_into? }`
+      - `selection_basis[]`, `merge_strategy`, `conflict_policy`
+      - `host_execution_strategy`: `{ default_host_id, selected_backend_by_default, context_isolation_policy, host_policies{} }`
+      - `context_isolation_policy`
+      - `roundtable_policy`: `{ enabled, moderated_by, max_rounds, transcript_visibility, allow_free_chat, allow_position_sharing, summary_required_each_round }`
+      - `discussion_rounds[]`: `{ round_id, round_index, participants[], summary, status, next_owner_agent_id? }`
+      - `spawned_instances[]`: `{ instance_id, profile_id, parent_instance_id?, root_agent_id, task_id, purpose, depth, allowed_skills[], allowed_tools[], allowed_mcp[], applied_rules[], input_refs[], output_refs[], status, verify_status, phase_id?, execution_mode?, execution_backend?, context_window_id?, isolation_mode?, read_only?, ownership_scope[]?, depends_on[]?, merge_target? }`
+      - `spawned_instances[]` are executable runtime state, not suggestion-only metadata:
+        `status = planned|running|completed|failed|skipped`
+      - spawned instances must inherit the same `workflowBackbone` family as the parent task and return into the same canonical cycle after delegation
       - `orchestration_budget`: `{ max_instances, max_tokens, max_wall_clock_minutes, max_no_progress_hops }`
       - `delegation_depth`
   - `ab_test_plan`:
@@ -62,9 +86,26 @@
 
 ## 4.1 Unified Agent Drawer Contract
 - Canonical drawer contract for agent deep-links:
-  - `#/agents?agent=<agent-id>&tab=<tab-key>`
-  - `tab-key`: `overview|mcp|skills_rules|tasks_quality|memory_context|improvements`
-- `analyst-agent` must use the same routing/drawer contract as other modern agents (no special-case routing branch).
+  - top-level agents use one canonical route: `#/agents?agent=<agent-id>&tab=overview`
+  - legacy tab aliases `mcp|skills_rules|tasks_quality|memory_context|improvements` remain backward-compatible in URLs,
+    but must canonicalize to `tab=overview` for every top-level agent shown in `#/agents`
+  - active modal deep-links are applied on top of the same `overview` route; tab switching is not a product-level navigation model anymore
+- Drawer modal deep-links:
+  - `modal=capability_comparison`
+  - `modal=capability_journal&capability=<row-key>`
+  - `modal=metrics_catalog&entity=<agent-id>`
+  - `modal=operative_memory&entity=<session-id|latest>`
+  - `modal=lessons&entity=agent|global`
+  - `modal=sessions&entity=<session-id|latest>`
+  - `modal=improvement_history`
+- Top-level cards must use one canonical composer seeded from `analyst-agent` overview:
+  1. `Шапка`
+  2. `Анализ эффективности агента`
+  3. `Как работает ИИ агент`
+  4. `Рабочий контур агента`
+  5. `Память`
+  6. `Риски`
+- `analyst-agent` must use the same routing/drawer contract as other top-level agents (no special-case routing branch).
 - Persistent agent profiles displayed in the drawer must also expose:
   - `agentClass`: `core|specialist`
   - `origin`: `manual|dynamic`
@@ -77,7 +118,13 @@
     - `roleWindow`: `{ entryStep, exitStep, purpose, internalSteps[] }`
     - `stepExecutionPolicy`: `{ skippedStepsAllowed, skippedStepStatus }`
     - `supportsDynamicInstances`: whether spawned specialist instances are expected to use the same backbone
+- UI must treat `workflowBackbone` as invariant across top-level and delegated execution:
+  host-specific adapter differences may affect invocation transport, but they must not introduce a different cycle model in the frontend.
 - Dynamic specialist profiles are shown on `#/agents` immediately after creation once the registry/manifests are refreshed.
+- Task card and task session UI must expose orchestration in three layers:
+  - `Схема работы агентов`: mode, coordinator, merge owner, phases, host backend, instance graph;
+  - `История`: group phase-aware events by `phase_id`, show `execution_mode`, `read_only`, optional `round_index`;
+  - `agent-flow`: show orchestration mode decision and phase graph with merge point.
 
 ## 4.2 Dynamic UI Section Contract
 - Governance/docs and assistant entry-files must reference UI nodes by `section_id`.

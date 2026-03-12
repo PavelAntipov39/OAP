@@ -74,7 +74,7 @@ class CandidateProcessorTests(unittest.TestCase):
     def test_assessment_contains_collaboration_hints(self):
         item = {
             "candidate_id": "cand_ui_ops",
-            "text": "UI redesign and MCP integration validation for release safety",
+            "text": "UI redesign and retrieval validation for release safety",
             "links": ["https://example.com/ui"],
         }
         result = candidate.assess_candidate(
@@ -87,7 +87,7 @@ class CandidateProcessorTests(unittest.TestCase):
         self.assertIn("collaboration_hints", result)
         suggested = result["collaboration_hints"]["suggested_agents"]
         self.assertIn("designer-agent", suggested)
-        self.assertIn("ops-agent", suggested)
+        self.assertIn("reader-agent", suggested)
         self.assertIn("ab_plan", result)
         self.assertGreaterEqual(int(result["ab_plan"]["sessions_required"]), 3)
         self.assertLessEqual(int(result["ab_plan"]["sessions_required"]), 8)

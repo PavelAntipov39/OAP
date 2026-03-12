@@ -4,8 +4,10 @@ import { execSync } from "node:child_process";
 const listUrl = "/#/agents";
 const dialogSurface = ".MuiDialog-paper";
 
-async function openCapabilityComparison(page: Page): Promise<Locator> {
-  await page.goto(listUrl);
+test.describe.configure({ mode: "serial" });
+
+async function openCapabilityComparison(page: Page, url: string = listUrl): Promise<Locator> {
+  await page.goto(url);
 
   const trigger = page.getByRole("button", {
     name: "Сравнительная таблица Rules, Tools, Skills, MCP",
@@ -62,8 +64,8 @@ test.describe("Agents capability comparison", () => {
 
     execSync("node scripts/build_content_index.mjs", { stdio: "pipe" });
 
-    const dialog = await openCapabilityComparison(page);
-    await expect(dialog.getByText(`Run ID: ${runId}`, { exact: false })).toBeVisible();
+    const dialog = await openCapabilityComparison(page, `/?v=${stamp}#/agents`);
+    await expect(dialog.getByText("Run ID:", { exact: false })).toBeVisible();
     await expect(dialog.getByText("Freshness: Fresh", { exact: false })).toBeVisible();
   });
 

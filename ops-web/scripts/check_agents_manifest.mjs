@@ -17,8 +17,11 @@ const assistantGovernanceContractPath = path.join(
   "assistant-governance.json",
 );
 const uiSectionContractPath = path.join(opsRoot, "src", "generated", "ui-section-contract.json");
+const hostCatalogPath = path.join(repoRoot, "docs", "agents", "host_agnostic_agent_catalog.yaml");
+const hostSmokeReportPath = path.join(opsRoot, "src", "generated", "host-agent-smoke.json");
 const schemaPath = path.resolve(opsRoot, "..", "docs", "subservices", "oap", "agents-card.schema.json");
 const MODERN_AGENT_IDS = new Set(["analyst-agent", "designer-agent"]);
+const REQUIRED_TOP_LEVEL_HOSTS = ["codex", "claude_code", "github_copilot"];
 const UNIVERSAL_BACKBONE_STEPS = [
   "step_0_intake",
   "step_1_start",
@@ -38,14 +41,6 @@ const EXPECTED_ROLE_WINDOW_BY_AGENT = {
   "reader-agent": {
     internalSteps: ["role_collect_sources", "role_synthesize_answer", "role_check_coverage"],
     purposeIncludes: "контекст",
-  },
-  "data-agent": {
-    internalSteps: ["role_check_dataset_quality", "role_analyze_drift", "role_prepare_data_action"],
-    purposeIncludes: "качество данных",
-  },
-  "ops-agent": {
-    internalSteps: ["role_triage_operation", "role_select_runbook_action", "role_prepare_ops_resolution"],
-    purposeIncludes: "runbook",
   },
   "designer-agent": {
     internalSteps: ["role_review_ui_kit", "role_review_clarity", "role_prepare_design_actions"],
@@ -242,6 +237,96 @@ async function validateGovernanceNoHardcodedUiLabels() {
   }
 }
 
+function normalizeStringArray(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => asString(item))
+    .filter(Boolean);
+}
+
+function sortedUniqueStrings(value) {
+  return [...new Set(normalizeStringArray(value))].sort((a, b) => a.localeCompare(b));
+}
+
+async function validateTopLevelHostGovernance(manifest) {
+  const catalogRaw = await fs.readFile(hostCatalogPath, "utf8");
+  const catalog = JSON.parse(catalogRaw);
+  assert(Array.isArray(catalog?.agents), "host_catalog_agents_missing");
+
+  const smokeRaw = await fs.readFile(hostSmokeReportPath, "utf8");
+  const smokeReport = JSON.parse(smokeRaw);
+
+  const topLevelAgents = catalog.agents.filter((item) => item && item.kind === "top_level");
+  assert(topLevelAgents.length > 0, "host_catalog_top_level_empty");
+
+  const manifestAgents = manifest.agents.filter((item) => item && item.lifecycle === "active");
+  const manifestAgentIds = sortedUniqueStrings(manifestAgents.map((item) => item.id));
+  const catalogAgentIds = sortedUniqueStrings(topLevelAgents.map((item) => item.id));
+  assert(
+    JSON.stringify(manifestAgentIds) === JSON.stringify(catalogAgentIds),
+    `top_level_manifest_catalog_mismatch:${JSON.stringify(manifestAgentIds)}!=${JSON.stringify(catalogAgentIds)}`,
+  );
+
+  const manifestById = new Map(manifestAgents.map((item) => [item.id, item]));
+
+  for (const topLevelAgent of topLevelAgents) {
+    const agentId = asString(topLevelAgent?.id);
+    assertNonEmptyString(agentId, "host_catalog_top_level_id_missing");
+    assert(asString(topLevelAgent?.sourceProfileId) === agentId, `host_catalog_source_profile_mismatch:${agentId}`);
+    assertNonEmptyString(topLevelAgent?.mission, `host_catalog_mission_missing:${agentId}`);
+    assertStringArray(topLevelAgent?.useWhen, `host_catalog_use_when_invalid:${agentId}`);
+    assert(topLevelAgent.useWhen.length > 0, `host_catalog_use_when_empty:${agentId}`);
+    assertStringArray(topLevelAgent?.avoidWhen, `host_catalog_avoid_when_invalid:${agentId}`);
+    assert(topLevelAgent.avoidWhen.length > 0, `host_catalog_avoid_when_empty:${agentId}`);
+    assertNonEmptyString(topLevelAgent?.inputContract, `host_catalog_input_contract_missing:${agentId}`);
+    assertNonEmptyString(topLevelAgent?.outputContract, `host_catalog_output_contract_missing:${agentId}`);
+    assertStringArray(topLevelAgent?.allowedSkills, `host_catalog_allowed_skills_invalid:${agentId}`);
+    assert(topLevelAgent.allowedSkills.length > 0, `host_catalog_allowed_skills_empty:${agentId}`);
+    assertStringArray(topLevelAgent?.allowedTools, `host_catalog_allowed_tools_invalid:${agentId}`);
+    assert(topLevelAgent.allowedTools.length > 0, `host_catalog_allowed_tools_empty:${agentId}`);
+    assertStringArray(topLevelAgent?.allowedRules, `host_catalog_allowed_rules_invalid:${agentId}`);
+    assert(topLevelAgent.allowedRules.length > 0, `host_catalog_allowed_rules_empty:${agentId}`);
+    assertStringArray(topLevelAgent?.supportedHosts, `host_catalog_supported_hosts_invalid:${agentId}`);
+    assert(
+      REQUIRED_TOP_LEVEL_HOSTS.every((hostId) => topLevelAgent.supportedHosts.includes(hostId)),
+      `host_catalog_supported_hosts_missing:${agentId}:${JSON.stringify(topLevelAgent.supportedHosts)}`,
+    );
+    assertStringArray(topLevelAgent?.supportedScopes, `host_catalog_supported_scopes_invalid:${agentId}`);
+    assert(topLevelAgent.supportedScopes.includes("repo"), `host_catalog_supported_scopes_repo_missing:${agentId}`);
+    assertStringArray(topLevelAgent?.handoffTargets, `host_catalog_handoffs_invalid:${agentId}`);
+    assert(topLevelAgent.handoffTargets.length > 0, `host_catalog_handoffs_empty:${agentId}`);
+    assertStringArray(topLevelAgent?.stopConditions, `host_catalog_stop_conditions_invalid:${agentId}`);
+    assert(topLevelAgent.stopConditions.length > 0, `host_catalog_stop_conditions_empty:${agentId}`);
+    assert(topLevelAgent?.executionMode === "sequential", `host_catalog_execution_mode_invalid:${agentId}`);
+
+    const manifestAgent = manifestById.get(agentId);
+    assert(manifestAgent, `top_level_agent_missing_in_manifest:${agentId}`);
+    assert(["core", "specialist"].includes(manifestAgent.agentClass), `top_level_agent_class_invalid:${agentId}:${manifestAgent.agentClass}`);
+    assert(manifestAgent.lifecycle === "active", `top_level_agent_lifecycle_invalid:${agentId}:${manifestAgent.lifecycle}`);
+    assert(
+      asString(manifestAgent.capabilityContract?.outputSchema).length > 0,
+      `top_level_agent_capability_output_schema_missing:${agentId}`,
+    );
+    assert(
+      manifestAgent.workflowBackbone?.supportsDynamicInstances === true,
+      `top_level_agent_dynamic_instances_disabled:${agentId}`,
+    );
+  }
+
+  assert(smokeReport && typeof smokeReport === "object", "host_smoke_report_invalid");
+  assert(smokeReport.available === true, "host_smoke_report_unavailable");
+  assert(smokeReport.ok === true, "host_smoke_report_not_ok");
+  assert(
+    JSON.stringify(sortedUniqueStrings(smokeReport.active_top_level_agents)) === JSON.stringify(catalogAgentIds),
+    `host_smoke_active_set_mismatch:${JSON.stringify(smokeReport.active_top_level_agents)}!=${JSON.stringify(catalogAgentIds)}`,
+  );
+  assert(smokeReport.handoff_validation?.ok === true, "host_smoke_handoff_validation_failed");
+  for (const hostId of REQUIRED_TOP_LEVEL_HOSTS) {
+    assert(smokeReport.hosts?.[hostId], `host_smoke_missing_host:${hostId}`);
+    assert(smokeReport.hosts[hostId].ok === true, `host_smoke_host_not_ok:${hostId}`);
+  }
+}
+
 async function assertFileExists(relPath, message) {
   const raw = typeof relPath === "string" ? relPath.trim() : "";
   if (!raw) return;
@@ -281,6 +366,7 @@ async function main() {
   assert(manifest && typeof manifest === "object", "manifest_invalid_shape");
   assert(typeof manifest.updatedAt === "string" && manifest.updatedAt.length > 0, "manifest_missing_updatedAt");
   assert(Array.isArray(manifest.agents), "manifest_missing_agents");
+  await validateTopLevelHostGovernance(manifest);
 
   for (const agent of manifest.agents) {
     assert(typeof agent.id === "string" && agent.id.length > 0, "agent_missing_id");

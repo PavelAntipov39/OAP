@@ -49,7 +49,9 @@ class AgentOrchestrationTests(unittest.TestCase):
         self.assertEqual(created_profiles, [])
         self.assertGreaterEqual(len(plan["reuse_candidates"]), 1)
         self.assertGreaterEqual(len(plan["spawned_instances"]), 1)
-        self.assertEqual(plan["spawned_instances"][0]["profile_id"], "designer-agent")
+        self.assertTrue(any(item["profile_id"] == "designer-agent" for item in plan["spawned_instances"]))
+        self.assertEqual(plan["interaction_mode"], "mixed_phased")
+        self.assertEqual(plan["primary_coordinator_agent_id"], "analyst-agent")
 
     def test_create_profile_from_template_when_no_reuse_candidate(self):
         template_payload = {
@@ -89,8 +91,10 @@ class AgentOrchestrationTests(unittest.TestCase):
         self.assertIn(plan["strategy"], {"create_new", "mixed"})
         self.assertEqual(len(created_profiles), 1)
         self.assertEqual(len(plan["created_profiles"]), 1)
-        self.assertEqual(plan["spawned_instances"][0]["profile_id"], created_profiles[0]["id"])
-        self.assertEqual(plan["spawned_instances"][0]["verify_status"], "pending")
+        self.assertTrue(any(item["profile_id"] == created_profiles[0]["id"] for item in plan["spawned_instances"]))
+        self.assertTrue(any(item["verify_status"] == "pending" for item in plan["spawned_instances"]))
+        self.assertEqual(plan["interaction_mode"], "mixed_phased")
+        self.assertTrue(any(phase["mode"] == "roundtable" for phase in plan["interaction_phases"]))
 
     def test_duplicate_specialist_is_reused_by_scope_and_tool_envelope(self):
         template_payload = {
@@ -145,7 +149,63 @@ class AgentOrchestrationTests(unittest.TestCase):
 
         self.assertEqual(created_profiles, [])
         self.assertEqual(plan["created_profiles"], [])
-        self.assertEqual(plan["spawned_instances"][0]["profile_id"], "specialist-retrieval-existing")
+        self.assertTrue(any(item["profile_id"] == "specialist-retrieval-existing" for item in plan["spawned_instances"]))
+        self.assertEqual(plan["merge_owner_agent_id"], "analyst-agent")
+
+    def test_terminology_triggers_prioritize_terminology_consistency_template(self):
+        template_payload = {
+            "templates": [
+                {
+                    "id": "retrieval-audit",
+                    "name": "Retrieval Audit Specialist",
+                    "specializationScope": "Audit retrieval evidence quality",
+                    "defaultSkills": ["doc"],
+                    "defaultTools": ["QMD retrieval"],
+                    "defaultMcp": ["qmd"],
+                    "defaultRules": ["QMD Retrieval Policy"],
+                    "capabilityContract": {
+                        "mission": "Validate retrieval quality.",
+                        "entryCriteria": ["Task requires retrieval audit."],
+                        "doneCondition": "Evidence map is validated.",
+                        "outputSchema": "retrieval_audit_report.v1",
+                    },
+                },
+                {
+                    "id": "terminology-consistency-audit",
+                    "name": "Terminology Consistency Specialist",
+                    "specializationScope": "Validate glossary-driven labels and taxonomy consistency.",
+                    "defaultSkills": ["doc"],
+                    "defaultTools": ["Terminology consistency audit", "QMD retrieval"],
+                    "defaultMcp": ["qmd"],
+                    "defaultRules": ["Consistency Sync"],
+                    "capabilityContract": {
+                        "mission": "Keep labels and taxonomy canonical.",
+                        "entryCriteria": ["Task changes labels, chips, or glossary terms."],
+                        "doneCondition": "Drifts are detected and canonical labels are enforced.",
+                        "outputSchema": "terminology_consistency_report.v1",
+                    },
+                },
+            ]
+        }
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            catalog_path = Path(tmp_dir) / "templates.yaml"
+            catalog_path.write_text(json.dumps(template_payload, ensure_ascii=False), encoding="utf-8")
+            plan, created_profiles = orch.build_collaboration_plan(
+                task_id="imp:reader:chip-taxonomy",
+                root_agent_id="analyst-agent",
+                purpose="Validate glossary labels for source_kind and semantic_layer chips",
+                hint_text="glossary chip semantic_layer source_kind терминология консистентность",
+                registry={"agents": []},
+                suggested_agents=[],
+                target_metric="terminology_consistency_rate",
+                owner_section="memory_context",
+                template_catalog_path=catalog_path,
+            )
+
+        self.assertEqual(len(created_profiles), 1)
+        self.assertEqual(created_profiles[0]["parentTemplateId"], "terminology-consistency-audit")
+        self.assertIn("Terminology consistency audit", created_profiles[0]["tools"])
+        self.assertTrue(any(item["source_template_id"] == "terminology-consistency-audit" for item in plan["spawned_instances"]))
 
 
 if __name__ == "__main__":

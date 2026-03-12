@@ -24,15 +24,16 @@
 4. Section consistency
 - Порядок разделов карточки фиксированный (смотри `README.md`) и одинаков для всех агентов.
 - Изменение порядка допустимо только после обновления этого документа и согласования в PR.
-- Для `analyst-agent` и `designer-agent` в modern-режиме раздел называется `Навыки и Правила` и включает:
-  - используемые навыки (с текстом только из `SKILL.md`),
-  - правила (кратко на карточке, полный текст в модалке),
-  - рекомендации (ICE + prompt actions).
-- Блок `Целевые метрики` для modern-агентов размещается в разделе `Задачи и качество`, а не в разделе `Навыки и Правила`.
-- Для `analyst-agent` обязателен блок `План работы` на основе
-  `docs/subservices/oap/agents/analyst-agent/OPERATING_PLAN.md`.
-- Для `designer-agent` обязателен блок `План работы` на основе
-  `docs/subservices/oap/agents/designer-agent/OPERATING_PLAN.md`.
+- Канонический порядок top-level карточки:
+  1. `Шапка`
+  2. `Анализ эффективности агента`
+  3. `Как работает ИИ агент`
+  4. `Рабочий контур агента`
+  5. `Память`
+  6. `Риски`
+- `analyst-agent` overview является эталонным composer для всех top-level карточек.
+- Любое изменение структуры, порядка секций, CTA или modal behavior делается один раз в общем composer и автоматически распространяется на `orchestrator-agent`, `analyst-agent`, `designer-agent`, `reader-agent`.
+- `designer-agent` является владельцем UX sign-off для порядка секций, названий блоков, empty-state copy и modal microcopy в карточках top-level агентов.
 - Для `designer-agent` в разделе `Навыки и Правила` обязателен отдельный блок
   `UX-гейт качества перед передачей в разработку`.
 - Этот UX-гейт для `designer-agent` включает 5 обязательных проверок:
@@ -52,22 +53,37 @@
   - `Процесс по которому работает ИИ агент`;
   - `Путь` (гиперссылка на `*_OPERATING_PLAN.md`, открывает модалку);
   - `История логов ИИ агента` (гиперссылка на `.logs/agents/<agent-id>.jsonl`, открывает модалку).
+- Контракт отображения capabilities в `Плане работы` обязателен:
+  - step-level `Навыки/Инструменты/MCP` трактуются как baseline minimum;
+  - модалка operating plan должна явно показывать, что runtime-capabilities выбираются динамически;
+  - dynamic-capabilities в UI/текстах должны быть трассируемы к `used*`/`available*` в registry и `capability_snapshot`.
+- Для dynamic-capability решений в copy и таблицах обязательно сохранять policy-gates:
+  - `official-first`,
+  - `shadow trial`,
+  - `human approve`.
 - URL карточки агента является source-of-truth для выбранного агента и вкладки:
-  - канонический формат: `#/agents?agent=<agent-id>&tab=<tab-key>`;
-  - канонические `tab-key`: `overview`, `mcp`, `skills_rules`, `tasks_quality`, `memory_context`, `improvements`;
-  - для legacy-агентов `tab=mcp` всегда канонизируется в `tab=overview`;
-  - переключение вкладок внутри drawer должно использовать `replaceState`, а не `pushState`.
+  - канонический формат для top-level: `#/agents?agent=<agent-id>&tab=overview`;
+  - legacy `tab`-значения `mcp`, `skills_rules`, `tasks_quality`, `memory_context`, `improvements` допускаются только как backward-compatible aliases и всегда канонизируются в `tab=overview`;
+  - `overview` является единственным продуктовым экраном карточки; отдельная tab-навигация внутри drawer не используется;
+  - канонизация должна использовать `replaceState`, а не `pushState`.
 - Совместное решение продакт-дизайнера и разработчика: каждая пользовательская модалка с содержательным контекстом должна иметь собственный URL-state.
   - канонический формат для модалок в `#/agents`: `modal=<modal-key>` и, при необходимости, `entity=<stable-id>` (допускается доменный ключ, например `capability=<row-key>`);
+  - для всех top-level агентов канонические modal keys: `metrics_catalog`, `operative_memory`, `lessons`, `sessions`, `improvement_history`, `capability_comparison`, `capability_journal`;
   - модалка должна открываться напрямую по URL и восстанавливаться после reload;
   - копирование ссылки должно включать активную модалку и её сущность;
   - если modal/entity невалидны, роут канонизируется в ближайшее валидное состояние (родительская страница или родительская модалка).
+  - microcopy модалок (`LessonsDrawer`, `SessionsDrawer`) фиксируется без инженерного жаргона: только пользовательские статусы и понятные подписи; возвращать тех-текст в шапку нельзя без отдельного product sign-off.
 - Исключения из modal URL-контракта:
   - `toast`/snackbar;
   - короткие confirm/cancel диалоги без аналитического контента;
   - tooltip/popover-инлайн подсказки.
 - Для всех агентов используется единый `UnifiedAgentDrawer`.
-- Канонический runtime-контракт drawer строится на analyst-card composition с tab deep-link (`overview`, `mcp`, `skills_rules`, `tasks_quality`, `memory_context`, `improvements`) и fallback-данными для остальных профилей.
+- Канонический runtime-контракт drawer строится на analyst-card composition с `overview-first` deep-link и fallback-данными для остальных профилей.
+- Top-level agent governance обязателен:
+  - новая роль не может появиться в active UI только потому, что для нее написали prompt или export adapter;
+  - для top-level роли обязательны `distinct mission`, `measurable task class`, `bounded delegation`, telemetry viability KPI и host adapter support;
+  - если это не доказано, роль должна жить как `runtime specialist`, а не как новая карточка в active registry;
+  - source-of-truth для этого правила: `docs/subservices/oap/MULTI_AGENT_GOVERNANCE.md`.
 - Special-case drawer для конкретного агента не является каноническим решением.
 
 5. Status language
@@ -127,16 +143,23 @@
   - метаданные ниже идут последовательными блоками: `цикл`, `токены`, `артефакты`, `MCP`, `навыки`;
   - технические поля (`trace_id`, `recommendation_id`, `process`, `строка лога`) переносятся в вторичный блок `Тех. детали`;
   - default-процесс `vibe_coding` не показывается пользователю как отдельное поле.
-- Для legacy-эталонной карточки `analyst-agent` обязателен отдельный блок `Эффективность агента`:
-  - строки: `ср. расход токенов за цикл`, `ср. кол-во ошибок за цикл`, `ср. кол-во задач создано за цикл`;
+- Для канонической top-level карточки, построенной на `analyst-agent` overview, обязателен единый блок `Анализ эффективности агента`:
+  - на карточке показывается не более 6 метрик;
+  - блок объединяет операционные метрики цикла и ключевые метрики бизнес-результата;
+  - в дефолтный набор входят: `ср. расход токенов за цикл`, `ср. кол-во ошибок за цикл`, `ср. кол-во задач создано за цикл`, `кол-во задач от агента`, `средний прирост целевой метрики`, `доля рекомендаций с подтвержденным эффектом`;
   - строка `ср. кол-во ошибок за цикл` открывает модалку с журналом ошибок;
-  - ссылка `Посмотреть остальные метрики` открывает модалку с дополнительными workflow/benchmark-показателями эффективности.
-- Для legacy-эталонной карточки `analyst-agent` обязателен отдельный блок `Ключевые метрики агента`:
+  - ссылка `Открыть остальные метрики` открывает модалку с дополнительными workflow/benchmark-показателями эффективности.
+- Для экрана `#/agents` в блоке `Целевые метрики` у modern-агентов обязателен отдельный подпункт `Жизнеспособность роли`:
+  - цель подпункта: показать, нужен ли агент как отдельная активная роль, а не только его качество выполнения;
+  - в базовый набор входят: `invocation_count`, `completed_task_count`, `handoff_use_rate`, `overlap_with_analyst_rate`, `verification_pass_rate`, `orchestration_cost_per_completed_task`, `host_adapter_sync_status`;
+  - каждая строка обязана иметь tooltip `Как считается` с формулой и источником telemetry;
+  - `host_adapter_sync_status` показывается человеко-понятным статусом (`синхронизированы`, `частично синхронизированы`, `не подключены`, `архив`), а не raw enum.
+- Метрики, которые исторически относятся к блоку `Ключевые метрики агента`, должны быть явно отмечены в UI бейджем `Ключевая`:
   - `кол-во задач от агента`;
   - `средний прирост целевой метрики` (по документированному `expectedDelta`, в п.п.);
   - `доля рекомендаций с подтвержденным эффектом`;
   - `доля рекомендаций с документально подтвержденной актуальностью`.
-- Для всех метрик в этих двух блоках tooltip `Как считается` обязателен и содержит:
+- Для всех метрик в блоке `Анализ эффективности агента` и в модалке остальных метрик tooltip `Как считается` обязателен и содержит:
   - краткое объяснение;
   - формулу;
   - источник данных;
@@ -185,7 +208,7 @@
 - `taskBoard` (optional): `source`, `statusFlow`, `fields`, `filters`
 - `task_brief.context_package.operational_memory[]`: `{ key, title, value, source_ref?, updated_at? }`
 - `task_brief.context_package.collaboration_plan`:
-  `{ analysis_required, suggested_agents[], selected_agents[], rationale, reviewed_at? }`
+  `{ analysis_required, suggested_agents[], selected_agents[], rationale, reviewed_at?, primary_coordinator_agent_id?, merge_owner_agent_id?, interaction_mode?, interaction_phases[]?, roundtable_policy?, discussion_rounds[]?, spawned_instances[]? }`
 - `task_brief.context_package.ab_test_plan`:
   `{ enabled, sessions_required, pass_rule, target_metric, expected_delta_pct, guardrails[], rollback_on_fail }`
 - `usedMcp[]`: `name`, `status`, `note`, `impactInNumbers`, `practicalTasks[]`
@@ -217,6 +240,24 @@
 - Для workflow-метрик (plan/verify/lessons/replan/autonomous/elegance) также обязателен tooltip `Как считается`.
 - Для benchmark-метрик также обязателен tooltip `Как считается` с формулой и источником (`artifacts/agent_benchmark_summary.json`).
 - Для экрана `#/agent-flow` обязательно показывать фактический `file trace` (read/write) на основе telemetry-полей `artifacts_read[]` и `artifacts_written[]`; если данных нет, показывать явный fallback-warning.
+- Для канонических шагов в `#/agent-flow` обязательны inline-маркеры с пользовательскими формулировками:
+  - `step_8_verify` -> `Проверка результата`,
+  - `step_9_publish_snapshots` -> `Обновление способностей` (если `capabilityOptimization.enabled=true` и `refreshMode=on_run`).
+- В `agent-flow` не использовать отдельный блок `runtime-контуры`; критичные развилки показывать прямо внутри основного пайплайна.
+- В карточке задачи orchestration показывать отдельным блоком `Схема работы агентов`, а не прятать внутри `Контекст и доказательства`.
+- Блок `Схема работы агентов` обязан показывать:
+  - координатора,
+  - режим взаимодействия,
+  - фазы с участниками и merge point,
+  - host backend по умолчанию,
+  - instance graph,
+  - если включен roundtable: policy и summary-only историю раундов.
+- В истории задачи phase-aware события группировать по `phase_id`; для событий orchestration показывать `execution_mode`, `read_only`, `round_index` при наличии.
+- Для `agent-flow` вместо BPMN-виджета использовать Mermaid-схему `unified capability optimization loop`.
+- В `agent-flow` не показывать отдельный блок `Таймлайн шагов`; основной фокус экрана: пайплайн, loop-схема и факт последнего цикла.
+- Для onboarding новичков в `agent-flow` обязателен короткий путь чтения:
+  - `пайплайн -> Mermaid loop -> последний цикл -> file-trace`.
+- Runtime-факт последнего цикла допускается analyst-first; для остальных агентов показывать тот же UX-путь без детализации runtime-таймлайна.
 - Для `file trace` запрещено определять тип файла только по пути:
   - UI обязан разделять `source_kind` (что это за источник) и `semantic_layer` (какой capability-слой читался/писался);
   - `source_kind` используется как основной label в UI и в агрегируемых session/file-метриках;
@@ -238,6 +279,8 @@
 - `trajectory_compliance_rate = trajectory_ok_attempts / attempts_total`.
 - `judge_disagreement_rate = judge_disagreed / human_checked` (меньше — лучше, целевой верхний порог).
 - `cost_per_success = total_cost_usd / successful_cases`.
+- `verification_pass_rate = unique task_id с verify_started и verify_passed / unique task_id с verify_started`.
+- `lesson_capture_rate = unique task_id с lesson_captured / (unique task_id с verify_passed + unique task_id с verify_failed)`.
 
 ## Правила для раздела `Задачи` (task board)
 - Статусы фиксированные: `backlog`, `ready`, `in_progress`, `ab_test`, `in_review`, `done`.

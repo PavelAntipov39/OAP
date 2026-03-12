@@ -1,0 +1,3576 @@
+{
+  "generated_at": "2026-03-12T06:34:03.263042Z",
+  "version": "agent_telemetry_report.v1",
+  "log_dir": "../.logs/agents",
+  "totals": {
+    "agents_total": 6,
+    "events_total": 441,
+    "tasks_total": 55,
+    "review_errors_total": 0,
+    "trace_coverage_pct": 99.55,
+    "recommendations_suggested": 0,
+    "recommendations_applied": 0,
+    "recommendation_action_rate": null,
+    "plan_coverage_rate": 23.64,
+    "verification_pass_rate": 100,
+    "lesson_capture_rate": 88.24,
+    "replan_rate": 0,
+    "autonomous_bugfix_rate": 0,
+    "elegance_gate_rate": 0,
+    "ab_test_started_count": 0,
+    "ab_test_checkpoint_count": 0,
+    "ab_test_passed_count": 0,
+    "ab_test_failed_count": 0,
+    "rollback_applied_count": 0,
+    "ab_pass_rate": null,
+    "rollback_rate": null,
+    "ab_guardrail_breached_count": 0,
+    "ab_guardrail_breach_rate": null,
+    "ab_sessions_required": null,
+    "ab_sessions_progress_rate": null,
+    "reuse_hit_rate": null,
+    "reuse_rate": null,
+    "new_profile_creation_rate": null,
+    "specialist_verify_pass_rate": 100,
+    "profile_sprawl_ratio": 0,
+    "tool_overreach_rate": 0,
+    "routing_accuracy_rate": null,
+    "parallelization_gain_rate": 0,
+    "merge_conflict_rate": null,
+    "no_progress_loop_rate": 0,
+    "verification_coverage_rate": 30.91,
+    "orchestration_cost_per_completed_task": 2900.65,
+    "orchestration_cost_unit": "token_proxy",
+    "time_to_verify_min": 0,
+    "canonical_event_compliance_rate": 97.51,
+    "non_canonical_events_total": 11,
+    "capability_refresh_coverage_rate": 70.91,
+    "stale_table_rate": 2.5,
+    "shadow_trial_completion_rate": 84.62,
+    "promotion_blocked_by_stale_total": 1,
+    "missing_canonical_steps": [
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "cycle-20260303-1",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_6_role_exit_decision",
+          "step_7_contract_gate",
+          "step_8_error_channel",
+          "step_9_publish_snapshots"
+        ],
+        "observed_canonical_steps": [
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_7_apply_or_publish",
+          "step_8_verify",
+          "step_9_finalize"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "cycle-20260303-2",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_6_role_exit_decision",
+          "step_7_contract_gate",
+          "step_8_error_channel",
+          "step_9_publish_snapshots"
+        ],
+        "observed_canonical_steps": [
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_7_apply_or_publish",
+          "step_8_verify",
+          "step_9_finalize"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "routing-rollout-20260308",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_8_error_channel",
+          "step_9_publish_snapshots"
+        ],
+        "observed_canonical_steps": [
+          "step_3_orchestration",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_9_finalize"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-20260306-work-contour-model",
+        "missing_steps": [
+          "step_0_intake",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_publish_snapshots"
+        ],
+        "observed_canonical_steps": [
+          "step_1_start",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_9_finalize"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-canonical-cycle-20260307204846",
+        "missing_steps": [],
+        "observed_canonical_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_error_channel",
+          "step_8_verify",
+          "step_9_finalize",
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-canonical-cycle-20260307204908",
+        "missing_steps": [],
+        "observed_canonical_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_error_channel",
+          "step_8_verify",
+          "step_9_finalize",
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-canonical-cycle-20260309150426",
+        "missing_steps": [],
+        "observed_canonical_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_error_channel",
+          "step_8_verify",
+          "step_9_finalize",
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-canonical-cycle-20260309150905",
+        "missing_steps": [],
+        "observed_canonical_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_error_channel",
+          "step_8_verify",
+          "step_9_finalize",
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-canonical-cycle-20260310040557",
+        "missing_steps": [],
+        "observed_canonical_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_error_channel",
+          "step_8_verify",
+          "step_9_finalize",
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-canonical-cycle-20260310050907",
+        "missing_steps": [],
+        "observed_canonical_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_error_channel",
+          "step_8_verify",
+          "step_9_finalize",
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-canonical-cycle-20260310054036",
+        "missing_steps": [],
+        "observed_canonical_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_error_channel",
+          "step_8_verify",
+          "step_9_finalize",
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-canonical-cycle-20260310063706",
+        "missing_steps": [],
+        "observed_canonical_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_error_channel",
+          "step_8_verify",
+          "step_9_finalize",
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-card-waiting-human-rollout-20260310",
+        "missing_steps": [
+          "step_0_intake",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize",
+          "step_9_publish_snapshots"
+        ],
+        "observed_canonical_steps": [
+          "step_1_start"
+        ],
+        "non_canonical_steps": [
+          "completed",
+          "lesson_captured",
+          "verify_passed",
+          "verify_started"
+        ]
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773127568745",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773128457679",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773138246453",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773145127697",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773150714272",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773152609664",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773163528819",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773176907693",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773179006961",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773239834045",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773239927844",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773240098635",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773240201878",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773240761228",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773252729138",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773252995135",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773253021954",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773253903215",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773254484561",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773254725995",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773257286473",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773257388761",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773257616041",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773257846930",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773258009325",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773268130580",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773268286624",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "analyst-agent",
+        "task_id": "task-ui-refresh-1773297238196",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "data-agent",
+        "task_id": "task-cap-refresh-smoke-20260310",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "designer-agent",
+        "task_id": "task-board-cycle-column-20260306",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_contract_gate",
+          "step_8_error_channel",
+          "step_9_publish_snapshots"
+        ],
+        "observed_canonical_steps": [
+          "step_7_apply_or_publish",
+          "step_8_verify",
+          "step_9_finalize"
+        ],
+        "non_canonical_steps": [
+          "finish"
+        ]
+      },
+      {
+        "agent_id": "designer-agent",
+        "task_id": "task-board-cycle-entity-fix-20260306",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_contract_gate",
+          "step_8_error_channel",
+          "step_9_publish_snapshots"
+        ],
+        "observed_canonical_steps": [
+          "step_7_apply_or_publish",
+          "step_8_verify",
+          "step_9_finalize"
+        ],
+        "non_canonical_steps": [
+          "finish"
+        ]
+      },
+      {
+        "agent_id": "designer-agent",
+        "task_id": "task-canonical-cycle-designer-agent-20260310072410",
+        "missing_steps": [],
+        "observed_canonical_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_error_channel",
+          "step_8_verify",
+          "step_9_finalize",
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "designer-agent",
+        "task_id": "task-cap-refresh-smoke-20260310",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "ops-agent",
+        "task_id": "task-cap-refresh-smoke-20260310",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "reader-agent",
+        "task_id": "task-20260306-fix-skills-source",
+        "missing_steps": [
+          "step_0_intake",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize",
+          "step_9_publish_snapshots"
+        ],
+        "observed_canonical_steps": [
+          "step_1_start"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "reader-agent",
+        "task_id": "task-20260306-memory-section-tooltips",
+        "missing_steps": [
+          "step_0_intake",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_contract_gate",
+          "step_8_error_channel",
+          "step_9_publish_snapshots"
+        ],
+        "observed_canonical_steps": [
+          "step_1_start",
+          "step_7_apply_or_publish",
+          "step_8_verify",
+          "step_9_finalize"
+        ],
+        "non_canonical_steps": [
+          "verify_ui"
+        ]
+      },
+      {
+        "agent_id": "reader-agent",
+        "task_id": "task-20260306-remove-benchmark-block",
+        "missing_steps": [
+          "step_0_intake",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_contract_gate",
+          "step_8_error_channel",
+          "step_9_publish_snapshots"
+        ],
+        "observed_canonical_steps": [
+          "step_1_start",
+          "step_7_apply_or_publish",
+          "step_8_verify",
+          "step_9_finalize"
+        ],
+        "non_canonical_steps": [
+          "scope_confirmed"
+        ]
+      },
+      {
+        "agent_id": "reader-agent",
+        "task_id": "task-20260306-skill-source-check",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_publish_snapshots"
+        ],
+        "observed_canonical_steps": [
+          "step_9_finalize"
+        ],
+        "non_canonical_steps": [
+          "inspect_skills_source",
+          "verify_answer"
+        ]
+      },
+      {
+        "agent_id": "reader-agent",
+        "task_id": "task-20260306-work-contour-model",
+        "missing_steps": [
+          "step_0_intake",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize",
+          "step_9_publish_snapshots"
+        ],
+        "observed_canonical_steps": [
+          "step_1_start"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "reader-agent",
+        "task_id": "task-canonical-cycle-reader-agent-20260310072410",
+        "missing_steps": [],
+        "observed_canonical_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_error_channel",
+          "step_8_verify",
+          "step_9_finalize",
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "reader-agent",
+        "task_id": "task-cap-refresh-smoke-20260310",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize"
+        ],
+        "observed_canonical_steps": [
+          "step_9_publish_snapshots"
+        ],
+        "non_canonical_steps": []
+      },
+      {
+        "agent_id": "retrieval-audit",
+        "task_id": "task-smoke",
+        "missing_steps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize",
+          "step_9_publish_snapshots"
+        ],
+        "observed_canonical_steps": [
+          "step_3_orchestration",
+          "step_6_role_exit_decision"
+        ],
+        "non_canonical_steps": []
+      }
+    ],
+    "artifact_refs_total": 1050,
+    "unknown_source_refs_total": 141,
+    "unknown_semantic_refs_total": 416,
+    "unknown_source_rate": 13.43,
+    "unknown_semantic_rate": 39.62,
+    "file_ops_v2_events_total": 146,
+    "file_ops_eligible_events": 146,
+    "file_ops_explicit_events": 0,
+    "file_ops_mirrored_legacy_events": 146,
+    "file_ops_step_fallback_events": 0,
+    "file_ops_operations_total": 270,
+    "file_ops_delete_total": 0,
+    "file_ops_explicit_coverage_pct": 0,
+    "file_ops_fallback_share_pct": 100,
+    "taxonomy_warning_threshold_pct": 10,
+    "taxonomy_warnings": [
+      {
+        "code": "unknown_source_rate_high",
+        "message": "source_kind contains too many unknown values",
+        "threshold_pct": 10,
+        "actual_pct": 13.43
+      },
+      {
+        "code": "unknown_semantic_rate_high",
+        "message": "semantic_layer contains too many unknown values",
+        "threshold_pct": 10,
+        "actual_pct": 39.62
+      }
+    ],
+    "orchestration_counts": {
+      "profile_reused": 0,
+      "profile_created": 0,
+      "instance_spawned": 1,
+      "instance_completed": 1,
+      "instance_failed": 0,
+      "retire_recommended": 0,
+      "mode_selected": 0,
+      "phase_started": 0,
+      "phase_completed": 0,
+      "roundtable_started": 0,
+      "roundtable_round_completed": 0,
+      "roundtable_converged": 0,
+      "merge_started": 0,
+      "merge_completed": 0,
+      "merge_conflicts_detected": 0,
+      "merge_conflicts_resolved": 0,
+      "specialist_verify_pass": 1,
+      "specialist_verify_total": 1,
+      "created_profiles": 0,
+      "tool_overreach_events": 0,
+      "tasks_with_parallel_mode": 0,
+      "no_progress_tasks": 0
+    },
+    "capability_refresh_counts": {
+      "started": 40,
+      "completed": 39,
+      "failed": 0,
+      "shadow_trial_plan_refreshed": 39,
+      "shadow_trial_judged": 33,
+      "snapshot_published": 39,
+      "stale_detected": 1,
+      "completed_tasks": 39
+    },
+    "invalid_lines": 0
+  },
+  "warnings": [
+    {
+      "code": "unknown_source_rate_high",
+      "message": "source_kind contains too many unknown values",
+      "threshold_pct": 10,
+      "actual_pct": 13.43
+    },
+    {
+      "code": "unknown_semantic_rate_high",
+      "message": "semantic_layer contains too many unknown values",
+      "threshold_pct": 10,
+      "actual_pct": 39.62
+    }
+  ],
+  "agents": [
+    {
+      "agent_id": "analyst-agent",
+      "events_total": 352,
+      "tasks_total": 41,
+      "invocation_count": 42,
+      "completed_tasks": 41,
+      "completed_task_count": 41,
+      "failed_tasks": 0,
+      "review_errors_total": 0,
+      "review_error_rate": 0,
+      "tokens_in_total": 112062,
+      "tokens_out_total": 27808,
+      "p95_duration_ms": null,
+      "trace_coverage_pct": 99.43,
+      "run_coverage_pct": 100,
+      "recommendations_suggested": 0,
+      "recommendations_applied": 0,
+      "recommendation_action_rate": null,
+      "plan_coverage_rate": 26.83,
+      "verification_pass_rate": 100,
+      "lesson_capture_rate": 100,
+      "replan_rate": 0,
+      "autonomous_bugfix_rate": 0,
+      "elegance_gate_rate": 0,
+      "ab_test_started_count": 0,
+      "ab_test_checkpoint_count": 0,
+      "ab_test_passed_count": 0,
+      "ab_test_failed_count": 0,
+      "rollback_applied_count": 0,
+      "ab_pass_rate": null,
+      "rollback_rate": null,
+      "ab_guardrail_breached_count": 0,
+      "ab_guardrail_breach_rate": null,
+      "ab_sessions_required": null,
+      "ab_sessions_progress_rate": null,
+      "ab_target_delta_p50": null,
+      "plan_signal_tasks": 11,
+      "mcp_usage": [
+        {
+          "name": "context7",
+          "events": 2
+        },
+        {
+          "name": "qmd",
+          "events": 1
+        }
+      ],
+      "tool_usage": [
+        {
+          "name": "QMD retrieval",
+          "events": 2
+        }
+      ],
+      "profile_usage": [],
+      "status_counts": {
+        "started": 38,
+        "verify_started": 11,
+        "verify_passed": 13,
+        "lesson_captured": 11,
+        "completed": 70,
+        "planned": 24,
+        "recommendation_suggested": 8,
+        "recommendation_applied": 8,
+        "capability_refresh_started": 34,
+        "shadow_trial_plan_refreshed": 33,
+        "shadow_trial_judged": 33,
+        "capability_snapshot_published": 33,
+        "capability_refresh_completed": 33,
+        "capability_stale_detected": 1
+      },
+      "first_event_at": "2026-03-02T09:00:00Z",
+      "last_event_at": "2026-03-12T06:33:58.438491Z",
+      "n_decisions": 0,
+      "n_candidates_total": 0,
+      "n_selected_total": 0,
+      "decision_time_avg_ms": null,
+      "reuse_hit_rate": null,
+      "reuse_rate": null,
+      "new_profile_creation_rate": null,
+      "specialist_verify_pass_rate": null,
+      "profile_sprawl_ratio": 0,
+      "tool_overreach_rate": null,
+      "routing_accuracy_rate": null,
+      "parallelization_gain_rate": 0,
+      "merge_conflict_rate": null,
+      "no_progress_loop_rate": 0,
+      "verification_coverage_rate": 26.83,
+      "orchestration_cost_per_completed_task": 3411.46,
+      "orchestration_cost_unit": "token_proxy",
+      "time_to_verify_min": null,
+      "handoff_use_rate": 0,
+      "overlap_with_analyst_rate": null,
+      "host_adapter_sync_status": "synced",
+      "host_adapter_sync": {
+        "status": "synced",
+        "claude_code": true,
+        "github_copilot": true
+      },
+      "canonical_event_compliance_rate": 98.86,
+      "non_canonical_events_total": 4,
+      "capability_refresh_coverage_rate": 80.49,
+      "stale_table_rate": 2.94,
+      "shadow_trial_completion_rate": 100,
+      "promotion_blocked_by_stale_total": 1,
+      "missing_canonical_steps": [
+        {
+          "task_id": "cycle-20260303-1",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_6_role_exit_decision",
+            "step_7_contract_gate",
+            "step_8_error_channel",
+            "step_9_publish_snapshots"
+          ],
+          "observed_canonical_steps": [
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_7_apply_or_publish",
+            "step_8_verify",
+            "step_9_finalize"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "cycle-20260303-2",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_6_role_exit_decision",
+            "step_7_contract_gate",
+            "step_8_error_channel",
+            "step_9_publish_snapshots"
+          ],
+          "observed_canonical_steps": [
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_7_apply_or_publish",
+            "step_8_verify",
+            "step_9_finalize"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "routing-rollout-20260308",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_8_error_channel",
+            "step_9_publish_snapshots"
+          ],
+          "observed_canonical_steps": [
+            "step_3_orchestration",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_9_finalize"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-20260306-work-contour-model",
+          "missing_steps": [
+            "step_0_intake",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_publish_snapshots"
+          ],
+          "observed_canonical_steps": [
+            "step_1_start",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_9_finalize"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-canonical-cycle-20260307204846",
+          "missing_steps": [],
+          "observed_canonical_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_error_channel",
+            "step_8_verify",
+            "step_9_finalize",
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-canonical-cycle-20260307204908",
+          "missing_steps": [],
+          "observed_canonical_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_error_channel",
+            "step_8_verify",
+            "step_9_finalize",
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-canonical-cycle-20260309150426",
+          "missing_steps": [],
+          "observed_canonical_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_error_channel",
+            "step_8_verify",
+            "step_9_finalize",
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-canonical-cycle-20260309150905",
+          "missing_steps": [],
+          "observed_canonical_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_error_channel",
+            "step_8_verify",
+            "step_9_finalize",
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-canonical-cycle-20260310040557",
+          "missing_steps": [],
+          "observed_canonical_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_error_channel",
+            "step_8_verify",
+            "step_9_finalize",
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-canonical-cycle-20260310050907",
+          "missing_steps": [],
+          "observed_canonical_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_error_channel",
+            "step_8_verify",
+            "step_9_finalize",
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-canonical-cycle-20260310054036",
+          "missing_steps": [],
+          "observed_canonical_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_error_channel",
+            "step_8_verify",
+            "step_9_finalize",
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-canonical-cycle-20260310063706",
+          "missing_steps": [],
+          "observed_canonical_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_error_channel",
+            "step_8_verify",
+            "step_9_finalize",
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-card-waiting-human-rollout-20260310",
+          "missing_steps": [
+            "step_0_intake",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize",
+            "step_9_publish_snapshots"
+          ],
+          "observed_canonical_steps": [
+            "step_1_start"
+          ],
+          "non_canonical_steps": [
+            "completed",
+            "lesson_captured",
+            "verify_passed",
+            "verify_started"
+          ]
+        },
+        {
+          "task_id": "task-ui-refresh-1773127568745",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773128457679",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773138246453",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773145127697",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773150714272",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773152609664",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773163528819",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773176907693",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773179006961",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773239834045",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773239927844",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773240098635",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773240201878",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773240761228",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773252729138",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773252995135",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773253021954",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773253903215",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773254484561",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773254725995",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773257286473",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773257388761",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773257616041",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773257846930",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773258009325",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773268130580",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773268286624",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-ui-refresh-1773297238196",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        }
+      ],
+      "artifact_refs_total": 942,
+      "unknown_source_refs_total": 101,
+      "unknown_semantic_refs_total": 333,
+      "unknown_source_rate": 10.72,
+      "unknown_semantic_rate": 35.35,
+      "file_ops_v2_events_total": 144,
+      "file_ops_eligible_events": 144,
+      "file_ops_explicit_events": 0,
+      "file_ops_mirrored_legacy_events": 144,
+      "file_ops_step_fallback_events": 0,
+      "file_ops_operations_total": 264,
+      "file_ops_delete_total": 0,
+      "file_ops_explicit_coverage_pct": 0,
+      "file_ops_fallback_share_pct": 100,
+      "taxonomy_warning_threshold_pct": 10,
+      "taxonomy_warnings": [
+        {
+          "code": "unknown_source_rate_high",
+          "message": "source_kind contains too many unknown values",
+          "threshold_pct": 10,
+          "actual_pct": 10.72
+        },
+        {
+          "code": "unknown_semantic_rate_high",
+          "message": "semantic_layer contains too many unknown values",
+          "threshold_pct": 10,
+          "actual_pct": 35.35
+        }
+      ],
+      "orchestration_counts": {
+        "profile_reused": 0,
+        "profile_created": 0,
+        "instance_spawned": 0,
+        "instance_completed": 0,
+        "instance_failed": 0,
+        "retire_recommended": 0,
+        "specialist_verify_pass": 0,
+        "specialist_verify_total": 0,
+        "created_profiles": 0,
+        "tool_overreach_events": 0
+      },
+      "capability_refresh_counts": {
+        "started": 34,
+        "completed": 33,
+        "failed": 0,
+        "shadow_trial_plan_refreshed": 33,
+        "shadow_trial_judged": 33,
+        "snapshot_published": 33,
+        "stale_detected": 1,
+        "completed_tasks": 33
+      }
+    },
+    {
+      "agent_id": "data-agent",
+      "events_total": 5,
+      "tasks_total": 1,
+      "invocation_count": 1,
+      "completed_tasks": 1,
+      "completed_task_count": 1,
+      "failed_tasks": 0,
+      "review_errors_total": 0,
+      "review_error_rate": 0,
+      "tokens_in_total": 208,
+      "tokens_out_total": 96,
+      "p95_duration_ms": null,
+      "trace_coverage_pct": 100,
+      "run_coverage_pct": 100,
+      "recommendations_suggested": 0,
+      "recommendations_applied": 0,
+      "recommendation_action_rate": null,
+      "plan_coverage_rate": 0,
+      "verification_pass_rate": null,
+      "lesson_capture_rate": null,
+      "replan_rate": null,
+      "autonomous_bugfix_rate": 0,
+      "elegance_gate_rate": null,
+      "ab_test_started_count": 0,
+      "ab_test_checkpoint_count": 0,
+      "ab_test_passed_count": 0,
+      "ab_test_failed_count": 0,
+      "rollback_applied_count": 0,
+      "ab_pass_rate": null,
+      "rollback_rate": null,
+      "ab_guardrail_breached_count": 0,
+      "ab_guardrail_breach_rate": null,
+      "ab_sessions_required": null,
+      "ab_sessions_progress_rate": null,
+      "ab_target_delta_p50": null,
+      "plan_signal_tasks": 0,
+      "mcp_usage": [],
+      "tool_usage": [],
+      "profile_usage": [],
+      "status_counts": {
+        "completed": 1,
+        "capability_refresh_started": 1,
+        "shadow_trial_plan_refreshed": 1,
+        "capability_snapshot_published": 1,
+        "capability_refresh_completed": 1
+      },
+      "first_event_at": "2026-03-10T06:42:02.260885Z",
+      "last_event_at": "2026-03-10T06:42:02.270697Z",
+      "n_decisions": 0,
+      "n_candidates_total": 0,
+      "n_selected_total": 0,
+      "decision_time_avg_ms": null,
+      "reuse_hit_rate": null,
+      "reuse_rate": null,
+      "new_profile_creation_rate": null,
+      "specialist_verify_pass_rate": null,
+      "profile_sprawl_ratio": 0,
+      "tool_overreach_rate": null,
+      "routing_accuracy_rate": null,
+      "parallelization_gain_rate": 0,
+      "merge_conflict_rate": null,
+      "no_progress_loop_rate": 0,
+      "verification_coverage_rate": 0,
+      "orchestration_cost_per_completed_task": 304,
+      "orchestration_cost_unit": "token_proxy",
+      "time_to_verify_min": null,
+      "handoff_use_rate": 0,
+      "overlap_with_analyst_rate": 0,
+      "host_adapter_sync_status": "archived",
+      "host_adapter_sync": {
+        "status": "archived",
+        "claude_code": false,
+        "github_copilot": false
+      },
+      "canonical_event_compliance_rate": 100,
+      "non_canonical_events_total": 0,
+      "capability_refresh_coverage_rate": 100,
+      "stale_table_rate": 0,
+      "shadow_trial_completion_rate": 0,
+      "promotion_blocked_by_stale_total": 0,
+      "missing_canonical_steps": [
+        {
+          "task_id": "task-cap-refresh-smoke-20260310",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        }
+      ],
+      "artifact_refs_total": 8,
+      "unknown_source_refs_total": 0,
+      "unknown_semantic_refs_total": 8,
+      "unknown_source_rate": 0,
+      "unknown_semantic_rate": 100,
+      "file_ops_v2_events_total": 0,
+      "file_ops_eligible_events": 0,
+      "file_ops_explicit_events": 0,
+      "file_ops_mirrored_legacy_events": 0,
+      "file_ops_step_fallback_events": 0,
+      "file_ops_operations_total": 0,
+      "file_ops_delete_total": 0,
+      "file_ops_explicit_coverage_pct": null,
+      "file_ops_fallback_share_pct": null,
+      "taxonomy_warning_threshold_pct": 10,
+      "taxonomy_warnings": [
+        {
+          "code": "unknown_semantic_rate_high",
+          "message": "semantic_layer contains too many unknown values",
+          "threshold_pct": 10,
+          "actual_pct": 100
+        }
+      ],
+      "orchestration_counts": {
+        "profile_reused": 0,
+        "profile_created": 0,
+        "instance_spawned": 0,
+        "instance_completed": 0,
+        "instance_failed": 0,
+        "retire_recommended": 0,
+        "specialist_verify_pass": 0,
+        "specialist_verify_total": 0,
+        "created_profiles": 0,
+        "tool_overreach_events": 0
+      },
+      "capability_refresh_counts": {
+        "started": 1,
+        "completed": 1,
+        "failed": 0,
+        "shadow_trial_plan_refreshed": 1,
+        "shadow_trial_judged": 0,
+        "snapshot_published": 1,
+        "stale_detected": 0,
+        "completed_tasks": 1
+      }
+    },
+    {
+      "agent_id": "designer-agent",
+      "events_total": 34,
+      "tasks_total": 4,
+      "invocation_count": 4,
+      "completed_tasks": 4,
+      "completed_task_count": 4,
+      "failed_tasks": 0,
+      "review_errors_total": 0,
+      "review_error_rate": 0,
+      "tokens_in_total": 3040,
+      "tokens_out_total": 2138,
+      "p95_duration_ms": null,
+      "trace_coverage_pct": 100,
+      "run_coverage_pct": 100,
+      "recommendations_suggested": 0,
+      "recommendations_applied": 0,
+      "recommendation_action_rate": null,
+      "plan_coverage_rate": 25,
+      "verification_pass_rate": 100,
+      "lesson_capture_rate": 33.33,
+      "replan_rate": 0,
+      "autonomous_bugfix_rate": 0,
+      "elegance_gate_rate": 0,
+      "ab_test_started_count": 0,
+      "ab_test_checkpoint_count": 0,
+      "ab_test_passed_count": 0,
+      "ab_test_failed_count": 0,
+      "rollback_applied_count": 0,
+      "ab_pass_rate": null,
+      "rollback_rate": null,
+      "ab_guardrail_breached_count": 0,
+      "ab_guardrail_breach_rate": null,
+      "ab_sessions_required": null,
+      "ab_sessions_progress_rate": null,
+      "ab_target_delta_p50": null,
+      "plan_signal_tasks": 1,
+      "mcp_usage": [
+        {
+          "name": "Context7",
+          "events": 1
+        }
+      ],
+      "tool_usage": [],
+      "profile_usage": [],
+      "status_counts": {
+        "started": 5,
+        "verify_started": 3,
+        "verify_passed": 3,
+        "lesson_not_applicable": 2,
+        "completed": 7,
+        "capability_refresh_started": 2,
+        "shadow_trial_plan_refreshed": 2,
+        "capability_snapshot_published": 2,
+        "capability_refresh_completed": 2,
+        "planned": 3,
+        "recommendation_suggested": 1,
+        "recommendation_applied": 1,
+        "lesson_captured": 1
+      },
+      "first_event_at": "2026-03-06T21:48:50.464199Z",
+      "last_event_at": "2026-03-10T07:24:10.025074Z",
+      "n_decisions": 0,
+      "n_candidates_total": 0,
+      "n_selected_total": 0,
+      "decision_time_avg_ms": null,
+      "reuse_hit_rate": null,
+      "reuse_rate": null,
+      "new_profile_creation_rate": null,
+      "specialist_verify_pass_rate": null,
+      "profile_sprawl_ratio": 0,
+      "tool_overreach_rate": null,
+      "routing_accuracy_rate": null,
+      "parallelization_gain_rate": 0,
+      "merge_conflict_rate": null,
+      "no_progress_loop_rate": 0,
+      "verification_coverage_rate": 75,
+      "orchestration_cost_per_completed_task": 1294.5,
+      "orchestration_cost_unit": "token_proxy",
+      "time_to_verify_min": null,
+      "handoff_use_rate": 0,
+      "overlap_with_analyst_rate": 0,
+      "host_adapter_sync_status": "synced",
+      "host_adapter_sync": {
+        "status": "synced",
+        "claude_code": true,
+        "github_copilot": true
+      },
+      "canonical_event_compliance_rate": 94.12,
+      "non_canonical_events_total": 2,
+      "capability_refresh_coverage_rate": 50,
+      "stale_table_rate": 0,
+      "shadow_trial_completion_rate": 0,
+      "promotion_blocked_by_stale_total": 0,
+      "missing_canonical_steps": [
+        {
+          "task_id": "task-board-cycle-column-20260306",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_contract_gate",
+            "step_8_error_channel",
+            "step_9_publish_snapshots"
+          ],
+          "observed_canonical_steps": [
+            "step_7_apply_or_publish",
+            "step_8_verify",
+            "step_9_finalize"
+          ],
+          "non_canonical_steps": [
+            "finish"
+          ]
+        },
+        {
+          "task_id": "task-board-cycle-entity-fix-20260306",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_contract_gate",
+            "step_8_error_channel",
+            "step_9_publish_snapshots"
+          ],
+          "observed_canonical_steps": [
+            "step_7_apply_or_publish",
+            "step_8_verify",
+            "step_9_finalize"
+          ],
+          "non_canonical_steps": [
+            "finish"
+          ]
+        },
+        {
+          "task_id": "task-canonical-cycle-designer-agent-20260310072410",
+          "missing_steps": [],
+          "observed_canonical_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_error_channel",
+            "step_8_verify",
+            "step_9_finalize",
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-cap-refresh-smoke-20260310",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        }
+      ],
+      "artifact_refs_total": 28,
+      "unknown_source_refs_total": 9,
+      "unknown_semantic_refs_total": 24,
+      "unknown_source_rate": 32.14,
+      "unknown_semantic_rate": 85.71,
+      "file_ops_v2_events_total": 0,
+      "file_ops_eligible_events": 0,
+      "file_ops_explicit_events": 0,
+      "file_ops_mirrored_legacy_events": 0,
+      "file_ops_step_fallback_events": 0,
+      "file_ops_operations_total": 0,
+      "file_ops_delete_total": 0,
+      "file_ops_explicit_coverage_pct": null,
+      "file_ops_fallback_share_pct": null,
+      "taxonomy_warning_threshold_pct": 10,
+      "taxonomy_warnings": [
+        {
+          "code": "unknown_source_rate_high",
+          "message": "source_kind contains too many unknown values",
+          "threshold_pct": 10,
+          "actual_pct": 32.14
+        },
+        {
+          "code": "unknown_semantic_rate_high",
+          "message": "semantic_layer contains too many unknown values",
+          "threshold_pct": 10,
+          "actual_pct": 85.71
+        }
+      ],
+      "orchestration_counts": {
+        "profile_reused": 0,
+        "profile_created": 0,
+        "instance_spawned": 0,
+        "instance_completed": 0,
+        "instance_failed": 0,
+        "retire_recommended": 0,
+        "specialist_verify_pass": 0,
+        "specialist_verify_total": 0,
+        "created_profiles": 0,
+        "tool_overreach_events": 0
+      },
+      "capability_refresh_counts": {
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "shadow_trial_plan_refreshed": 2,
+        "shadow_trial_judged": 0,
+        "snapshot_published": 2,
+        "stale_detected": 0,
+        "completed_tasks": 2
+      }
+    },
+    {
+      "agent_id": "ops-agent",
+      "events_total": 5,
+      "tasks_total": 1,
+      "invocation_count": 1,
+      "completed_tasks": 1,
+      "completed_task_count": 1,
+      "failed_tasks": 0,
+      "review_errors_total": 0,
+      "review_error_rate": 0,
+      "tokens_in_total": 208,
+      "tokens_out_total": 96,
+      "p95_duration_ms": null,
+      "trace_coverage_pct": 100,
+      "run_coverage_pct": 100,
+      "recommendations_suggested": 0,
+      "recommendations_applied": 0,
+      "recommendation_action_rate": null,
+      "plan_coverage_rate": 0,
+      "verification_pass_rate": null,
+      "lesson_capture_rate": null,
+      "replan_rate": null,
+      "autonomous_bugfix_rate": 0,
+      "elegance_gate_rate": null,
+      "ab_test_started_count": 0,
+      "ab_test_checkpoint_count": 0,
+      "ab_test_passed_count": 0,
+      "ab_test_failed_count": 0,
+      "rollback_applied_count": 0,
+      "ab_pass_rate": null,
+      "rollback_rate": null,
+      "ab_guardrail_breached_count": 0,
+      "ab_guardrail_breach_rate": null,
+      "ab_sessions_required": null,
+      "ab_sessions_progress_rate": null,
+      "ab_target_delta_p50": null,
+      "plan_signal_tasks": 0,
+      "mcp_usage": [],
+      "tool_usage": [],
+      "profile_usage": [],
+      "status_counts": {
+        "completed": 1,
+        "capability_refresh_started": 1,
+        "shadow_trial_plan_refreshed": 1,
+        "capability_snapshot_published": 1,
+        "capability_refresh_completed": 1
+      },
+      "first_event_at": "2026-03-10T06:42:02.259802Z",
+      "last_event_at": "2026-03-10T06:42:02.269947Z",
+      "n_decisions": 0,
+      "n_candidates_total": 0,
+      "n_selected_total": 0,
+      "decision_time_avg_ms": null,
+      "reuse_hit_rate": null,
+      "reuse_rate": null,
+      "new_profile_creation_rate": null,
+      "specialist_verify_pass_rate": null,
+      "profile_sprawl_ratio": 0,
+      "tool_overreach_rate": null,
+      "routing_accuracy_rate": null,
+      "parallelization_gain_rate": 0,
+      "merge_conflict_rate": null,
+      "no_progress_loop_rate": 0,
+      "verification_coverage_rate": 0,
+      "orchestration_cost_per_completed_task": 304,
+      "orchestration_cost_unit": "token_proxy",
+      "time_to_verify_min": null,
+      "handoff_use_rate": 0,
+      "overlap_with_analyst_rate": 0,
+      "host_adapter_sync_status": "archived",
+      "host_adapter_sync": {
+        "status": "archived",
+        "claude_code": false,
+        "github_copilot": false
+      },
+      "canonical_event_compliance_rate": 100,
+      "non_canonical_events_total": 0,
+      "capability_refresh_coverage_rate": 100,
+      "stale_table_rate": 0,
+      "shadow_trial_completion_rate": 0,
+      "promotion_blocked_by_stale_total": 0,
+      "missing_canonical_steps": [
+        {
+          "task_id": "task-cap-refresh-smoke-20260310",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        }
+      ],
+      "artifact_refs_total": 8,
+      "unknown_source_refs_total": 0,
+      "unknown_semantic_refs_total": 8,
+      "unknown_source_rate": 0,
+      "unknown_semantic_rate": 100,
+      "file_ops_v2_events_total": 0,
+      "file_ops_eligible_events": 0,
+      "file_ops_explicit_events": 0,
+      "file_ops_mirrored_legacy_events": 0,
+      "file_ops_step_fallback_events": 0,
+      "file_ops_operations_total": 0,
+      "file_ops_delete_total": 0,
+      "file_ops_explicit_coverage_pct": null,
+      "file_ops_fallback_share_pct": null,
+      "taxonomy_warning_threshold_pct": 10,
+      "taxonomy_warnings": [
+        {
+          "code": "unknown_semantic_rate_high",
+          "message": "semantic_layer contains too many unknown values",
+          "threshold_pct": 10,
+          "actual_pct": 100
+        }
+      ],
+      "orchestration_counts": {
+        "profile_reused": 0,
+        "profile_created": 0,
+        "instance_spawned": 0,
+        "instance_completed": 0,
+        "instance_failed": 0,
+        "retire_recommended": 0,
+        "specialist_verify_pass": 0,
+        "specialist_verify_total": 0,
+        "created_profiles": 0,
+        "tool_overreach_events": 0
+      },
+      "capability_refresh_counts": {
+        "started": 1,
+        "completed": 1,
+        "failed": 0,
+        "shadow_trial_plan_refreshed": 1,
+        "shadow_trial_judged": 0,
+        "snapshot_published": 1,
+        "stale_detected": 0,
+        "completed_tasks": 1
+      }
+    },
+    {
+      "agent_id": "reader-agent",
+      "events_total": 43,
+      "tasks_total": 7,
+      "invocation_count": 7,
+      "completed_tasks": 5,
+      "completed_task_count": 5,
+      "failed_tasks": 0,
+      "review_errors_total": 0,
+      "review_error_rate": 0,
+      "tokens_in_total": 3040,
+      "tokens_out_total": 2138,
+      "p95_duration_ms": null,
+      "trace_coverage_pct": 100,
+      "run_coverage_pct": 100,
+      "recommendations_suggested": 0,
+      "recommendations_applied": 0,
+      "recommendation_action_rate": null,
+      "plan_coverage_rate": 14.29,
+      "verification_pass_rate": 100,
+      "lesson_capture_rate": 100,
+      "replan_rate": 0,
+      "autonomous_bugfix_rate": 0,
+      "elegance_gate_rate": 0,
+      "ab_test_started_count": 0,
+      "ab_test_checkpoint_count": 0,
+      "ab_test_passed_count": 0,
+      "ab_test_failed_count": 0,
+      "rollback_applied_count": 0,
+      "ab_pass_rate": null,
+      "rollback_rate": null,
+      "ab_guardrail_breached_count": 0,
+      "ab_guardrail_breach_rate": null,
+      "ab_sessions_required": null,
+      "ab_sessions_progress_rate": null,
+      "ab_target_delta_p50": null,
+      "plan_signal_tasks": 1,
+      "mcp_usage": [],
+      "tool_usage": [],
+      "profile_usage": [],
+      "status_counts": {
+        "verify_started": 3,
+        "started": 8,
+        "verify_passed": 4,
+        "lesson_not_applicable": 1,
+        "completed": 8,
+        "in_progress": 3,
+        "lesson_captured": 3,
+        "capability_refresh_started": 2,
+        "shadow_trial_plan_refreshed": 2,
+        "capability_snapshot_published": 2,
+        "capability_refresh_completed": 2,
+        "planned": 3,
+        "recommendation_suggested": 1,
+        "recommendation_applied": 1
+      },
+      "first_event_at": "2026-03-06T19:11:51.855321Z",
+      "last_event_at": "2026-03-10T07:24:10.025081Z",
+      "n_decisions": 0,
+      "n_candidates_total": 0,
+      "n_selected_total": 0,
+      "decision_time_avg_ms": null,
+      "reuse_hit_rate": null,
+      "reuse_rate": null,
+      "new_profile_creation_rate": null,
+      "specialist_verify_pass_rate": null,
+      "profile_sprawl_ratio": 0,
+      "tool_overreach_rate": null,
+      "routing_accuracy_rate": null,
+      "parallelization_gain_rate": 0,
+      "merge_conflict_rate": null,
+      "no_progress_loop_rate": 0,
+      "verification_coverage_rate": 42.86,
+      "orchestration_cost_per_completed_task": 1035.6,
+      "orchestration_cost_unit": "token_proxy",
+      "time_to_verify_min": null,
+      "handoff_use_rate": 0,
+      "overlap_with_analyst_rate": 14.29,
+      "host_adapter_sync_status": "synced",
+      "host_adapter_sync": {
+        "status": "synced",
+        "claude_code": true,
+        "github_copilot": true
+      },
+      "canonical_event_compliance_rate": 88.37,
+      "non_canonical_events_total": 5,
+      "capability_refresh_coverage_rate": 28.57,
+      "stale_table_rate": 0,
+      "shadow_trial_completion_rate": 0,
+      "promotion_blocked_by_stale_total": 0,
+      "missing_canonical_steps": [
+        {
+          "task_id": "task-20260306-fix-skills-source",
+          "missing_steps": [
+            "step_0_intake",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize",
+            "step_9_publish_snapshots"
+          ],
+          "observed_canonical_steps": [
+            "step_1_start"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-20260306-memory-section-tooltips",
+          "missing_steps": [
+            "step_0_intake",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_contract_gate",
+            "step_8_error_channel",
+            "step_9_publish_snapshots"
+          ],
+          "observed_canonical_steps": [
+            "step_1_start",
+            "step_7_apply_or_publish",
+            "step_8_verify",
+            "step_9_finalize"
+          ],
+          "non_canonical_steps": [
+            "verify_ui"
+          ]
+        },
+        {
+          "task_id": "task-20260306-remove-benchmark-block",
+          "missing_steps": [
+            "step_0_intake",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_contract_gate",
+            "step_8_error_channel",
+            "step_9_publish_snapshots"
+          ],
+          "observed_canonical_steps": [
+            "step_1_start",
+            "step_7_apply_or_publish",
+            "step_8_verify",
+            "step_9_finalize"
+          ],
+          "non_canonical_steps": [
+            "scope_confirmed"
+          ]
+        },
+        {
+          "task_id": "task-20260306-skill-source-check",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_publish_snapshots"
+          ],
+          "observed_canonical_steps": [
+            "step_9_finalize"
+          ],
+          "non_canonical_steps": [
+            "inspect_skills_source",
+            "verify_answer"
+          ]
+        },
+        {
+          "task_id": "task-20260306-work-contour-model",
+          "missing_steps": [
+            "step_0_intake",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize",
+            "step_9_publish_snapshots"
+          ],
+          "observed_canonical_steps": [
+            "step_1_start"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-canonical-cycle-reader-agent-20260310072410",
+          "missing_steps": [],
+          "observed_canonical_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_error_channel",
+            "step_8_verify",
+            "step_9_finalize",
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        },
+        {
+          "task_id": "task-cap-refresh-smoke-20260310",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_3_orchestration",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_6_role_exit_decision",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize"
+          ],
+          "observed_canonical_steps": [
+            "step_9_publish_snapshots"
+          ],
+          "non_canonical_steps": []
+        }
+      ],
+      "artifact_refs_total": 58,
+      "unknown_source_refs_total": 29,
+      "unknown_semantic_refs_total": 37,
+      "unknown_source_rate": 50,
+      "unknown_semantic_rate": 63.79,
+      "file_ops_v2_events_total": 0,
+      "file_ops_eligible_events": 0,
+      "file_ops_explicit_events": 0,
+      "file_ops_mirrored_legacy_events": 0,
+      "file_ops_step_fallback_events": 0,
+      "file_ops_operations_total": 0,
+      "file_ops_delete_total": 0,
+      "file_ops_explicit_coverage_pct": null,
+      "file_ops_fallback_share_pct": null,
+      "taxonomy_warning_threshold_pct": 10,
+      "taxonomy_warnings": [
+        {
+          "code": "unknown_source_rate_high",
+          "message": "source_kind contains too many unknown values",
+          "threshold_pct": 10,
+          "actual_pct": 50
+        },
+        {
+          "code": "unknown_semantic_rate_high",
+          "message": "semantic_layer contains too many unknown values",
+          "threshold_pct": 10,
+          "actual_pct": 63.79
+        }
+      ],
+      "orchestration_counts": {
+        "profile_reused": 0,
+        "profile_created": 0,
+        "instance_spawned": 0,
+        "instance_completed": 0,
+        "instance_failed": 0,
+        "retire_recommended": 0,
+        "specialist_verify_pass": 0,
+        "specialist_verify_total": 0,
+        "created_profiles": 0,
+        "tool_overreach_events": 0
+      },
+      "capability_refresh_counts": {
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "shadow_trial_plan_refreshed": 2,
+        "shadow_trial_judged": 0,
+        "snapshot_published": 2,
+        "stale_detected": 0,
+        "completed_tasks": 2
+      }
+    },
+    {
+      "agent_id": "retrieval-audit",
+      "events_total": 2,
+      "tasks_total": 1,
+      "invocation_count": 1,
+      "completed_tasks": 0,
+      "completed_task_count": 0,
+      "failed_tasks": 0,
+      "review_errors_total": 0,
+      "review_error_rate": null,
+      "tokens_in_total": 0,
+      "tokens_out_total": 0,
+      "p95_duration_ms": null,
+      "trace_coverage_pct": 100,
+      "run_coverage_pct": 100,
+      "recommendations_suggested": 0,
+      "recommendations_applied": 0,
+      "recommendation_action_rate": null,
+      "plan_coverage_rate": 0,
+      "verification_pass_rate": null,
+      "lesson_capture_rate": null,
+      "replan_rate": null,
+      "autonomous_bugfix_rate": 0,
+      "elegance_gate_rate": null,
+      "ab_test_started_count": 0,
+      "ab_test_checkpoint_count": 0,
+      "ab_test_passed_count": 0,
+      "ab_test_failed_count": 0,
+      "rollback_applied_count": 0,
+      "ab_pass_rate": null,
+      "rollback_rate": null,
+      "ab_guardrail_breached_count": 0,
+      "ab_guardrail_breach_rate": null,
+      "ab_sessions_required": null,
+      "ab_sessions_progress_rate": null,
+      "ab_target_delta_p50": null,
+      "plan_signal_tasks": 0,
+      "mcp_usage": [
+        {
+          "name": "qmd",
+          "events": 2
+        }
+      ],
+      "tool_usage": [
+        {
+          "name": "QMD retrieval",
+          "events": 2
+        }
+      ],
+      "profile_usage": [
+        {
+          "name": "retrieval-audit",
+          "events": 2
+        }
+      ],
+      "status_counts": {
+        "agent_instance_spawned": 1,
+        "agent_instance_completed": 1
+      },
+      "first_event_at": "2026-03-11T09:26:15.115269Z",
+      "last_event_at": "2026-03-11T09:26:15.174004Z",
+      "n_decisions": 0,
+      "n_candidates_total": 0,
+      "n_selected_total": 0,
+      "decision_time_avg_ms": null,
+      "reuse_hit_rate": null,
+      "reuse_rate": null,
+      "new_profile_creation_rate": null,
+      "specialist_verify_pass_rate": 100,
+      "profile_sprawl_ratio": 0,
+      "tool_overreach_rate": 0,
+      "routing_accuracy_rate": null,
+      "parallelization_gain_rate": 0,
+      "merge_conflict_rate": null,
+      "no_progress_loop_rate": 0,
+      "verification_coverage_rate": 0,
+      "orchestration_cost_per_completed_task": null,
+      "orchestration_cost_unit": null,
+      "time_to_verify_min": 0,
+      "handoff_use_rate": 100,
+      "overlap_with_analyst_rate": 0,
+      "host_adapter_sync_status": "missing",
+      "host_adapter_sync": {
+        "status": "missing",
+        "claude_code": false,
+        "github_copilot": false
+      },
+      "canonical_event_compliance_rate": 100,
+      "non_canonical_events_total": 0,
+      "capability_refresh_coverage_rate": 0,
+      "stale_table_rate": null,
+      "shadow_trial_completion_rate": null,
+      "promotion_blocked_by_stale_total": 0,
+      "missing_canonical_steps": [
+        {
+          "task_id": "task-smoke",
+          "missing_steps": [
+            "step_0_intake",
+            "step_1_start",
+            "step_2_preflight",
+            "step_4_context_sync",
+            "step_5_role_window",
+            "step_7_apply_or_publish",
+            "step_7_contract_gate",
+            "step_8_verify",
+            "step_8_error_channel",
+            "step_9_finalize",
+            "step_9_publish_snapshots"
+          ],
+          "observed_canonical_steps": [
+            "step_3_orchestration",
+            "step_6_role_exit_decision"
+          ],
+          "non_canonical_steps": []
+        }
+      ],
+      "artifact_refs_total": 6,
+      "unknown_source_refs_total": 2,
+      "unknown_semantic_refs_total": 6,
+      "unknown_source_rate": 33.33,
+      "unknown_semantic_rate": 100,
+      "file_ops_v2_events_total": 2,
+      "file_ops_eligible_events": 2,
+      "file_ops_explicit_events": 0,
+      "file_ops_mirrored_legacy_events": 2,
+      "file_ops_step_fallback_events": 0,
+      "file_ops_operations_total": 6,
+      "file_ops_delete_total": 0,
+      "file_ops_explicit_coverage_pct": 0,
+      "file_ops_fallback_share_pct": 100,
+      "taxonomy_warning_threshold_pct": 10,
+      "taxonomy_warnings": [
+        {
+          "code": "unknown_source_rate_high",
+          "message": "source_kind contains too many unknown values",
+          "threshold_pct": 10,
+          "actual_pct": 33.33
+        },
+        {
+          "code": "unknown_semantic_rate_high",
+          "message": "semantic_layer contains too many unknown values",
+          "threshold_pct": 10,
+          "actual_pct": 100
+        }
+      ],
+      "orchestration_counts": {
+        "profile_reused": 0,
+        "profile_created": 0,
+        "instance_spawned": 1,
+        "instance_completed": 1,
+        "instance_failed": 0,
+        "retire_recommended": 0,
+        "specialist_verify_pass": 1,
+        "specialist_verify_total": 1,
+        "created_profiles": 0,
+        "tool_overreach_events": 0
+      },
+      "capability_refresh_counts": {
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "shadow_trial_plan_refreshed": 0,
+        "shadow_trial_judged": 0,
+        "snapshot_published": 0,
+        "stale_detected": 0,
+        "completed_tasks": 0
+      }
+    }
+  ],
+  "benchmark_summary": {
+    "generated_at": "2026-03-05T14:17:33.831247Z",
+    "version": "agent_benchmark_summary.v1",
+    "mode": "soft_warning",
+    "source": {
+      "dataset_path": "artifacts/analyst_benchmark_dataset.json",
+      "run_path": "artifacts/agent_benchmark_run_results.json",
+      "telemetry_summary_path": "artifacts/agent_telemetry_summary.json"
+    },
+    "dataset": {
+      "agent_id": "analyst-agent",
+      "cases_total": 24,
+      "valid_cases": 24,
+      "invalid_cases": 0,
+      "invalid_reasons": [],
+      "judge_rubric_version": "analyst-rubric.v1"
+    },
+    "run": {
+      "run_id": "bench-2026-03-05-baseline",
+      "agent_id": "analyst-agent",
+      "target_k": 5,
+      "judge_model": "gpt-4.1-mini",
+      "judge_rubric_version": "analyst-rubric.v1",
+      "started_at": "2026-03-05T09:00:00Z",
+      "finished_at": "2026-03-05T10:20:00Z"
+    },
+    "thresholds": {
+      "pass_at_5": 0.8,
+      "fact_coverage_mean": 0.85,
+      "schema_valid_rate": 0.98,
+      "trajectory_compliance_rate": 0.9,
+      "judge_disagreement_rate": 0.15,
+      "recommendation_action_rate": 0.3
+    },
+    "metrics": {
+      "pass_at_5": 1,
+      "fact_coverage_mean": 0.8599999999999999,
+      "schema_valid_rate": 0.975,
+      "trajectory_compliance_rate": 0.9333333333333333,
+      "judge_disagreement_rate": 0.08333333333333333,
+      "cost_per_success": 0.13974999999999996,
+      "attempts_total": 120,
+      "cases_total": 24,
+      "cases_with_results": 24,
+      "successful_cases": 24,
+      "cost_total": 3.353999999999999,
+      "latency_p95_ms": 2107,
+      "pass_rate_variance": 0.07159722222222219
+    },
+    "impact_metrics": {
+      "recommendation_executability_rate": 0.64,
+      "evidence_link_coverage": 0.89,
+      "time_to_action_p50": 8,
+      "validated_impact_rate": 0.33
+    },
+    "telemetry_metrics": {
+      "recommendation_action_rate": null
+    },
+    "gate": {
+      "status": "warning",
+      "failed_metrics": [
+        "schema_valid_rate"
+      ],
+      "missing_metrics": [
+        "recommendation_action_rate"
+      ],
+      "results": [
+        {
+          "metric": "pass_at_5",
+          "status": "pass",
+          "value": 1,
+          "threshold": 0.8,
+          "direction": "min",
+          "message": "ok"
+        },
+        {
+          "metric": "fact_coverage_mean",
+          "status": "pass",
+          "value": 0.86,
+          "threshold": 0.85,
+          "direction": "min",
+          "message": "ok"
+        },
+        {
+          "metric": "schema_valid_rate",
+          "status": "fail",
+          "value": 0.975,
+          "threshold": 0.98,
+          "direction": "min",
+          "message": "threshold not met"
+        },
+        {
+          "metric": "trajectory_compliance_rate",
+          "status": "pass",
+          "value": 0.933333,
+          "threshold": 0.9,
+          "direction": "min",
+          "message": "ok"
+        },
+        {
+          "metric": "judge_disagreement_rate",
+          "status": "pass",
+          "value": 0.083333,
+          "threshold": 0.15,
+          "direction": "max",
+          "message": "ok"
+        },
+        {
+          "metric": "recommendation_action_rate",
+          "status": "missing",
+          "value": null,
+          "threshold": 0.3,
+          "direction": "min",
+          "message": "metric value is missing"
+        }
+      ]
+    },
+    "agents": [
+      {
+        "agent_id": "analyst-agent",
+        "pass_at_5": 1,
+        "fact_coverage_mean": 0.8599999999999999,
+        "schema_valid_rate": 0.975,
+        "trajectory_compliance_rate": 0.9333333333333333,
+        "judge_disagreement_rate": 0.08333333333333333,
+        "cost_per_success": 0.13974999999999996,
+        "attempts_total": 120,
+        "cases_total": 24,
+        "cases_with_results": 24,
+        "successful_cases": 24,
+        "cost_total": 3.353999999999999,
+        "latency_p95_ms": 2107,
+        "pass_rate_variance": 0.07159722222222219,
+        "recommendation_executability_rate": 0.64,
+        "evidence_link_coverage": 0.89,
+        "time_to_action_p50": 8,
+        "validated_impact_rate": 0.33,
+        "recommendation_action_rate": null
+      }
+    ]
+  },
+  "file_ops_gate": {
+    "mode": "soft_warning",
+    "thresholds": {
+      "explicit_min_pct": 90,
+      "fallback_max_pct": 10,
+      "min_events": 5
+    },
+    "status": "warning",
+    "failed_agents": [
+      "analyst-agent"
+    ],
+    "warning_agents": [
+      "data-agent",
+      "designer-agent",
+      "ops-agent",
+      "reader-agent",
+      "retrieval-audit"
+    ],
+    "results": [
+      {
+        "agent_id": "analyst-agent",
+        "eligible_events": 144,
+        "explicit_coverage_pct": 0,
+        "fallback_share_pct": 100,
+        "status": "fail",
+        "message": "threshold_not_met(explicit>=90.0 and fallback<=10.0)"
+      },
+      {
+        "agent_id": "data-agent",
+        "eligible_events": 0,
+        "explicit_coverage_pct": null,
+        "fallback_share_pct": null,
+        "status": "warning",
+        "message": "sample_too_small(<5)"
+      },
+      {
+        "agent_id": "designer-agent",
+        "eligible_events": 0,
+        "explicit_coverage_pct": null,
+        "fallback_share_pct": null,
+        "status": "warning",
+        "message": "sample_too_small(<5)"
+      },
+      {
+        "agent_id": "ops-agent",
+        "eligible_events": 0,
+        "explicit_coverage_pct": null,
+        "fallback_share_pct": null,
+        "status": "warning",
+        "message": "sample_too_small(<5)"
+      },
+      {
+        "agent_id": "reader-agent",
+        "eligible_events": 0,
+        "explicit_coverage_pct": null,
+        "fallback_share_pct": null,
+        "status": "warning",
+        "message": "sample_too_small(<5)"
+      },
+      {
+        "agent_id": "retrieval-audit",
+        "eligible_events": 2,
+        "explicit_coverage_pct": 0,
+        "fallback_share_pct": 100,
+        "status": "warning",
+        "message": "sample_too_small(<5)"
+      }
+    ]
+  }
+}

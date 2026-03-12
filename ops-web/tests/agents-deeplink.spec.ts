@@ -7,12 +7,12 @@ test.describe("Agents deep-link routing", () => {
 
   const drawerSurface = (page: Page) => page.locator(".MuiDrawer-paper").last();
 
-  test("opens target agent and MCP tab from URL", async ({ page }) => {
+  test("canonicalizes analyst deep-link tabs to overview", async ({ page }) => {
     await page.goto("/#/agents?agent=analyst-agent&tab=mcp");
 
     await expect(drawerCloseButton(page)).toBeVisible();
     await expect(drawerSurface(page).getByText("Аналитик", { exact: true })).toBeVisible();
-    await expect(page).toHaveURL(/#\/agents\?agent=analyst-agent&tab=mcp$/);
+    await expect(page).toHaveURL(/#\/agents\?agent=analyst-agent&tab=overview$/);
   });
 
   test("normalizes unknown tab to overview", async ({ page }) => {
@@ -23,7 +23,7 @@ test.describe("Agents deep-link routing", () => {
     await expect(page).toHaveURL(/#\/agents\?agent=analyst-agent&tab=overview$/);
   });
 
-  test("falls back to overview for legacy agent when tab=mcp", async ({ page }) => {
+  test("canonicalizes reader deep-link tabs to overview", async ({ page }) => {
     await page.goto("/#/agents?agent=reader-agent&tab=mcp");
 
     await expect(drawerCloseButton(page)).toBeVisible();
@@ -31,12 +31,12 @@ test.describe("Agents deep-link routing", () => {
     await expect(page).toHaveURL(/#\/agents\?agent=reader-agent&tab=overview$/);
   });
 
-  test("normalizes numeric tab aliases", async ({ page }) => {
+  test("normalizes numeric tab aliases to overview", async ({ page }) => {
     await page.goto("/#/agents?agent=analyst-agent&tab=1");
 
     await expect(drawerCloseButton(page)).toBeVisible();
     await expect(drawerSurface(page).getByText("Аналитик", { exact: true })).toBeVisible();
-    await expect(page).toHaveURL(/#\/agents\?agent=analyst-agent&tab=mcp$/);
+    await expect(page).toHaveURL(/#\/agents\?agent=analyst-agent&tab=overview$/);
   });
 
   test("close action returns to list route", async ({ page }) => {
@@ -59,15 +59,21 @@ test.describe("Agents deep-link routing", () => {
     await expect(page).toHaveURL(/#\/overview$/);
   });
 
-  test("keeps analyst metrics visible for deep-link with tasks_quality tab", async ({ page }) => {
+  test("keeps analyst overview visible for legacy tab deep-link", async ({ page }) => {
     await page.goto("/#/agents?agent=analyst-agent&tab=tasks_quality");
 
     await expect(drawerCloseButton(page)).toBeVisible();
-    await expect(page.getByText("Эффективность агента", { exact: true })).toBeVisible();
-    await expect(page.getByText("Ключевые метрики агента", { exact: true })).toBeVisible();
+    await expect(page).toHaveURL(/#\/agents\?agent=analyst-agent&tab=overview$/);
+    await expect(page.getByText("Анализ эффективности агента", { exact: true })).toBeVisible();
+    await expect(page.getByText("Кол-во задач от агента", { exact: true })).toBeVisible();
+  });
 
-    const metricInfo = page.getByLabel("Как считается метрика tasks_from_agent");
-    await metricInfo.hover();
-    await expect(page.getByText("Как считается")).toBeVisible();
+  test("opens improvement history modal from deep-link", async ({ page }) => {
+    await page.goto("/#/agents?agent=analyst-agent&tab=overview&modal=improvement_history");
+
+    await expect(drawerCloseButton(page)).toBeVisible();
+    await expect(page.locator(".MuiDialog-paper").last().getByText("История улучшений агента", { exact: true })).toBeVisible();
+    await page.getByLabel("Закрыть историю улучшений агента").click();
+    await expect(page).toHaveURL(/#\/agents\?agent=analyst-agent&tab=overview$/);
   });
 });

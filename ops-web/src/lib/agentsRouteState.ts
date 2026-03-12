@@ -6,7 +6,14 @@ export type AgentTabKey =
   | "memory_context"
   | "improvements";
 
-export type AgentsModalKey = "capability_comparison" | "capability_journal";
+export type AgentsModalKey =
+  | "capability_comparison"
+  | "capability_journal"
+  | "metrics_catalog"
+  | "operative_memory"
+  | "lessons"
+  | "sessions"
+  | "improvement_history";
 
 export type AgentsRouteState = {
   agentId: string | null;
@@ -43,29 +50,18 @@ function normalizeModalKey(rawModal: string | null | undefined): AgentsModalKey 
   if (!raw) return null;
   if (raw === "capability_comparison" || raw === "comparison" || raw === "capability") return "capability_comparison";
   if (raw === "capability_journal" || raw === "journal" || raw === "capability_details") return "capability_journal";
+  if (raw === "metrics_catalog" || raw === "metrics" || raw === "metric_catalog") return "metrics_catalog";
+  if (raw === "operative_memory" || raw === "memory_journal" || raw === "memory_trace") return "operative_memory";
+  if (raw === "lessons" || raw === "agent_lessons" || raw === "lessons_drawer") return "lessons";
+  if (raw === "sessions" || raw === "session_list" || raw === "sessions_drawer") return "sessions";
+  if (raw === "improvement_history" || raw === "history" || raw === "improvements_history") return "improvement_history";
   return null;
 }
 
 export function normalizeTabKey(rawTab: string | null | undefined, isModernAgent: boolean | null | undefined): AgentTabKey {
   const raw = rawTab ? normalizeRawValue(rawTab) : "";
   if (!raw) return "overview";
-
-  const tabOrder = isModernAgent === false ? LEGACY_TAB_KEYS : MODERN_TAB_KEYS;
-  if (/^\d+$/.test(raw)) {
-    const index = Number(raw);
-    return tabOrder[index] || "overview";
-  }
-
-  if (raw === "overview" || raw === "home") return "overview";
-  if (raw === "skills" || raw === "rules" || raw === "skills_rules") return "skills_rules";
-  if (raw === "tasks" || raw === "quality" || raw === "tasks_quality") return "tasks_quality";
-  if (raw === "memory" || raw === "context" || raw === "memory_context") return "memory_context";
-  if (raw === "improvement" || raw === "improvements") return "improvements";
-
-  if (raw === "mcp") {
-    return isModernAgent === false ? "overview" : "mcp";
-  }
-
+  void isModernAgent;
   return "overview";
 }
 
@@ -81,13 +77,23 @@ export function parseAgentsHash(hash: string, agentKindResolver?: AgentKindResol
   const agentId = agentRaw.length > 0 ? agentRaw : null;
   const isModern = agentId ? (agentKindResolver?.(agentId) ?? null) : null;
   const modalKey = normalizeModalKey(params.get("modal"));
-  const modalEntityRaw = String(params.get("capability") || "").trim();
+  const capabilityRaw = String(params.get("capability") || "").trim();
+  const entityRaw = String(params.get("entity") || "").trim();
+  const modalEntityKey = (() => {
+    if (modalKey === "capability_journal") return capabilityRaw.length > 0 ? capabilityRaw : null;
+    if (modalKey === "metrics_catalog") return entityRaw.length > 0 ? entityRaw : (agentId || "analyst");
+    if (modalKey === "operative_memory") return entityRaw.length > 0 ? entityRaw : "latest";
+    if (modalKey === "lessons") return entityRaw === "global" ? "global" : "agent";
+    if (modalKey === "sessions") return entityRaw.length > 0 ? entityRaw : "latest";
+    if (modalKey === "improvement_history") return null;
+    return null;
+  })();
 
   return {
     agentId,
     tabKey: normalizeTabKey(params.get("tab"), isModern),
     modalKey,
-    modalEntityKey: modalKey === "capability_journal" && modalEntityRaw.length > 0 ? modalEntityRaw : null,
+    modalEntityKey,
   };
 }
 
@@ -106,6 +112,11 @@ export function canonicalizeState(
   const normalizedModalKey = normalizeModalKey(state.modalKey);
   const modalEntityRaw = typeof state.modalEntityKey === "string" ? state.modalEntityKey.trim() : "";
   const normalizedModalEntityKey = modalEntityRaw.length > 0 ? modalEntityRaw : null;
+  const agentScopedModal = normalizedModalKey === "metrics_catalog"
+    || normalizedModalKey === "operative_memory"
+    || normalizedModalKey === "lessons"
+    || normalizedModalKey === "sessions"
+    || normalizedModalKey === "improvement_history";
 
   const resolvedModal = (() => {
     if (!normalizedModalKey) return { modalKey: null, modalEntityKey: null };
@@ -115,10 +126,28 @@ export function canonicalizeState(
       }
       return { modalKey: "capability_journal" as const, modalEntityKey: normalizedModalEntityKey };
     }
+    if (normalizedModalKey === "metrics_catalog") {
+      return { modalKey: "metrics_catalog" as const, modalEntityKey: normalizedModalEntityKey || normalizedAgentId || "analyst" };
+    }
+    if (normalizedModalKey === "operative_memory") {
+      return { modalKey: "operative_memory" as const, modalEntityKey: normalizedModalEntityKey || "latest" };
+    }
+    if (normalizedModalKey === "lessons") {
+      return { modalKey: "lessons" as const, modalEntityKey: normalizedModalEntityKey === "global" ? "global" : "agent" };
+    }
+    if (normalizedModalKey === "sessions") {
+      return { modalKey: "sessions" as const, modalEntityKey: normalizedModalEntityKey || "latest" };
+    }
+    if (normalizedModalKey === "improvement_history") {
+      return { modalKey: "improvement_history" as const, modalEntityKey: null };
+    }
     return { modalKey: "capability_comparison" as const, modalEntityKey: null };
   })();
 
   if (!normalizedAgentId) {
+    if (agentScopedModal) {
+      return { agentId: null, tabKey: "overview", modalKey: null, modalEntityKey: null };
+    }
     return { agentId: null, tabKey: "overview", ...resolvedModal };
   }
 
@@ -144,6 +173,18 @@ export function buildAgentsHash(state: AgentsRouteState): string {
     params.set("modal", state.modalKey);
     if (state.modalKey === "capability_journal" && state.modalEntityKey) {
       params.set("capability", state.modalEntityKey);
+    }
+    if (state.modalKey === "metrics_catalog") {
+      params.set("entity", state.modalEntityKey || "analyst");
+    }
+    if (state.modalKey === "operative_memory") {
+      params.set("entity", state.modalEntityKey || "latest");
+    }
+    if (state.modalKey === "lessons") {
+      params.set("entity", state.modalEntityKey === "global" ? "global" : "agent");
+    }
+    if (state.modalKey === "sessions") {
+      params.set("entity", state.modalEntityKey || "latest");
     }
   }
 

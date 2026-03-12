@@ -2,7 +2,7 @@
   "version": "1.0.0",
   "updatedAt": "2026-03-08",
   "status": "stable",
-  "description": "Canonical OAP startup routing contract. Domains are embedded here; manual decision table is removed.",
+  "description": "Canonical OAP startup routing contract. Domains are embedded here; manual decision table is removed. Step-level capabilities in operating plans are baseline minimum; runtime capability selection is capability-first and dynamic.",
   "origins": [
     "user_chat",
     "agent_generated",
@@ -171,6 +171,19 @@
         "docs/subservices/oap/README.md"
       ],
       "verify": ["verify_links_and_rule_text_behavior"]
+    },
+    {
+      "id": "terminology_consistency_flow",
+      "origin": "user_chat",
+      "domain": "agent-card/content",
+      "capabilities": ["rules", "session_state", "tools"],
+      "readFirst": [
+        ".specify/specs/001-oap/spec.md",
+        "docs/subservices/oap/CAPABILITY_GLOSSARY.json",
+        "docs/subservices/oap/DESIGN_RULES.md",
+        "AGENTS.md"
+      ],
+      "verify": ["verify_glossary_driven_labels", "verify_no_prefix_duplication_in_chips", "prepare_content"]
     },
     {
       "id": "telemetry_metric_change",

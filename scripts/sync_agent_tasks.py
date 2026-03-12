@@ -49,8 +49,6 @@ COLLABORATION_KEYWORDS: dict[str, tuple[str, ...]] = {
     "analyst-agent": ("telemetry", "metric", "quality", "review", "risk", "benchmark", "аналит"),
     "designer-agent": ("ui", "ux", "design", "дизайн", "карточк", "tooltip", "m3", "mui"),
     "reader-agent": ("knowledge", "kb", "read", "reader", "докум", "retrieval", "context"),
-    "data-agent": ("data", "dataset", "etl", "sql", "schema", "rls", "таблиц", "json"),
-    "ops-agent": ("deploy", "release", "incident", "ops", "mcp", "integration", "infra", "security"),
 }
 
 DEFAULT_MANDATORY_RULES = [
@@ -595,6 +593,142 @@ def build_operational_memory_entries(
     return entries
 
 
+def normalize_spawned_instance(item: Any, *, root_agent_id: str, task_id: str) -> dict[str, Any] | None:
+    if not isinstance(item, dict):
+        return None
+    instance_id = safe_str(item.get("instance_id"))
+    profile_id = safe_str(item.get("profile_id")) or root_agent_id
+    if not instance_id:
+        digest = hashlib.sha1(f"{task_id}:{profile_id}:{safe_str(item.get('purpose'))}".encode("utf-8")).hexdigest()[:10]
+        instance_id = f"inst-{digest}"
+    artifact_dir = f"artifacts/agent_runs/{instance_id}"
+    timings = item.get("timings") if isinstance(item.get("timings"), dict) else {}
+    usage = item.get("usage") if isinstance(item.get("usage"), dict) else {}
+    artifacts = item.get("artifacts") if isinstance(item.get("artifacts"), dict) else {}
+    return {
+        "instance_id": instance_id,
+        "profile_id": profile_id,
+        "source_template_id": safe_str(item.get("source_template_id")) or None,
+        "parent_instance_id": safe_str(item.get("parent_instance_id")) or None,
+        "root_agent_id": safe_str(item.get("root_agent_id")) or root_agent_id,
+        "task_id": safe_str(item.get("task_id")) or task_id,
+        "purpose": safe_str(item.get("purpose")) or "Task-local specialist execution",
+        "depth": int(item.get("depth", 0) or 0),
+        "allowed_skills": safe_list_str(item.get("allowed_skills")),
+        "allowed_tools": safe_list_str(item.get("allowed_tools")),
+        "allowed_mcp": safe_list_str(item.get("allowed_mcp")),
+        "applied_rules": safe_list_str(item.get("applied_rules")),
+        "input_refs": safe_list_str(item.get("input_refs")),
+        "output_refs": safe_list_str(item.get("output_refs")),
+        "status": safe_str(item.get("status")) or "planned",
+        "verify_status": safe_str(item.get("verify_status")) or "pending",
+        "workflow_backbone_version": safe_str(item.get("workflow_backbone_version")) or "universal_backbone_v1",
+        "output_contract": safe_str(item.get("output_contract")) or "agent_output.v1",
+        "execution_mode": safe_str(item.get("execution_mode")) or "sequential",
+        "execution_backend": safe_str(item.get("execution_backend")) or "dispatcher",
+        "phase_id": safe_str(item.get("phase_id")) or None,
+        "context_window_id": safe_str(item.get("context_window_id")) or f"ctx-{instance_id}",
+        "isolation_mode": safe_str(item.get("isolation_mode")) or "per_instance_context_package",
+        "read_only": bool(item.get("read_only", False)),
+        "ownership_scope": safe_list_str(item.get("ownership_scope")),
+        "depends_on": safe_list_str(item.get("depends_on")),
+        "merge_target": safe_str(item.get("merge_target")) or None,
+        "timings": {
+            "queued_at": safe_str(timings.get("queued_at")) or None,
+            "started_at": safe_str(timings.get("started_at")) or None,
+            "finished_at": safe_str(timings.get("finished_at")) or None,
+        },
+        "usage": {
+            "prompt_tokens": int(usage.get("prompt_tokens", 0) or 0),
+            "completion_tokens": int(usage.get("completion_tokens", 0) or 0),
+            "total_tokens": int(usage.get("total_tokens", 0) or 0),
+            "cost_usd": float(usage.get("cost_usd", 0.0) or 0.0),
+        },
+        "artifacts": {
+            "run_dir": safe_str(artifacts.get("run_dir")) or artifact_dir,
+            "manifest_path": safe_str(artifacts.get("manifest_path")) or f"{artifact_dir}/run_manifest.json",
+            "result_path": safe_str(artifacts.get("result_path")) or f"{artifact_dir}/result.json",
+        },
+    }
+
+
+def normalize_interaction_phase(item: Any) -> dict[str, Any] | None:
+    if not isinstance(item, dict):
+        return None
+    phase_id = safe_str(item.get("phase_id"))
+    if not phase_id:
+        return None
+    return {
+        "phase_id": phase_id,
+        "label": safe_str(item.get("label")) or phase_id,
+        "mode": safe_str(item.get("mode")) or "sequential",
+        "goal": safe_str(item.get("goal")) or "",
+        "participants": safe_list_str(item.get("participants")),
+        "depends_on": safe_list_str(item.get("depends_on")),
+        "outputs": safe_list_str(item.get("outputs")),
+        "status": safe_str(item.get("status")) or "planned",
+        "merge_into": safe_str(item.get("merge_into")) or None,
+    }
+
+
+def normalize_roundtable_policy(value: Any) -> dict[str, Any] | None:
+    if not isinstance(value, dict):
+        return None
+    return {
+        "enabled": bool(value.get("enabled", False)),
+        "moderated_by": safe_str(value.get("moderated_by")) or None,
+        "max_rounds": int(value.get("max_rounds", 4) or 4),
+        "transcript_visibility": safe_str(value.get("transcript_visibility")) or "summary_only",
+        "allow_free_chat": bool(value.get("allow_free_chat", False)),
+        "allow_position_sharing": bool(value.get("allow_position_sharing", True)),
+        "summary_required_each_round": bool(value.get("summary_required_each_round", True)),
+    }
+
+
+def normalize_host_execution_strategy(value: Any) -> dict[str, Any] | None:
+    if not isinstance(value, dict):
+        return None
+    host_policies_raw = value.get("host_policies") if isinstance(value.get("host_policies"), dict) else {}
+    host_policies: dict[str, dict[str, Any]] = {}
+    for host_id, host_payload in host_policies_raw.items():
+        if not isinstance(host_payload, dict):
+            continue
+        normalized_host_id = safe_str(host_id)
+        if not normalized_host_id:
+            continue
+        host_policies[normalized_host_id] = {
+            "display_name": safe_str(host_payload.get("display_name")) or normalized_host_id,
+            "execution_backend": safe_str(host_payload.get("execution_backend")) or "dispatcher_backed_child_runs",
+            "native_delegation": bool(host_payload.get("native_delegation", False)),
+            "isolated_context_windows": bool(host_payload.get("isolated_context_windows", False)),
+            "dispatcher_required": bool(host_payload.get("dispatcher_required", False)),
+            "fallback_mode": safe_str(host_payload.get("fallback_mode")) or "dispatcher_backed",
+            "adapter_strategy": safe_str(host_payload.get("adapter_strategy")) or "unknown",
+        }
+    return {
+        "default_host_id": safe_str(value.get("default_host_id")) or "codex",
+        "selected_backend_by_default": safe_str(value.get("selected_backend_by_default")) or "dispatcher_backed_child_runs",
+        "context_isolation_policy": safe_str(value.get("context_isolation_policy")) or "per_instance_context_package",
+        "host_policies": host_policies,
+    }
+
+
+def normalize_discussion_round(item: Any) -> dict[str, Any] | None:
+    if not isinstance(item, dict):
+        return None
+    round_id = safe_str(item.get("round_id"))
+    if not round_id:
+        return None
+    return {
+        "round_id": round_id,
+        "round_index": int(item.get("round_index", 0) or 0),
+        "participants": safe_list_str(item.get("participants")),
+        "summary": safe_str(item.get("summary")) or "",
+        "status": safe_str(item.get("status")) or "planned",
+        "next_owner_agent_id": safe_str(item.get("next_owner_agent_id")) or None,
+    }
+
+
 def build_collaboration_plan(
     *,
     task_id: str,
@@ -631,6 +765,29 @@ def build_collaboration_plan(
     base_rationale = safe_str(rationale) or "Анализ выполнен автоматически на основе ownerSection/promptPath/targetMetric."
     if not isinstance(orchestration_plan, dict):
         orchestration_plan = {}
+    spawned_instances: list[dict[str, Any]] = []
+    raw_spawned_instances = orchestration_plan.get("spawned_instances")
+    if isinstance(raw_spawned_instances, list):
+        for item in raw_spawned_instances:
+            normalized = normalize_spawned_instance(item, root_agent_id=root_agent_id, task_id=task_id)
+            if normalized is not None:
+                spawned_instances.append(normalized)
+    interaction_phases = [
+        normalized
+        for normalized in (
+            normalize_interaction_phase(item)
+            for item in (orchestration_plan.get("interaction_phases") if isinstance(orchestration_plan.get("interaction_phases"), list) else [])
+        )
+        if normalized is not None
+    ]
+    discussion_rounds = [
+        normalized
+        for normalized in (
+            normalize_discussion_round(item)
+            for item in (orchestration_plan.get("discussion_rounds") if isinstance(orchestration_plan.get("discussion_rounds"), list) else [])
+        )
+        if normalized is not None
+    ]
     plan = {
         "analysis_required": bool(orchestration_plan.get("analysis_required", True)),
         "suggested_agents": safe_list_str(orchestration_plan.get("suggested_agents")) or suggested_agents,
@@ -640,7 +797,19 @@ def build_collaboration_plan(
         "strategy": safe_str(orchestration_plan.get("strategy")) or "reuse_existing",
         "reuse_candidates": orchestration_plan.get("reuse_candidates") if isinstance(orchestration_plan.get("reuse_candidates"), list) else [],
         "created_profiles": orchestration_plan.get("created_profiles") if isinstance(orchestration_plan.get("created_profiles"), list) else [],
-        "spawned_instances": orchestration_plan.get("spawned_instances") if isinstance(orchestration_plan.get("spawned_instances"), list) else [],
+        "primary_coordinator_agent_id": safe_str(orchestration_plan.get("primary_coordinator_agent_id")) or root_agent_id,
+        "final_synthesizer_agent_id": safe_str(orchestration_plan.get("final_synthesizer_agent_id")) or root_agent_id,
+        "merge_owner_agent_id": safe_str(orchestration_plan.get("merge_owner_agent_id")) or root_agent_id,
+        "interaction_mode": safe_str(orchestration_plan.get("interaction_mode")) or "sequential",
+        "interaction_phases": interaction_phases,
+        "selection_basis": safe_list_str(orchestration_plan.get("selection_basis")),
+        "merge_strategy": safe_str(orchestration_plan.get("merge_strategy")) or "single_owner_apply",
+        "conflict_policy": safe_str(orchestration_plan.get("conflict_policy")) or "merge_owner_decision",
+        "host_execution_strategy": normalize_host_execution_strategy(orchestration_plan.get("host_execution_strategy")),
+        "context_isolation_policy": safe_str(orchestration_plan.get("context_isolation_policy")) or "per_instance_context_package",
+        "roundtable_policy": normalize_roundtable_policy(orchestration_plan.get("roundtable_policy")),
+        "discussion_rounds": discussion_rounds,
+        "spawned_instances": spawned_instances,
         "orchestration_budget": orchestration_plan.get("orchestration_budget")
         if isinstance(orchestration_plan.get("orchestration_budget"), dict)
         else {

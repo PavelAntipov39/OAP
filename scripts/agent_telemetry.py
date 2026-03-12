@@ -20,6 +20,7 @@ REPORT_VERSION = "agent_telemetry_report.v1"
 CYCLE_REPORT_VERSION = "agent_cycle_validation.v1"
 LATEST_CYCLE_ANALYST_VERSION = "agent_latest_cycle_analyst.v1"
 BENCHMARK_SUMMARY_VERSION = "agent_benchmark_summary.v1"
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 CYCLE_START_STATUSES = {"planned", "started"}
 CYCLE_VERIFY_START_STATUS = "verify_started"
@@ -304,6 +305,16 @@ ORCHESTRATION_INSTANCE_SPAWNED_STATUS = "agent_instance_spawned"
 ORCHESTRATION_INSTANCE_COMPLETED_STATUS = "agent_instance_completed"
 ORCHESTRATION_INSTANCE_FAILED_STATUS = "agent_instance_failed"
 ORCHESTRATION_RETIRE_RECOMMENDED_STATUS = "agent_retire_recommended"
+ORCHESTRATION_MODE_SELECTED_STATUS = "orchestration_mode_selected"
+ORCHESTRATION_PHASE_STARTED_STATUS = "orchestration_phase_started"
+ORCHESTRATION_PHASE_COMPLETED_STATUS = "orchestration_phase_completed"
+ROUNDTABLE_STARTED_STATUS = "roundtable_started"
+ROUNDTABLE_ROUND_COMPLETED_STATUS = "roundtable_round_completed"
+ROUNDTABLE_CONVERGED_STATUS = "roundtable_converged"
+ORCHESTRATION_MERGE_STARTED_STATUS = "orchestration_merge_started"
+ORCHESTRATION_MERGE_COMPLETED_STATUS = "orchestration_merge_completed"
+ORCHESTRATION_CONFLICT_DETECTED_STATUS = "orchestration_conflict_detected"
+ORCHESTRATION_CONFLICT_RESOLVED_STATUS = "orchestration_conflict_resolved"
 ORCHESTRATION_TERMINAL_INSTANCE_STATUSES = {
     ORCHESTRATION_INSTANCE_COMPLETED_STATUS,
     ORCHESTRATION_INSTANCE_FAILED_STATUS,
@@ -353,6 +364,49 @@ def normalize_id(value: str | None, fallback: str) -> str:
 
 def safe_str(value: Any) -> str:
     return str(value).strip() if value is not None else ""
+
+
+def safe_list_str(value: Any) -> list[str]:
+    if isinstance(value, str):
+        normalized = safe_str(value)
+        return [normalized] if normalized else []
+    if not isinstance(value, list):
+        return []
+    values: list[str] = []
+    seen: set[str] = set()
+    for item in value:
+        normalized = safe_str(item)
+        if not normalized:
+            continue
+        lowered = normalized.lower()
+        if lowered in seen:
+            continue
+        seen.add(lowered)
+        values.append(normalized)
+    return values
+
+
+def evaluate_host_adapter_sync(agent_id: str, repo_root: Path | None = None) -> dict[str, Any]:
+    repo_root = repo_root or REPO_ROOT
+    archive_dir = repo_root / "docs" / "subservices" / "oap" / "archive" / "agents" / agent_id
+    claude_path = repo_root / ".claude" / "agents" / f"{agent_id}.md"
+    copilot_path = repo_root / ".github" / "agents" / f"{agent_id}.agent.md"
+    archived = archive_dir.exists()
+    claude_exists = claude_path.exists()
+    copilot_exists = copilot_path.exists()
+    if archived:
+        status = "archived"
+    elif claude_exists and copilot_exists:
+        status = "synced"
+    elif claude_exists or copilot_exists:
+        status = "partial"
+    else:
+        status = "missing"
+    return {
+        "status": status,
+        "claude_code": claude_exists,
+        "github_copilot": copilot_exists,
+    }
 
 
 def infer_artifact_source_kind(path: Any) -> str:
@@ -1199,8 +1253,8 @@ def build_latest_cycle_analyst_payload(
         "verification_pass_rate": {
             "label": "Успех верификации",
             "description": "Какая доля verify-запусков завершилась успешно.",
-            "formula": "verify_passed / verify_started * 100",
-            "source": "artifacts/agent_telemetry_summary.json -> agents[].status_counts",
+            "formula": "unique task_id with verify_started+verify_passed / unique task_id with verify_started * 100",
+            "source": "artifacts/agent_telemetry_summary.json -> agents[].verification_pass_rate",
         },
         "lesson_capture_rate": {
             "label": "Фиксация уроков",
@@ -2127,6 +2181,10 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
     by_agent: dict[str, dict[str, Any]] = {}
     total_recommendations_suggested: set[str] = set()
     total_recommendations_applied: set[str] = set()
+    task_agents: dict[str, set[str]] = defaultdict(set)
+    total_verify_started_task_pairs = 0
+    total_verify_passed_task_pairs = 0
+    total_verify_failed_task_pairs = 0
 
     for event in events:
         agent_id = str(event.get("agent_id") or "unknown").strip() or "unknown"
@@ -2136,8 +2194,13 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
                 "agent_id": agent_id,
                 "events_total": 0,
                 "_tasks": set(),
+                "_runs": set(),
                 "_completed_tasks": set(),
                 "_failed_tasks": set(),
+                "_verify_started_tasks": set(),
+                "_verify_passed_tasks": set(),
+                "_verify_failed_tasks": set(),
+                "_tasks_with_handoff": set(),
                 "_durations": [],
                 "_recommendations_suggested": set(),
                 "_recommendations_applied": set(),
@@ -2168,6 +2231,20 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
                 "_instances_completed": 0,
                 "_instances_failed": 0,
                 "_retire_recommended": 0,
+                "_orchestration_mode_selected": 0,
+                "_orchestration_phase_started": 0,
+                "_orchestration_phase_completed": 0,
+                "_roundtable_started": 0,
+                "_roundtable_round_completed": 0,
+                "_roundtable_converged": 0,
+                "_merge_started": 0,
+                "_merge_completed": 0,
+                "_merge_conflicts_detected": 0,
+                "_merge_conflicts_resolved": 0,
+                "_tasks_with_parallel_mode": set(),
+                "_routing_tasks_total": 0,
+                "_routing_tasks_ok": 0,
+                "_no_progress_tasks": set(),
                 "_specialist_verify_pass": 0,
                 "_specialist_verify_total": 0,
                 "_tool_overreach_events": 0,
@@ -2206,6 +2283,9 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
         instance_id = str(event.get("instance_id") or "").strip()
         task_id = str(event.get("task_id") or "").strip()
         verify_status = normalize_verify_status(event.get("verify_status"))
+        metrics_payload = event.get("metrics") if isinstance(event.get("metrics"), dict) else {}
+        interaction_mode = safe_str(event.get("interaction_mode") or metrics_payload.get("interaction_mode")).lower()
+        outcome = safe_str(event.get("outcome")).lower()
         event_ts_dt = parse_iso8601(str(event.get("timestamp") or ""))
         if status:
             item["status_counts"][status] += 1
@@ -2226,6 +2306,32 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
             item["_instances_failed"] += 1
         elif status == ORCHESTRATION_RETIRE_RECOMMENDED_STATUS:
             item["_retire_recommended"] += 1
+        elif status == ORCHESTRATION_MODE_SELECTED_STATUS:
+            item["_orchestration_mode_selected"] += 1
+            item["_routing_tasks_total"] += 1
+            routing_ok = metrics_payload.get("routing_decision_ok")
+            if routing_ok is True:
+                item["_routing_tasks_ok"] += 1
+            if task_id and interaction_mode in {"parallel_read_only", "mixed_phased"}:
+                item["_tasks_with_parallel_mode"].add(task_id)
+        elif status == ORCHESTRATION_PHASE_STARTED_STATUS:
+            item["_orchestration_phase_started"] += 1
+        elif status == ORCHESTRATION_PHASE_COMPLETED_STATUS:
+            item["_orchestration_phase_completed"] += 1
+        elif status == ROUNDTABLE_STARTED_STATUS:
+            item["_roundtable_started"] += 1
+        elif status == ROUNDTABLE_ROUND_COMPLETED_STATUS:
+            item["_roundtable_round_completed"] += 1
+        elif status == ROUNDTABLE_CONVERGED_STATUS:
+            item["_roundtable_converged"] += 1
+        elif status == ORCHESTRATION_MERGE_STARTED_STATUS:
+            item["_merge_started"] += 1
+        elif status == ORCHESTRATION_MERGE_COMPLETED_STATUS:
+            item["_merge_completed"] += 1
+        elif status == ORCHESTRATION_CONFLICT_DETECTED_STATUS:
+            item["_merge_conflicts_detected"] += 1
+        elif status == ORCHESTRATION_CONFLICT_RESOLVED_STATUS:
+            item["_merge_conflicts_resolved"] += 1
         elif status == CAPABILITY_REFRESH_STARTED_STATUS:
             item["_capability_refresh_started"] += 1
         elif status == CAPABILITY_REFRESH_COMPLETED_STATUS:
@@ -2242,6 +2348,10 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
             item["_capability_snapshot_published"] += 1
         elif status == CAPABILITY_STALE_DETECTED_STATUS:
             item["_capability_stale_detected"] += 1
+        if status == ORCHESTRATION_INSTANCE_SPAWNED_STATUS and task_id:
+            item["_tasks_with_handoff"].add(task_id)
+        if task_id and outcome == "no_progress_detected":
+            item["_no_progress_tasks"].add(task_id)
 
         if status in ORCHESTRATION_TERMINAL_INSTANCE_STATUSES and verify_status in {"passed", "failed"}:
             item["_specialist_verify_total"] += 1
@@ -2250,6 +2360,16 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
 
         if task_id:
             item["_tasks"].add(task_id)
+            task_agents[task_id].add(agent_id)
+            if status == CYCLE_VERIFY_START_STATUS:
+                item["_verify_started_tasks"].add(task_id)
+            elif status == "verify_passed":
+                item["_verify_passed_tasks"].add(task_id)
+            elif status == "verify_failed":
+                item["_verify_failed_tasks"].add(task_id)
+        run_id = str(event.get("run_id") or "").strip()
+        if run_id:
+            item["_runs"].add(run_id)
         if step and step != "cycle_repair":
             item["_cycle_events_total"] += 1
             if is_canonical_cycle_step(step):
@@ -2461,6 +2581,20 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
     total_instances_completed = 0
     total_instances_failed = 0
     total_retire_recommended = 0
+    total_orchestration_mode_selected = 0
+    total_orchestration_phase_started = 0
+    total_orchestration_phase_completed = 0
+    total_roundtable_started = 0
+    total_roundtable_round_completed = 0
+    total_roundtable_converged = 0
+    total_merge_started = 0
+    total_merge_completed = 0
+    total_merge_conflicts_detected = 0
+    total_merge_conflicts_resolved = 0
+    total_routing_tasks_total = 0
+    total_routing_tasks_ok = 0
+    total_tasks_with_parallel_mode = 0
+    total_no_progress_tasks = 0
     total_specialist_verify_pass = 0
     total_specialist_verify_total = 0
     total_tool_overreach_events = 0
@@ -2493,7 +2627,9 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
         item = by_agent[agent_id]
         events_total = int(item["events_total"])
         tasks_total = len(item["_tasks"])
+        invocation_count = len(item["_runs"]) if item["_runs"] else tasks_total
         completed_total = len(item["_completed_tasks"])
+        completed_task_count = completed_total
         failed_total = len(item["_failed_tasks"])
         rec_suggested = item["_recommendations_suggested"]
         rec_applied = item["_recommendations_applied"]
@@ -2516,6 +2652,11 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
         verify_started_count = int(status_counts.get("verify_started", 0))
         verify_passed_count = int(status_counts.get("verify_passed", 0))
         verify_failed_count = int(status_counts.get("verify_failed", 0))
+        verify_started_tasks = item["_verify_started_tasks"]
+        verify_passed_tasks = item["_verify_passed_tasks"]
+        verify_failed_tasks = item["_verify_failed_tasks"]
+        verify_passed_task_count = len(verify_started_tasks.intersection(verify_passed_tasks))
+        verify_failed_task_count = len(verify_started_tasks.intersection(verify_failed_tasks))
         lesson_captured_count = int(status_counts.get("lesson_captured", 0))
         bugfix_autonomous_count = int(status_counts.get("bugfix_autonomous", 0))
         elegance_checked_count = int(status_counts.get("elegance_checked", 0))
@@ -2528,11 +2669,11 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
         plan_signal_tasks = len(item["_plan_signal_tasks"])
         plan_coverage_rate = round((plan_signal_tasks / tasks_total) * 100, 2) if tasks_total > 0 else None
         verification_pass_rate = (
-            round((verify_passed_count / verify_started_count) * 100, 2)
-            if verify_started_count > 0
+            round((verify_passed_task_count / len(verify_started_tasks)) * 100, 2)
+            if len(verify_started_tasks) > 0
             else None
         )
-        lesson_capture_rate_den = verify_passed_count + verify_failed_count
+        lesson_capture_rate_den = verify_passed_task_count + verify_failed_task_count
         lesson_capture_rate = (
             round((lesson_captured_count / lesson_capture_rate_den) * 100, 2)
             if lesson_capture_rate_den > 0
@@ -2600,6 +2741,37 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
             if instances_spawned > 0
             else None
         )
+        routing_tasks_total = int(item["_routing_tasks_total"])
+        routing_tasks_ok = int(item["_routing_tasks_ok"])
+        tasks_with_parallel_mode = len(item["_tasks_with_parallel_mode"])
+        merge_started = int(item["_merge_started"])
+        merge_conflicts_detected = int(item["_merge_conflicts_detected"])
+        no_progress_tasks = len(item["_no_progress_tasks"])
+        routing_accuracy_rate = (
+            round((routing_tasks_ok / routing_tasks_total) * 100, 2)
+            if routing_tasks_total > 0
+            else None
+        )
+        parallelization_gain_rate = (
+            round((tasks_with_parallel_mode / tasks_total) * 100, 2)
+            if tasks_total > 0
+            else None
+        )
+        merge_conflict_rate = (
+            round((merge_conflicts_detected / merge_started) * 100, 2)
+            if merge_started > 0
+            else None
+        )
+        no_progress_loop_rate = (
+            round((no_progress_tasks / tasks_total) * 100, 2)
+            if tasks_total > 0
+            else None
+        )
+        verification_coverage_rate = (
+            round((len(item["_verify_started_tasks"]) / tasks_total) * 100, 2)
+            if tasks_total > 0
+            else None
+        )
 
         instance_time_to_verify_minutes: list[float] = []
         for span in item["_instance_spans"].values():
@@ -2620,6 +2792,18 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
             if instance_time_to_verify_minutes
             else None
         )
+        handoff_use_rate = (
+            round((len(item["_tasks_with_handoff"]) / tasks_total) * 100, 2)
+            if tasks_total > 0
+            else None
+        )
+        overlap_with_analyst_rate = None
+        if agent_id != LATEST_CYCLE_AGENT_ID and tasks_total > 0:
+            overlap_tasks = sum(
+                1 for task_id in item["_tasks"] if LATEST_CYCLE_AGENT_ID in task_agents.get(task_id, set())
+            )
+            overlap_with_analyst_rate = round((overlap_tasks / tasks_total) * 100, 2)
+        host_adapter_sync = evaluate_host_adapter_sync(agent_id)
 
         orchestration_cost_per_completed_task = None
         orchestration_cost_unit = None
@@ -2721,7 +2905,9 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
                 "agent_id": agent_id,
                 "events_total": events_total,
                 "tasks_total": tasks_total,
+                "invocation_count": invocation_count,
                 "completed_tasks": completed_total,
+                "completed_task_count": completed_task_count,
                 "failed_tasks": failed_total,
                 "review_errors_total": item["review_errors_total"],
                 "review_error_rate": review_error_rate,
@@ -2772,13 +2958,23 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
                 "n_selected_total": item["n_selected_total"],
                 "decision_time_avg_ms": round(sum(item["_decision_times"]) / len(item["_decision_times"]), 1) if item["_decision_times"] else None,
                 "reuse_hit_rate": reuse_hit_rate,
+                "reuse_rate": reuse_hit_rate,
                 "new_profile_creation_rate": new_profile_creation_rate,
                 "specialist_verify_pass_rate": specialist_verify_pass_rate,
                 "profile_sprawl_ratio": profile_sprawl_ratio,
                 "tool_overreach_rate": tool_overreach_rate,
+                "routing_accuracy_rate": routing_accuracy_rate,
+                "parallelization_gain_rate": parallelization_gain_rate,
+                "merge_conflict_rate": merge_conflict_rate,
+                "no_progress_loop_rate": no_progress_loop_rate,
+                "verification_coverage_rate": verification_coverage_rate,
                 "orchestration_cost_per_completed_task": orchestration_cost_per_completed_task,
                 "orchestration_cost_unit": orchestration_cost_unit,
                 "time_to_verify_min": time_to_verify,
+                "handoff_use_rate": handoff_use_rate,
+                "overlap_with_analyst_rate": overlap_with_analyst_rate,
+                "host_adapter_sync_status": host_adapter_sync["status"],
+                "host_adapter_sync": host_adapter_sync,
                 "canonical_event_compliance_rate": canonical_event_compliance_rate,
                 "non_canonical_events_total": non_canonical_events_total,
                 "capability_refresh_coverage_rate": capability_refresh_coverage_rate,
@@ -2840,6 +3036,20 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
         total_instances_completed += instances_completed
         total_instances_failed += instances_failed
         total_retire_recommended += retire_recommended
+        total_orchestration_mode_selected += int(item["_orchestration_mode_selected"])
+        total_orchestration_phase_started += int(item["_orchestration_phase_started"])
+        total_orchestration_phase_completed += int(item["_orchestration_phase_completed"])
+        total_roundtable_started += int(item["_roundtable_started"])
+        total_roundtable_round_completed += int(item["_roundtable_round_completed"])
+        total_roundtable_converged += int(item["_roundtable_converged"])
+        total_merge_started += int(item["_merge_started"])
+        total_merge_completed += int(item["_merge_completed"])
+        total_merge_conflicts_detected += int(item["_merge_conflicts_detected"])
+        total_merge_conflicts_resolved += int(item["_merge_conflicts_resolved"])
+        total_routing_tasks_total += int(item["_routing_tasks_total"])
+        total_routing_tasks_ok += int(item["_routing_tasks_ok"])
+        total_tasks_with_parallel_mode += len(item["_tasks_with_parallel_mode"])
+        total_no_progress_tasks += len(item["_no_progress_tasks"])
         total_specialist_verify_pass += specialist_verify_pass
         total_specialist_verify_total += specialist_verify_total
         total_tool_overreach_events += tool_overreach_events
@@ -2866,6 +3076,9 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
         total_file_ops_step_fallback_events += file_ops_step_fallback_events
         total_file_ops_operations_total += file_ops_operations_total
         total_file_ops_delete_total += file_ops_delete_total
+        total_verify_started_task_pairs += len(verify_started_tasks)
+        total_verify_passed_task_pairs += verify_passed_task_count
+        total_verify_failed_task_pairs += verify_failed_task_count
 
     total_recommendation_action_rate = None
     if total_recommendations_suggested:
@@ -2876,9 +3089,6 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
 
     total_planned = 0
     total_replanned = 0
-    total_verify_started = 0
-    total_verify_passed = 0
-    total_verify_failed = 0
     total_lesson_captured = 0
     total_bugfix_autonomous = 0
     total_elegance_checked = 0
@@ -2895,9 +3105,6 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
         total_plan_signal_tasks += int(agent.get("plan_signal_tasks", 0))
         total_planned += int(status_counts.get("planned", 0))
         total_replanned += int(status_counts.get("replanned", 0))
-        total_verify_started += int(status_counts.get("verify_started", 0))
-        total_verify_passed += int(status_counts.get("verify_passed", 0))
-        total_verify_failed += int(status_counts.get("verify_failed", 0))
         total_lesson_captured += int(status_counts.get("lesson_captured", 0))
         total_bugfix_autonomous += int(status_counts.get("bugfix_autonomous", 0))
         total_elegance_checked += int(status_counts.get("elegance_checked", 0))
@@ -2911,9 +3118,11 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
 
     total_plan_coverage_rate = round((total_plan_signal_tasks / total_tasks) * 100, 2) if total_tasks > 0 else None
     total_verification_pass_rate = (
-        round((total_verify_passed / total_verify_started) * 100, 2) if total_verify_started > 0 else None
+        round((total_verify_passed_task_pairs / total_verify_started_task_pairs) * 100, 2)
+        if total_verify_started_task_pairs > 0
+        else None
     )
-    total_lesson_capture_rate_den = total_verify_passed + total_verify_failed
+    total_lesson_capture_rate_den = total_verify_passed_task_pairs + total_verify_failed_task_pairs
     total_lesson_capture_rate = (
         round((total_lesson_captured / total_lesson_capture_rate_den) * 100, 2) if total_lesson_capture_rate_den > 0 else None
     )
@@ -2964,6 +3173,31 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
     total_tool_overreach_rate = (
         round((total_tool_overreach_events / total_instances_spawned) * 100, 2)
         if total_instances_spawned > 0
+        else None
+    )
+    total_routing_accuracy_rate = (
+        round((total_routing_tasks_ok / total_routing_tasks_total) * 100, 2)
+        if total_routing_tasks_total > 0
+        else None
+    )
+    total_parallelization_gain_rate = (
+        round((total_tasks_with_parallel_mode / total_tasks) * 100, 2)
+        if total_tasks > 0
+        else None
+    )
+    total_merge_conflict_rate = (
+        round((total_merge_conflicts_detected / total_merge_started) * 100, 2)
+        if total_merge_started > 0
+        else None
+    )
+    total_no_progress_loop_rate = (
+        round((total_no_progress_tasks / total_tasks) * 100, 2)
+        if total_tasks > 0
+        else None
+    )
+    total_verification_coverage_rate = (
+        round((total_verify_started_task_pairs / total_tasks) * 100, 2)
+        if total_tasks > 0
         else None
     )
     total_time_to_verify = (
@@ -3062,10 +3296,16 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
             "ab_sessions_required": total_ab_sessions_required if total_ab_sessions_required > 0 else None,
             "ab_sessions_progress_rate": total_ab_sessions_progress_rate,
             "reuse_hit_rate": total_reuse_hit_rate,
+            "reuse_rate": total_reuse_hit_rate,
             "new_profile_creation_rate": total_new_profile_creation_rate,
             "specialist_verify_pass_rate": total_specialist_verify_pass_rate,
             "profile_sprawl_ratio": total_profile_sprawl_ratio,
             "tool_overreach_rate": total_tool_overreach_rate,
+            "routing_accuracy_rate": total_routing_accuracy_rate,
+            "parallelization_gain_rate": total_parallelization_gain_rate,
+            "merge_conflict_rate": total_merge_conflict_rate,
+            "no_progress_loop_rate": total_no_progress_loop_rate,
+            "verification_coverage_rate": total_verification_coverage_rate,
             "orchestration_cost_per_completed_task": total_orchestration_cost_per_completed_task,
             "orchestration_cost_unit": total_orchestration_cost_unit,
             "time_to_verify_min": total_time_to_verify,
@@ -3099,10 +3339,22 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
                 "instance_completed": total_instances_completed,
                 "instance_failed": total_instances_failed,
                 "retire_recommended": total_retire_recommended,
+                "mode_selected": total_orchestration_mode_selected,
+                "phase_started": total_orchestration_phase_started,
+                "phase_completed": total_orchestration_phase_completed,
+                "roundtable_started": total_roundtable_started,
+                "roundtable_round_completed": total_roundtable_round_completed,
+                "roundtable_converged": total_roundtable_converged,
+                "merge_started": total_merge_started,
+                "merge_completed": total_merge_completed,
+                "merge_conflicts_detected": total_merge_conflicts_detected,
+                "merge_conflicts_resolved": total_merge_conflicts_resolved,
                 "specialist_verify_pass": total_specialist_verify_pass,
                 "specialist_verify_total": total_specialist_verify_total,
                 "created_profiles": len(total_created_profiles),
                 "tool_overreach_events": total_tool_overreach_events,
+                "tasks_with_parallel_mode": total_tasks_with_parallel_mode,
+                "no_progress_tasks": total_no_progress_tasks,
             },
             "capability_refresh_counts": {
                 "started": total_capability_refresh_started,
@@ -3532,24 +3784,27 @@ def render_markdown_report(summary: dict[str, Any]) -> str:
             "",
             "## By Agent",
             "",
-            "| Agent | Events | Tasks | Completed | Failed | Review errors | Trace coverage | Rec action rate | Unknown source % | Unknown semantic % | p95 duration ms |",
-            "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+            "| Agent | Events | Invocations | Tasks | Completed | Handoff % | Analyst overlap % | Host adapters | Trace coverage | Rec action rate | Unknown source % | p95 duration ms |",
+            "| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | ---: | ---: |",
         ]
     )
 
     for agent in summary.get("agents", []):
+        handoff_use_rate = agent.get("handoff_use_rate")
+        overlap_with_analyst_rate = agent.get("overlap_with_analyst_rate")
         lines.append(
-            "| {agent_id} | {events_total} | {tasks_total} | {completed_tasks} | {failed_tasks} | {review_errors_total} | {trace_coverage_pct}% | {recommendation_action_rate} | {unknown_source_rate} | {unknown_semantic_rate} | {p95_duration_ms} |".format(
+            "| {agent_id} | {events_total} | {invocation_count} | {tasks_total} | {completed_tasks} | {handoff_use_rate} | {overlap_with_analyst_rate} | {host_adapter_sync_status} | {trace_coverage_pct}% | {recommendation_action_rate} | {unknown_source_rate} | {p95_duration_ms} |".format(
                 agent_id=agent.get("agent_id", "unknown"),
                 events_total=agent.get("events_total", 0),
+                invocation_count=agent.get("invocation_count", 0),
                 tasks_total=agent.get("tasks_total", 0),
                 completed_tasks=agent.get("completed_tasks", 0),
-                failed_tasks=agent.get("failed_tasks", 0),
-                review_errors_total=agent.get("review_errors_total", 0),
+                handoff_use_rate=handoff_use_rate if handoff_use_rate is not None else "n/a",
+                overlap_with_analyst_rate=overlap_with_analyst_rate if overlap_with_analyst_rate is not None else "n/a",
+                host_adapter_sync_status=agent.get("host_adapter_sync_status", "unknown"),
                 trace_coverage_pct=agent.get("trace_coverage_pct", 0),
                 recommendation_action_rate=agent.get("recommendation_action_rate", "unknown"),
                 unknown_source_rate=agent.get("unknown_source_rate", "unknown"),
-                unknown_semantic_rate=agent.get("unknown_semantic_rate", "unknown"),
                 p95_duration_ms=agent.get("p95_duration_ms", "unknown"),
             )
         )
@@ -3888,6 +4143,122 @@ def build_manual_event(
         "metrics": {},
         "error": None,
     }
+
+
+def build_orchestration_event(
+    *,
+    agent_id: str,
+    task_id: str,
+    run_id: str,
+    trace_id: str,
+    profile_id: str,
+    instance_id: str,
+    status: str,
+    step: str,
+    timestamp: str | None = None,
+    process: str = "agent_dispatcher",
+    parent_instance_id: str | None = None,
+    root_agent_id: str | None = None,
+    depth: int | None = None,
+    phase_id: str | None = None,
+    execution_mode: str | None = None,
+    execution_backend: str | None = None,
+    context_window_id: str | None = None,
+    isolation_mode: str | None = None,
+    read_only: bool | None = None,
+    ownership_scope: list[str] | None = None,
+    depends_on: list[str] | None = None,
+    merge_target: str | None = None,
+    interaction_mode: str | None = None,
+    round_index: int | None = None,
+    objective: str | None = None,
+    verify_status: str | None = "pending",
+    outcome: str | None = None,
+    rules: list[str] | None = None,
+    tools: list[str] | None = None,
+    skills: list[str] | None = None,
+    mcp_tools: list[str] | None = None,
+    input_artifacts: list[str] | None = None,
+    output_artifacts: list[str] | None = None,
+    artifact_read: list[Any] | None = None,
+    artifact_write: list[Any] | None = None,
+    metrics: dict[str, Any] | None = None,
+    error: str | None = None,
+) -> dict[str, Any]:
+    event_timestamp = safe_str(timestamp) or utc_now_iso()
+    step_raw = safe_str(step) or "step_3_orchestration"
+    step_value = normalize_step_name(step_raw) or step_raw
+    read_refs = normalize_artifact_refs(artifact_read or [], step=step_value)
+    write_refs = normalize_artifact_refs(artifact_write or [], step=step_value)
+    artifact_operations = build_artifact_operations_from_refs(
+        read_refs=read_refs,
+        write_refs=write_refs,
+        step=step_value,
+        timestamp=event_timestamp,
+        task_id=task_id,
+        run_id=run_id,
+        source="telemetry",
+        write_op="write",
+    )
+    return {
+        "version": LOG_VERSION,
+        "artifact_contract_version": ARTIFACT_CONTRACT_VERSION,
+        "artifact_ops_origin": "mirrored_legacy",
+        "event_id": str(uuid.uuid4()),
+        "timestamp": event_timestamp,
+        "agent_id": safe_str(agent_id),
+        "process": safe_str(process) or "agent_dispatcher",
+        "run_id": safe_str(run_id),
+        "trace_id": safe_str(trace_id),
+        "span_id": None,
+        "task_id": safe_str(task_id),
+        "step": step_value,
+        "step_raw": step_raw,
+        "step_label": resolve_step_label(step_value, step_raw),
+        "status": safe_str(status),
+        "outcome": safe_str(outcome) or None,
+        "recommendation_id": None,
+        "benchmark_run_id": None,
+        "benchmark_case_id": None,
+        "attempt_index": None,
+        "profile_id": safe_str(profile_id) or None,
+        "instance_id": safe_str(instance_id) or None,
+        "parent_instance_id": safe_str(parent_instance_id) or None,
+        "root_agent_id": safe_str(root_agent_id) or None,
+        "depth": depth if depth is not None else None,
+        "phase_id": safe_str(phase_id) or None,
+        "execution_mode": safe_str(execution_mode) or None,
+        "execution_backend": safe_str(execution_backend) or None,
+        "context_window_id": safe_str(context_window_id) or None,
+        "isolation_mode": safe_str(isolation_mode) or None,
+        "read_only": read_only if isinstance(read_only, bool) else None,
+        "ownership_scope": safe_list_str(ownership_scope),
+        "depends_on": safe_list_str(depends_on),
+        "merge_target": safe_str(merge_target) or None,
+        "interaction_mode": safe_str(interaction_mode) or None,
+        "round_index": round_index if isinstance(round_index, int) and round_index >= 0 else None,
+        "objective": safe_str(objective) or None,
+        "verify_status": normalize_verify_status(verify_status),
+        "judge_model": None,
+        "judge_score": None,
+        "mcp_tools": normalize_artifact_list(mcp_tools),
+        "tools": normalize_artifact_list(tools),
+        "skills": normalize_artifact_list(skills),
+        "rules": normalize_artifact_list(rules),
+        "input_artifacts": normalize_artifact_list(input_artifacts),
+        "output_artifacts": normalize_artifact_list(output_artifacts),
+        "artifacts_read": read_refs,
+        "artifacts_written": write_refs,
+        "artifact_operations": artifact_operations,
+        "metrics": metrics if isinstance(metrics, dict) else {},
+        "error": safe_str(error) or None,
+    }
+
+
+def append_orchestration_event(log_dir: Path, **kwargs: Any) -> tuple[Path, dict[str, Any]]:
+    event = build_orchestration_event(**kwargs)
+    target = append_event(log_dir, event)
+    return target, event
 
 
 def has_user_correction(statuses: list[str]) -> bool:

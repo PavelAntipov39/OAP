@@ -64,6 +64,11 @@
 - `tools[]` — capability-инструменты (например `QMD retrieval`).
 - `mcp_tools[]` — integration-layer (серверы/подключения MCP).
 - Legacy-совместимость: если в старом событии есть `skills=["qmd-memory-retrieval"]`, оно нормализуется в `tools=["QMD retrieval"]`.
+- Baseline vs runtime:
+  - step-level `Навыки/Инструменты/MCP` из operating plan задают baseline minimum;
+  - telemetry `skills[]/tools[]/mcp_tools[]` фиксируют фактически использованный runtime-набор;
+  - runtime-набор может быть шире baseline за счет dynamic capability selection (capability-first routing + orchestration + allowlist/policy gates).
+- Для шагов, где применился динамический capability, producer обязан логировать фактический runtime capability в соответствующем telemetry-поле, а не только baseline шага.
 - Для file-trace использовать 2 независимые оси (MECE):
   - `source_kind`: `registry`, `template_catalog`, `operating_plan`, `spec`, `contract`, `telemetry_log`, `generated_artifact`, `capability_snapshot`, `unknown`.
   - `semantic_layer`: `skills`, `tools`, `mcp`, `rules`, `tasks`, `memory`, `schema`, `telemetry`, `unknown`.
@@ -95,6 +100,11 @@ Workflow-статусы (рекомендуемый минимум):
   - `agent_profile_reused`, `agent_profile_created`
   - `agent_instance_spawned`, `agent_instance_completed`, `agent_instance_failed`
   - `agent_retire_recommended`
+  - `orchestration_mode_selected`
+  - `orchestration_phase_started`, `orchestration_phase_completed`
+  - `roundtable_started`, `roundtable_round_completed`, `roundtable_converged`
+  - `orchestration_merge_started`, `orchestration_merge_completed`
+  - `orchestration_conflict_detected`, `orchestration_conflict_resolved`
 - capability optimization:
   - `capability_refresh_started`, `capability_refresh_completed`, `capability_refresh_failed`
   - `shadow_trial_plan_refreshed`, `shadow_trial_judged`
@@ -135,10 +145,16 @@ Workflow-статусы (рекомендуемый минимум):
 - `judge_disagreement_rate` — доля несогласий между LLM-судьей и human-калибровкой
 - `cost_per_success` — стоимость одного успешного benchmark-кейса
 - `reuse_hit_rate` — доля reuse относительно reuse+create
+- `reuse_rate` — alias для `reuse_hit_rate` в карточках orchestration
 - `new_profile_creation_rate` — доля newly-created профилей относительно reuse+create
 - `specialist_verify_pass_rate` — доля successful verify у specialist instance
 - `profile_sprawl_ratio` — число новых профилей на одну задачу
 - `tool_overreach_rate` — доля запусков с признаком overreach
+- `routing_accuracy_rate` — доля routing-решений, подтвержденных как корректные
+- `parallelization_gain_rate` — доля задач, где orchestration реально использовала non-sequential режим
+- `merge_conflict_rate` — доля merge-циклов, где были зафиксированы конфликты
+- `no_progress_loop_rate` — доля задач, где orchestration попала в no-progress loop
+- `verification_coverage_rate` — доля задач, дошедших хотя бы до `verify_started`
 - `orchestration_cost_per_completed_task` — стоимость/токены на завершенную задачу
 - `time_to_verify_min` — среднее время от `agent_instance_spawned` до terminal verify
 - `canonical_event_compliance_rate` — доля событий analyst-cycle, которые попали в канонические этапы `step_0..step_9.1`
@@ -160,8 +176,8 @@ Workflow-статусы (рекомендуемый минимум):
 Формула:
 - `recommendation_action_rate = applied / suggested * 100`
 - `plan_coverage_rate = plan_signal_tasks / tasks_total * 100`, где `plan_signal_tasks` включает `planned|replanned` и `step=plan*` при `status=started`
-- `verification_pass_rate = verify_passed / verify_started * 100`
-- `lesson_capture_rate = lesson_captured / (verify_passed + verify_failed) * 100`
+- `verification_pass_rate = unique task_id с verify_started+verify_passed / unique task_id с verify_started * 100`
+- `lesson_capture_rate = lesson_captured / (unique task_id с verify_started+verify_passed + unique task_id с verify_started+verify_failed) * 100`
 - `replan_rate = replanned / planned * 100`
 - `decision_time_avg_ms = avg(metrics.decision_time_ms) по всем событиям агента`
 - `ab_pass_rate = ab_test_passed / ab_test_started * 100`
@@ -365,6 +381,30 @@ make agent-cycle-close AGENT=analyst-agent TASK=task-42 MODE=strict
 - Сводка (оперативно): `artifacts/agent_telemetry_summary.json`
 - Сводка (читаемо): `artifacts/agent_telemetry_summary.md`
 - Историческая аналитика: в БД/warehouse после sync (целевая модель).
+
+## KPI жизнеспособности агента
+- В `agents[]` summary дополнительно публикуются KPI, которые помогают понять, нужен ли top-level агент как отдельная роль, а не только как архивная сущность.
+- `invocation_count`
+  - что значит: сколько отдельных запусков агента было за период;
+  - как считается: `count(distinct run_id)`; если в старых событиях `run_id` отсутствует, используется fallback `tasks_total`.
+- `completed_task_count`
+  - что значит: сколько задач агент довел до terminal success;
+  - как считается: то же значение, что и `completed_tasks`.
+- `handoff_use_rate`
+  - что значит: в какой доле задач агент реально делегировал работу в child-run, а не только планировал это;
+  - как считается: `tasks_with_agent_instance_spawned / tasks_total * 100`.
+- `overlap_with_analyst_rate`
+  - что значит: насколько часто агент работает в тех же `task_id`, что и `analyst-agent`;
+  - как считается: `shared_tasks_with_analyst / tasks_total * 100`;
+  - для `analyst-agent` значение `null`, потому что overlap с самим собой неинформативен.
+- `host_adapter_sync_status`
+  - что значит: в каком состоянии repo-generated host adapters для этого агента;
+  - значения:
+    - `synced` — есть и `.claude/agents/<agent-id>.md`, и `.github/agents/<agent-id>.agent.md`;
+    - `partial` — есть только один из двух adapter-файлов;
+    - `missing` — adapter-файлы не найдены;
+    - `archived` — агент выведен из активной архитектуры и находится в `docs/subservices/oap/archive/agents/<agent-id>/`.
+- Эти KPI не заменяют `verification_pass_rate` и `orchestration_cost_per_completed_task`, а используются вместе с ними для решения `keep / narrow / merge / retire_candidate`.
 
 ## Structured artifact trace
 - Каноническое поле producer-слоя: `artifact_operations[]` (optional, backward-compatible).
