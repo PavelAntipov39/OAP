@@ -15,6 +15,7 @@ DEFAULT_INSTANCE_BACKBONE_VERSION = "universal_backbone_v1"
 DEFAULT_HOST_ID = "codex"
 DEFAULT_CONTEXT_ISOLATION_POLICY = "per_instance_context_package"
 DEFAULT_INTERACTION_MODE = "sequential"
+DEFAULT_TEMPLATE_CREATE_MIN_SCORE = 0.55
 ROUNDTABLE_MAX_ROUNDS = 4
 TERMINOLOGY_TEMPLATE_ID = "terminology-consistency-audit"
 TERMINOLOGY_TRIGGER_TEXT_MARKERS = {
@@ -842,6 +843,7 @@ def build_collaboration_plan(
     reuse_threshold: float = DEFAULT_REUSE_THRESHOLD,
     host_matrix_path: Path | None = None,
     default_host_id: str = DEFAULT_HOST_ID,
+    template_create_min_score: float = DEFAULT_TEMPLATE_CREATE_MIN_SCORE,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     raw_agents = registry.get("agents") if isinstance(registry, dict) else None
     profiles = [
@@ -875,23 +877,32 @@ def build_collaboration_plan(
         templates = load_template_catalog(template_catalog_path)
         template = choose_template(templates, requirements)
         if template:
-            candidate_profile = _build_created_profile(
-                template=template,
-                task_id=task_id,
-                created_by_agent_id=root_agent_id,
-            )
-            duplicate_profile = find_duplicate_profile_by_scope_and_tools(
-                profiles=profiles,
-                specialization_scope=safe_str(candidate_profile.get("specializationScope")),
-                tools=safe_list_str(candidate_profile.get("tools")),
-            )
-            if duplicate_profile is not None:
-                selected_profile = duplicate_profile
-                strategy = "reuse_existing" if len(reuse_candidates) == 0 else "mixed"
+            template_score = _score_template(template, requirements)
+            if template_score < template_create_min_score and reuse_candidates:
+                selected_id = safe_str(reuse_candidates[0].get("profile_id"))
+                selected_profile = _profile_by_id(profiles, selected_id)
+                strategy = "reuse_existing"
+            elif template_score < template_create_min_score:
+                selected_profile = _profile_by_id(profiles, root_agent_id)
+                strategy = "reuse_existing"
             else:
-                selected_profile = candidate_profile
-                created_profiles.append(selected_profile)
-                strategy = "create_new" if len(reuse_candidates) == 0 else "mixed"
+                candidate_profile = _build_created_profile(
+                    template=template,
+                    task_id=task_id,
+                    created_by_agent_id=root_agent_id,
+                )
+                duplicate_profile = find_duplicate_profile_by_scope_and_tools(
+                    profiles=profiles,
+                    specialization_scope=safe_str(candidate_profile.get("specializationScope")),
+                    tools=safe_list_str(candidate_profile.get("tools")),
+                )
+                if duplicate_profile is not None:
+                    selected_profile = duplicate_profile
+                    strategy = "reuse_existing" if len(reuse_candidates) == 0 else "mixed"
+                else:
+                    selected_profile = candidate_profile
+                    created_profiles.append(selected_profile)
+                    strategy = "create_new" if len(reuse_candidates) == 0 else "mixed"
         elif profiles:
             selected_profile = profiles[0]
             strategy = "reuse_existing"
@@ -1000,6 +1011,25 @@ def build_collaboration_plan(
                 read_only=True,
                 ownership_scope=["read_only_analysis"],
                 depends_on=["phase_1_framing"],
+                merge_target="phase_4_apply_merge",
+            )
+        )
+
+    if interaction_mode == "mixed_phased":
+        spawned_instances.append(
+            _build_spawned_instance(
+                profile=coordinator_profile,
+                task_id=task_id,
+                root_agent_id=coordinator_id,
+                purpose="Модерировать roundtable и зафиксировать итог раунда.",
+                parent_instance_id=coordinator_instance["instance_id"],
+                depth=1,
+                input_refs=["phase_2_parallel_audit"],
+                phase_id="phase_3_roundtable",
+                execution_backend=default_backend,
+                read_only=True,
+                ownership_scope=["moderation", "conflict_resolution"],
+                depends_on=["phase_2_parallel_audit"],
                 merge_target="phase_4_apply_merge",
             )
         )

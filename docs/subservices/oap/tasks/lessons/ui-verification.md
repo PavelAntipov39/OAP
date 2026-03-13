@@ -39,4 +39,5 @@
 - Related artifacts:
   - docs/subservices/oap/tasks/lessons/_TEMPLATE.md
   - docs/agents/registry.yaml
-  - docs/agents/host_agnostic_agent_catalog.yaml
+  - docs/subservices/oap/agents/ui-verification/OPERATING_PLAN.md
+  - scripts/export_host_agents.py

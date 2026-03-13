@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-03-07T00:00:00Z",
+  "updatedAt": "2026-03-12T21:36:42Z",
   "source": "oap-template-catalog",
   "version": "v1",
   "templates": [
@@ -71,7 +71,34 @@
           "At least one source-of-truth contract must stay consistent after the change."
         ],
         "doneCondition": "All contract gaps are classified and a clear apply/verify decision is returned.",
-        "outputSchema": "contract_audit_report.v1"
+        "outputSchema": "contract_audit_report.v1",
+        "useWhen": [
+          "Use when task changes schema/API/task payload/routing contracts.",
+          "Use when a safe apply verdict is required before merge."
+        ],
+        "avoidWhen": [
+          "Avoid for pure visual/text-only changes without contract impact.",
+          "Avoid when no source-of-truth contract is affected."
+        ],
+        "requiredContext": [
+          "spec/contracts refs",
+          "runtime payload sample",
+          "generated manifests"
+        ],
+        "expectedOutput": "Contract report with P0-P3 gaps, source refs, and safe apply/verify verdict.",
+        "failureModes": [
+          "schema_drift",
+          "contract_parity_gap",
+          "unsafe_backward_incompatibility"
+        ],
+        "fallbackTo": [
+          "single-source rollback",
+          "docs-spec-sync"
+        ],
+        "examples": [
+          "Validate new runtime fields in collaboration_plan.",
+          "Audit frontend API payload against source contract."
+        ]
       }
     },
     {
@@ -140,7 +167,136 @@
           "Multiple docs are expected to repeat the same operational fact."
         ],
         "doneCondition": "All required source updates are identified and consistency status is explicit.",
-        "outputSchema": "docs_sync_report.v1"
+        "outputSchema": "docs_sync_report.v1",
+        "useWhen": [
+          "Use when one operational fact is duplicated across spec/contracts/README/generated docs.",
+          "Use when terminology/workflow changes must be reflected in all dependent docs."
+        ],
+        "avoidWhen": [
+          "Avoid for local implementation tasks with no documentation contract impact.",
+          "Avoid when no canonical docs are part of acceptance."
+        ],
+        "requiredContext": [
+          "spec/ADR/README/glossary refs",
+          "generated docs index",
+          "consistency sync rules"
+        ],
+        "expectedOutput": "Docs sync report with required updates, drift list, and canonical sources.",
+        "failureModes": [
+          "docs_runtime_drift",
+          "missing_sync_update",
+          "outdated_generated_index"
+        ],
+        "fallbackTo": [
+          "manual parity checklist",
+          "contract-audit"
+        ],
+        "examples": [
+          "Sync glossary rename across UI/docs contracts.",
+          "Sync new orchestration mode in spec and README."
+        ]
+      }
+    },
+    {
+      "id": "editorial-quality-audit",
+      "name": "Редакционный аудит",
+      "specializationScope": "Review explanatory content, UI copy, modal text, and overview docs for clarity, factual accuracy, and safe promises against source-of-truth.",
+      "defaultSkills": [
+        "doc"
+      ],
+      "defaultTools": [
+        "QMD retrieval",
+        "Browser verification"
+      ],
+      "defaultMcp": [
+        "qmd",
+        "playwright"
+      ],
+      "defaultRules": [
+        "Source of truth: спецификация проекта",
+        "OAP Design Rule",
+        "Consistency sync rule (mandatory)"
+      ],
+      "capabilityOptimization": {
+        "enabled": true,
+        "refreshMode": "on_run",
+        "sourcePolicy": "official_first",
+        "trialMode": "shadow",
+        "promotionMode": "human_approve",
+        "minShadowSampleSize": 3,
+        "staleAfterHours": 168
+      },
+      "workflowBackbone": {
+        "version": "universal_backbone_v1",
+        "commonCoreSteps": [
+          "step_0_intake",
+          "step_1_start",
+          "step_2_preflight",
+          "step_3_orchestration",
+          "step_4_context_sync",
+          "step_5_role_window",
+          "step_6_role_exit_decision",
+          "step_7_apply_or_publish",
+          "step_7_contract_gate",
+          "step_8_verify",
+          "step_8_error_channel",
+          "step_9_finalize",
+          "step_9_publish_snapshots"
+        ],
+        "roleWindow": {
+          "entryStep": "step_5_role_window",
+          "exitStep": "step_6_role_exit_decision",
+          "purpose": "Проверить человеко-понятный текст на ясность, фактологию и избыточные обещания и вернуть bounded editorial report.",
+          "internalSteps": [
+            "role_collect_copy_sources",
+            "role_validate_clarity_and_fact_alignment",
+            "role_prepare_result_package"
+          ]
+        },
+        "stepExecutionPolicy": {
+          "skippedStepsAllowed": true,
+          "skippedStepStatus": "skipped"
+        },
+        "supportsDynamicInstances": true
+      },
+      "capabilityContract": {
+        "mission": "Keep explanatory text clear, factual, and safe in its promises without changing project meaning by intuition.",
+        "entryCriteria": [
+          "Task changes overview docs, agent descriptions, section descriptions, tooltip text, modal text, or other user-facing explanatory copy.",
+          "The text must stay aligned with source-of-truth and remain understandable to non-authors."
+        ],
+        "doneCondition": "The text has one clear canonical wording, risky claims are either evidenced or softened, and the review package is ready.",
+        "outputSchema": "editorial_quality_report.v1",
+        "useWhen": [
+          "Use when explanatory text needs factual and human-readable editorial review.",
+          "Use when overview docs or UI copy must be simplified without losing meaning."
+        ],
+        "avoidWhen": [
+          "Avoid for pure code changes without descriptive text.",
+          "Avoid when only glossary normalization is needed and no editorial rewrite is required."
+        ],
+        "requiredContext": [
+          "source-of-truth docs",
+          "target audience",
+          "canonical terminology",
+          "current text draft"
+        ],
+        "expectedOutput": "Editorial report with fact risks, clarity issues, overclaim flags, proposed text, and evidence refs.",
+        "failureModes": [
+          "overclaim_copy",
+          "unclear_user_text",
+          "fact_misalignment",
+          "terminology_shadow_drift"
+        ],
+        "fallbackTo": [
+          "analyst-agent",
+          "terminology-consistency-audit",
+          "docs-spec-sync"
+        ],
+        "examples": [
+          "Review an OAP project overview before sharing it with colleagues.",
+          "Audit section descriptions and tooltip text in an agent card."
+        ]
       }
     },
     {
@@ -211,7 +367,34 @@
           "Execution host and stale/sync policy must be validated."
         ],
         "doneCondition": "Automation decision includes sync status, stale status, and allowed execution path.",
-        "outputSchema": "automation_governance_report.v1"
+        "outputSchema": "automation_governance_report.v1",
+        "useWhen": [
+          "Use when scheduled runs or automation policies are introduced/changed.",
+          "Use when stale/freshness gates must be enforced for autonomous runs."
+        ],
+        "avoidWhen": [
+          "Avoid for one-off manual runs with no persisted automation config.",
+          "Avoid when task does not change scheduling/governance surface."
+        ],
+        "requiredContext": [
+          "automation registry",
+          "refresh/stale policy",
+          "latest run telemetry summary"
+        ],
+        "expectedOutput": "Automation governance report with safe execution path and blocked actions.",
+        "failureModes": [
+          "stale_snapshot_promotion_attempt",
+          "unsafe_schedule_window",
+          "missing_run_traceability"
+        ],
+        "fallbackTo": [
+          "manual run only",
+          "soft_warning mode"
+        ],
+        "examples": [
+          "Validate daily schedule before strict rollout.",
+          "Audit pause/resume policy consistency."
+        ]
       }
     },
     {
@@ -280,7 +463,34 @@
           "Source set spans multiple docs/contracts/policies."
         ],
         "doneCondition": "Evidence map is complete, contradictions resolved, and missing anchors explicitly reported.",
-        "outputSchema": "retrieval_audit_report.v1"
+        "outputSchema": "retrieval_audit_report.v1",
+        "useWhen": [
+          "Use when evidence must be collected across multiple documents.",
+          "Use when decision quality depends on retrieval coverage and contradiction checks."
+        ],
+        "avoidWhen": [
+          "Avoid when exact file/line is already known.",
+          "Avoid for code-symbol lookup tasks."
+        ],
+        "requiredContext": [
+          "retrieval query budget",
+          "source-of-truth anchors",
+          "spec/contracts/runbook refs"
+        ],
+        "expectedOutput": "Evidence map with coverage score, contradiction list, and missing anchors.",
+        "failureModes": [
+          "insufficient_coverage",
+          "conflicting_sources",
+          "stale_source_bias"
+        ],
+        "fallbackTo": [
+          "manual source walk",
+          "contract-audit"
+        ],
+        "examples": [
+          "Audit evidence for analyst recommendation quality.",
+          "Cross-check architecture decision across spec/ADR/runbook."
+        ]
       }
     },
     {
@@ -349,7 +559,34 @@
           "A deterministic verification scenario can be executed."
         ],
         "doneCondition": "Critical flows pass in browser checks and deviations are documented with exact repro steps.",
-        "outputSchema": "ui_verification_report.v1"
+        "outputSchema": "ui_verification_report.v1",
+        "useWhen": [
+          "Use when acceptance depends on runtime browser behavior.",
+          "Use when reproducible route/action evidence is required."
+        ],
+        "avoidWhen": [
+          "Avoid for changes without UI runtime effects.",
+          "Avoid when static checks fully cover acceptance."
+        ],
+        "requiredContext": [
+          "target routes/deep-links",
+          "expected behavior checklist",
+          "latest UI artifact refs"
+        ],
+        "expectedOutput": "Browser verification report with exact repro steps and screenshot refs.",
+        "failureModes": [
+          "non_reproducible_flow",
+          "environment_flakiness",
+          "missing_visual_evidence"
+        ],
+        "fallbackTo": [
+          "static contract check",
+          "reader-agent smoke verification"
+        ],
+        "examples": [
+          "Verify modal deep-link restore behavior.",
+          "Verify tab/filter behavior after UI refactor."
+        ]
       }
     },
     {
@@ -418,7 +655,34 @@
           "Events are expected to contain run/trace/task linkage."
         ],
         "doneCondition": "Telemetry report passes consistency checks and KPI formulas resolve without manual prompt inspection.",
-        "outputSchema": "telemetry_audit_report.v1"
+        "outputSchema": "telemetry_audit_report.v1",
+        "useWhen": [
+          "Use when lifecycle/orchestration changes must remain reconstructable from telemetry.",
+          "Use when KPI formulas and event linkage need explicit validation."
+        ],
+        "avoidWhen": [
+          "Avoid when task has no telemetry or KPI impact.",
+          "Avoid when no new event contract is introduced."
+        ],
+        "requiredContext": [
+          ".logs/agents/*.jsonl",
+          "summary artifacts",
+          "KPI formula contract"
+        ],
+        "expectedOutput": "Telemetry audit report with coverage, gaps, KPI validity, and reconstructability verdict.",
+        "failureModes": [
+          "missing_event_linkage",
+          "kpi_formula_drift",
+          "non_canonical_step_usage"
+        ],
+        "fallbackTo": [
+          "strict step-contract gate",
+          "manual KPI recompute"
+        ],
+        "examples": [
+          "Validate canonical step compliance after runner changes.",
+          "Validate new routing metrics for orchestrator."
+        ]
       }
     },
     {
@@ -488,7 +752,34 @@
           "At least two sources can drift on naming (UI/docs/contracts/routes)."
         ],
         "doneCondition": "Glossary-driven labels are canonical and all cross-source terminology drifts are explicitly reported.",
-        "outputSchema": "terminology_consistency_report.v1"
+        "outputSchema": "terminology_consistency_report.v1",
+        "useWhen": [
+          "Use when user-facing terminology or chip labels are changed.",
+          "Use when glossary parity across UI/docs/contracts must be proven."
+        ],
+        "avoidWhen": [
+          "Avoid for purely technical changes without naming impact.",
+          "Avoid when taxonomy layer is untouched."
+        ],
+        "requiredContext": [
+          "glossary source",
+          "ui section contract",
+          "related docs/contracts"
+        ],
+        "expectedOutput": "Terminology report with canonical labels, drift list, and fix priorities.",
+        "failureModes": [
+          "label_glossary_mismatch",
+          "hardcoded_local_terms",
+          "cross_source_term_drift"
+        ],
+        "fallbackTo": [
+          "glossary-first manual review",
+          "docs-spec-sync"
+        ],
+        "examples": [
+          "Audit display labels after agent type rename.",
+          "Audit tooltip terminology in memory/contour sections."
+        ]
       }
     }
   ]

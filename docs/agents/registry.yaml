@@ -1,9 +1,9 @@
 {
-  "updatedAt": "2026-03-11T12:30:00Z",
+  "updatedAt": "2026-03-12T21:36:42Z",
   "source": "registry-manual",
   "sourceVersion": "v4",
   "hostLayer": {
-    "canonicalCatalogPath": "docs/agents/host_agnostic_agent_catalog.yaml",
+    "compatibilityCatalogPath": "docs/agents/host_agnostic_agent_catalog.yaml",
     "hostCapabilityMatrixPath": "docs/agents/host_capability_matrix.yaml",
     "adapterPolicy": "generated_non_authoritative",
     "crossHostExecutionPolicy": "dispatcher_first"
@@ -138,9 +138,9 @@
           "pathHint": "Universal backbone, multi-agent invariant, runtime contracts"
         },
         {
-          "title": "Канонический каталог агентов",
-          "filePath": "docs/agents/host_agnostic_agent_catalog.yaml",
-          "pathHint": "Автономные и процессные агенты, host envelope"
+          "title": "Операционные планы агентов",
+          "filePath": "docs/subservices/oap/agents",
+          "pathHint": "Каноническая metadata ролей и host adapter envelope"
         },
         {
           "title": "Каталог process templates",
@@ -198,10 +198,10 @@
           {
             "anchor_id": "anchor-catalog",
             "category": "contract",
-            "title": "Канонический каталог агентов",
-            "filePath": "docs/agents/host_agnostic_agent_catalog.yaml",
-            "pathHint": "Active autonomous agents и process agents",
-            "whySelected": "Нужен для выбора primary executor и handoff targets.",
+            "title": "Операционные планы агентов",
+            "filePath": "docs/subservices/oap/agents",
+            "pathHint": "Active autonomous agents, process agents и host adapter metadata",
+            "whySelected": "Нужны для выбора primary executor и handoff targets из канонической metadata.",
             "tokens_est": 260,
             "sourceUrl": null,
             "freshness": "fresh"
@@ -349,7 +349,9 @@
         "decisionRules": [
           "Не выбирать multi-agent режим без измеримой пользы.",
           "Для write/apply использовать одного merge/apply owner.",
-          "Если задача уже явно доменная, не добавлять orchestration-overhead."
+          "Если задача уже явно доменная, не добавлять orchestration-overhead.",
+          "Перед multi-agent routing сравнивать single-agent path и delegated path, фиксируя expected_gain, verify owner и fallback route.",
+          "Менять routing policy только по сопоставимым task classes и guardrails, а не по одиночному удачному кейсу."
         ]
       },
       "workflowPolicy": {
@@ -429,8 +431,39 @@
           "Задача поступила без очевидного доменного владельца или требует bounded multi-agent orchestration.",
           "Нужно выбрать primary executor, process agents или safe orchestration mode."
         ],
-        "doneCondition": "Primary executor and orchestration envelope are fixed, conflicts resolved, and verify ownership explicit.",
-        "outputSchema": "orchestration_decision_package.v1"
+        "doneCondition": "Primary executor, expected gain, verify owner and fallback route are fixed; conflicts resolved; routing decision is comparable against simpler alternatives.",
+        "outputSchema": "orchestration_decision_package.v1",
+        "useWhen": [
+          "Нужно определить owner задачи и решить, нужен ли single-agent path или delegated path.",
+          "Нужно собрать фазовый orchestration plan с bounded process agents и budgets."
+        ],
+        "avoidWhen": [
+          "Исполнитель задачи уже однозначен и orchestration не добавляет измеримой пользы.",
+          "Требуется только узкая доменная реализация без маршрутизации."
+        ],
+        "requiredContext": [
+          "task_brief.v1",
+          "collaboration_plan.orchestration_budget",
+          "docs/agents/registry.yaml",
+          "docs/subservices/oap/agents/*/OPERATING_PLAN.md",
+          "docs/subservices/oap/tasks/lessons/orchestrator-agent.md"
+        ],
+        "expectedOutput": "Coordinator decision package с primary executor, process agents, mode/phases, verify owner, fallback route и comparison basis.",
+        "failureModes": [
+          "wrong_executor",
+          "over_orchestration",
+          "under_orchestration",
+          "missing_verify_owner",
+          "budget_overspend"
+        ],
+        "fallbackTo": [
+          "single_agent_path",
+          "analyst-agent"
+        ],
+        "examples": [
+          "Маршрутизация комплексной UI-задачи в mixed_phased: analyst + designer + ui-verification.",
+          "Откат к single-agent path для малой правки без delegation overhead."
+        ]
       },
       "source": {
         "type": "manual",
@@ -2267,7 +2300,34 @@
         "mission": "Verify that decisions are backed by correct, complete, and non-contradictory evidence from source-of-truth documents.",
         "entryCriteria": ["Контекст задачи распределён по нескольким spec/contracts/runbook документам."],
         "doneCondition": "Retrieval audit report is ready with evidence set, gap list, and coverage score.",
-        "outputSchema": "retrieval_audit_report.v1"
+        "outputSchema": "retrieval_audit_report.v1",
+        "useWhen": [
+          "Нужно проверить полноту evidence по нескольким документам, а не по одному известному файлу.",
+          "Нужно явно зафиксировать contradiction/gap до apply/verify."
+        ],
+        "avoidWhen": [
+          "Точный файл и строка уже известны, дополнительный retrieval не улучшает решение.",
+          "Задача сводится к code-symbol lookup."
+        ],
+        "requiredContext": [
+          "spec/contracts/runbook refs",
+          "retrieval query + threshold policy",
+          "source-of-truth anchors"
+        ],
+        "expectedOutput": "Retrieval audit report с evidence map, coverage score, contradiction list и missing anchors.",
+        "failureModes": [
+          "insufficient_coverage",
+          "conflicting_sources",
+          "stale_source_bias"
+        ],
+        "fallbackTo": [
+          "manual source walk",
+          "contract-audit"
+        ],
+        "examples": [
+          "Проверка cross-file гипотезы перед архитектурным решением.",
+          "Аудит доказательной базы рекомендаций analyst-agent."
+        ]
       },
       "auditDisposition": "keep",
       "auditNote": null,
@@ -2314,7 +2374,34 @@
         "mission": "Verify runtime UI behavior in browser and return a reproducible verify package with screenshot references.",
         "entryCriteria": ["Изменение затрагивает маршруты, фильтры, модалки, табы, таблицы или контент в UI."],
         "doneCondition": "UI verification report is ready with route, action sequence, expected vs actual, and screenshot ref.",
-        "outputSchema": "ui_verification_report.v1"
+        "outputSchema": "ui_verification_report.v1",
+        "useWhen": [
+          "Нужно подтвердить runtime UI-поведение после изменений через реальный браузер.",
+          "Нужны воспроизводимые шаги и доказуемый verify package для приёмки."
+        ],
+        "avoidWhen": [
+          "Изменение не имеет runtime UI-следа.",
+          "Проверка полностью покрывается unit/schema-тестами без браузера."
+        ],
+        "requiredContext": [
+          "target route/deep-link",
+          "expected behavior checklist",
+          "latest UI artifact refs"
+        ],
+        "expectedOutput": "UI verification report с route, action sequence, expected/actual и screenshot refs.",
+        "failureModes": [
+          "non_reproducible_flow",
+          "environment_flakiness",
+          "missing_visual_evidence"
+        ],
+        "fallbackTo": [
+          "static contract check",
+          "reader-agent smoke verification"
+        ],
+        "examples": [
+          "Проверка открытия карточки агента по deep-link.",
+          "Проверка фильтров/табов после UI-рефакторинга."
+        ]
       },
       "auditDisposition": "keep",
       "auditNote": null,
@@ -2361,7 +2448,34 @@
         "mission": "Verify telemetry completeness, KPI correctness, and execution graph reconstructability for agent runs.",
         "entryCriteria": ["Задача меняет lifecycle, orchestration, metrics или summaries."],
         "doneCondition": "Telemetry audit report is ready with checked event list, gap list, and KPI coverage score.",
-        "outputSchema": "telemetry_audit_report.v1"
+        "outputSchema": "telemetry_audit_report.v1",
+        "useWhen": [
+          "Нужно проверить, что telemetry достаточно для реконструкции instance graph и расчёта KPI.",
+          "Нужно валидировать step/state contract после изменения runtime или отчётов."
+        ],
+        "avoidWhen": [
+          "Изменение не затрагивает telemetry/events/reporting.",
+          "Нет новых telemetry-требований в acceptance criteria."
+        ],
+        "requiredContext": [
+          ".logs/agents/*.jsonl",
+          "artifacts/agent_telemetry_summary.json",
+          "telemetry metric formulas"
+        ],
+        "expectedOutput": "Telemetry audit report с coverage, gaps, KPI formula status и reconstructability verdict.",
+        "failureModes": [
+          "missing_event_linkage",
+          "kpi_formula_drift",
+          "non_canonical_step_usage"
+        ],
+        "fallbackTo": [
+          "strict step-contract gate",
+          "manual KPI recompute"
+        ],
+        "examples": [
+          "Проверка новых routing KPI оркестратора после изменения логгера.",
+          "Аудит полноты канонических шагов в analyst-cycle."
+        ]
       },
       "auditDisposition": "keep",
       "auditNote": null,
@@ -2411,7 +2525,34 @@
         "mission": "Audit schema, API, task-contract, and routing-contract against source-of-truth and explicitly report breaking gaps.",
         "entryCriteria": ["Задача меняет spec, contracts, routing, payload shape или generated manifests."],
         "doneCondition": "Contract audit report is ready with findings by severity (P0-P3) and canonical source references.",
-        "outputSchema": "contract_audit_report.v1"
+        "outputSchema": "contract_audit_report.v1",
+        "useWhen": [
+          "Нужно проверить совместимость spec/contracts/runtime payload после изменений.",
+          "Нужна проверка рисков breaking changes до apply."
+        ],
+        "avoidWhen": [
+          "Изменение чисто визуальное и не трогает API/schema/task contracts.",
+          "Контрактный слой уже верифицирован без изменений."
+        ],
+        "requiredContext": [
+          ".specify/specs/001-oap/spec.md",
+          ".specify/specs/001-oap/contracts/*",
+          "generated manifests"
+        ],
+        "expectedOutput": "Contract audit report с P0-P3 findings, source refs и safe apply verdict.",
+        "failureModes": [
+          "schema_drift",
+          "contract_parity_gap",
+          "unsafe_backward_incompatibility"
+        ],
+        "fallbackTo": [
+          "single-source rollback",
+          "docs-spec-sync"
+        ],
+        "examples": [
+          "Проверка добавления полей в runtime contract.",
+          "Аудит совместимости UI payload и schema."
+        ]
       },
       "auditDisposition": "keep",
       "auditNote": null,
@@ -2458,7 +2599,34 @@
         "mission": "Verify consistency between spec, ADR, README, glossary, and generated docs after architectural and process changes.",
         "entryCriteria": ["Задача меняет терминологию, operating model, docs contracts или source-of-truth набор документов."],
         "doneCondition": "Docs sync report is ready with consistency gap list and canonical source references.",
-        "outputSchema": "docs_sync_report.v1"
+        "outputSchema": "docs_sync_report.v1",
+        "useWhen": [
+          "Нужно синхронизировать human-readable и machine-readable документы после process/contract изменений.",
+          "Нужно зафиксировать, какие артефакты обязаны быть обновлены вместе."
+        ],
+        "avoidWhen": [
+          "Изменение локально и не влияет на source-of-truth/README/ADR слой.",
+          "Документация не входит в acceptance criteria задачи."
+        ],
+        "requiredContext": [
+          "spec/ADR/README/glossary refs",
+          "generated docs index",
+          "consistency sync rules"
+        ],
+        "expectedOutput": "Docs sync report с gap list, required updates и canonical source mapping.",
+        "failureModes": [
+          "docs_runtime_drift",
+          "missing_sync_update",
+          "outdated_generated_index"
+        ],
+        "fallbackTo": [
+          "manual doc parity checklist",
+          "contract-audit"
+        ],
+        "examples": [
+          "Синхронизация новых терминов в glossary и UI-contract.",
+          "Обновление ADR/spec после изменения orchestration flow."
+        ]
       },
       "auditDisposition": "keep",
       "auditNote": null,
@@ -2468,6 +2636,87 @@
         "lastLessonAt": "2026-03-11T12:30:00Z"
       },
       "updatedAt": "2026-03-11T12:30:00Z",
+      "source": "registry-manual",
+      "trackerUrl": null,
+      "runbook": null,
+      "notes": null
+    },
+    {
+      "id": "editorial-quality-audit",
+      "name": "Редакционный аудит",
+      "role": "Процессный агент — ясность, фактология и качество описательного текста",
+      "shortDescription": "Проверяет описательные тексты, tooltip, modal text и обзорные документы на ясность, фактологическую аккуратность и отсутствие лишних обещаний.",
+      "status": "healthy",
+      "agentClass": "specialist",
+      "origin": "manual",
+      "lifecycle": "active",
+      "specializationScope": "Editorial review for explanatory content, UI copy, modal text, and overview documents against source-of-truth",
+      "creationReason": "Process agent for factual and human-readable editorial review",
+      "createdByAgentId": null,
+      "parentTemplateId": "editorial-quality-audit",
+      "derivedFromAgentId": null,
+      "skills": ["doc"],
+      "usedSkills": [],
+      "availableSkills": [],
+      "usedTools": [],
+      "availableTools": [],
+      "repositories": [],
+      "mcpServers": [
+        { "name": "qmd", "status": "online" },
+        { "name": "playwright", "status": "online" }
+      ],
+      "usedMcp": [],
+      "availableMcp": [],
+      "contextRefs": [],
+      "tasks": {},
+      "taskEvents": [],
+      "analystRecommendations": [],
+      "improvements": [],
+      "capabilityContract": {
+        "mission": "Improve human-readable descriptions without changing project meaning by feeling; make copy clearer, more factual, and safer in its promises.",
+        "entryCriteria": ["Задача меняет обзорные тексты, agent card descriptions, tooltip/modal copy, section descriptions или объясняющие документы."],
+        "doneCondition": "Editorial review report is ready, risky claims are either confirmed or softened, and the proposed text has one clear canonical wording.",
+        "outputSchema": "editorial_quality_report.v1",
+        "useWhen": [
+          "Нужно проверить описательный текст OAP, агентов или UI-разделов на понятность и фактологию.",
+          "Нужно убрать неясные формулировки, лишние обещания или инженерный жаргон из пользовательского текста."
+        ],
+        "avoidWhen": [
+          "Задача чисто кодовая и не меняет человеко-понятный текст.",
+          "Нужна только проверка glossary-терминов без редакторской правки.",
+          "Нужна только формула метрики или техническая схема без описательной части."
+        ],
+        "requiredContext": [
+          "source-of-truth docs",
+          "target audience",
+          "canonical terminology",
+          "current text draft"
+        ],
+        "expectedOutput": "Editorial review report с fact_risks, clarity_issues, term_issues, overclaim_flags, proposed_text и evidence_refs.",
+        "failureModes": [
+          "overclaim_copy",
+          "unclear_user_text",
+          "fact_misalignment",
+          "terminology_shadow_drift"
+        ],
+        "fallbackTo": [
+          "analyst-agent",
+          "terminology-consistency-audit",
+          "docs-spec-sync"
+        ],
+        "examples": [
+          "Проверка overview-документа OAP перед публикацией для команды.",
+          "Редакционная проверка tooltip и поясняющего текста в карточке агента."
+        ]
+      },
+      "auditDisposition": "keep",
+      "auditNote": null,
+      "learningArtifacts": {
+        "todoPath": "docs/subservices/oap/tasks/todo.md",
+        "lessonsPath": "docs/subservices/oap/tasks/lessons/editorial-quality-audit.md",
+        "lastLessonAt": "2026-03-12T21:36:42Z"
+      },
+      "updatedAt": "2026-03-12T21:36:42Z",
       "source": "registry-manual",
       "trackerUrl": null,
       "runbook": null,
@@ -2505,7 +2754,34 @@
         "mission": "Audit automation registry, schedule policy, stale/sync status, and safe execution contract for scheduled runs.",
         "entryCriteria": ["Задача меняет scheduled runs, automation registry, pause/resume/archive policy или Codex export model."],
         "doneCondition": "Automation governance report is ready with schedule policy verdict and unsafe automation flags.",
-        "outputSchema": "automation_governance_report.v1"
+        "outputSchema": "automation_governance_report.v1",
+        "useWhen": [
+          "Нужно проверить безопасный запуск агентов по расписанию и freshness policy.",
+          "Нужно подтвердить, что automation run не обходит governance-gates."
+        ],
+        "avoidWhen": [
+          "Задача выполняется только вручную без persistent automation.",
+          "Изменение не затрагивает schedule/registry execution policy."
+        ],
+        "requiredContext": [
+          "automation registry state",
+          "staleAfterHours policy",
+          "latest run telemetry summary"
+        ],
+        "expectedOutput": "Automation governance report с sync/freshness status, blocked actions и safe execution path.",
+        "failureModes": [
+          "stale_snapshot_promotion_attempt",
+          "unsafe_schedule_window",
+          "missing_run_traceability"
+        ],
+        "fallbackTo": [
+          "manual run only",
+          "soft_warning mode"
+        ],
+        "examples": [
+          "Проверка daily запуска candidate-cycle перед включением strict режима.",
+          "Аудит pause/resume политики для automation."
+        ]
       },
       "auditDisposition": "keep",
       "auditNote": null,
@@ -2552,7 +2828,34 @@
         "mission": "Audit terminology consistency and glossary-driven labels across UI, docs, and routing/governance contracts.",
         "entryCriteria": ["Задача меняет labels/chips/tooltip/semantic_layer/source_kind и требует канонизации терминов."],
         "doneCondition": "Terminology audit report ready with drift list and canonical glossary references.",
-        "outputSchema": "terminology_consistency_report.v1"
+        "outputSchema": "terminology_consistency_report.v1",
+        "useWhen": [
+          "Нужно проверить, что UI лейблы и термины соответствуют каноническому glossary.",
+          "Нужно устранить drift между docs/UI/contracts naming."
+        ],
+        "avoidWhen": [
+          "Изменение не затрагивает user-facing термины.",
+          "Нужна только техническая правка без taxonomy изменений."
+        ],
+        "requiredContext": [
+          "docs/subservices/oap/CAPABILITY_GLOSSARY.json",
+          "ui section contract",
+          "related docs and routing contracts"
+        ],
+        "expectedOutput": "Terminology consistency report с canonical labels, drift list и fix priorities.",
+        "failureModes": [
+          "label_glossary_mismatch",
+          "hardcoded_local_terms",
+          "cross_source_term_drift"
+        ],
+        "fallbackTo": [
+          "glossary-first manual review",
+          "docs-spec-sync"
+        ],
+        "examples": [
+          "Проверка переименования типов агентов в UI и docs.",
+          "Аудит tooltip-лейблов секций Память/Контур."
+        ]
       },
       "auditDisposition": "keep",
       "auditNote": null,

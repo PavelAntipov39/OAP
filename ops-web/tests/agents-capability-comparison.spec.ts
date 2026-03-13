@@ -7,7 +7,8 @@ const dialogSurface = ".MuiDialog-paper";
 test.describe.configure({ mode: "serial" });
 
 async function openCapabilityComparison(page: Page, url: string = listUrl): Promise<Locator> {
-  await page.goto(url);
+  await page.goto(url, { waitUntil: "domcontentloaded" });
+  await expect(page.locator("#root")).toBeVisible({ timeout: 15_000 });
 
   const trigger = page.getByRole("button", {
     name: "Сравнительная таблица Rules, Tools, Skills, MCP",

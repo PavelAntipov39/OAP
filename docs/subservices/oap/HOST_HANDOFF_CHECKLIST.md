@@ -17,7 +17,9 @@
 - удаленные `data-agent` и `ops-agent` больше не всплывают как active roles.
 
 ## Когда прогонять checklist
-- после изменения `docs/agents/host_agnostic_agent_catalog.yaml`;
+- после изменения frontmatter в `docs/subservices/oap/agents/<agent-id>/OPERATING_PLAN.md`;
+- после прямой регенерации host adapters из `OPERATING_PLAN.md`;
+- после регенерации `docs/agents/host_agnostic_agent_catalog.yaml`, если в окружении есть runtime consumer этого compatibility artifact;
 - после изменения `.claude/agents/*.md` или `.github/agents/*.agent.md`;
 - после изменения `handoffTargets` у active top-level агентов;
 - перед возвращением новой top-level роли в active set;
@@ -26,22 +28,32 @@
 ## Предусловия
 Перед ручной проверкой обязательно:
 
-1. Прогнать repo-level smoke:
+1. Прогнать прямую валидацию планов:
+```bash
+python3 scripts/validate_agent_operating_plans.py
+```
+
+2. Только если в окружении есть runtime consumer compatibility catalog, пересобрать его:
+```bash
+python3 scripts/build_agent_catalog.py
+```
+
+3. Прогнать repo-level smoke:
 ```bash
 python3 scripts/export_host_agents.py smoke-active-set
 ```
 
-2. Прогнать governance gate:
+4. Прогнать governance gate:
 ```bash
 npm --prefix ops-web run check-agents
 ```
 
-3. Для release-like проверки прогнать единый UI/runtime gate:
+5. Для release-like проверки прогнать единый UI/runtime gate:
 ```bash
 npm --prefix ops-web run check:release
 ```
 
-4. Убедиться, что active set совпадает с текущей политикой:
+6. Убедиться, что active set совпадает с текущей политикой:
 - `analyst-agent`
 - `designer-agent`
 - `reader-agent`

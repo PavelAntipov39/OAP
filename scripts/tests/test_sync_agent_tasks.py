@@ -204,6 +204,138 @@ class SyncAgentTasksTests(unittest.TestCase):
 
         self.assertEqual(second_plan["created_profiles"], [])
 
+    def test_execute_seed_collaboration_plans_uses_dispatcher_and_honors_limit(self):
+        calls: list[str] = []
+
+        class _DispatcherStub:
+            @staticmethod
+            def execute_collaboration_plan(*, task_id, collaboration_plan, log_dir):
+                calls.append(f"{task_id}:{log_dir}")
+                return {
+                    "task_id": task_id,
+                    "status": "completed",
+                    "interaction_mode": collaboration_plan.get("interaction_mode"),
+                    "phases": collaboration_plan.get("interaction_phases", []),
+                    "runs_total": len(collaboration_plan.get("spawned_instances", [])),
+                }
+
+        original_dispatcher = sync.DISPATCHER
+        sync.DISPATCHER = _DispatcherStub()
+        try:
+            tasks = [
+                {
+                    "external_key": "task-1",
+                    "task_brief": {
+                        "context_package": {
+                            "collaboration_plan": {
+                                "interaction_mode": "sequential",
+                                "interaction_phases": [{"phase_id": "phase_1_framing"}],
+                                "spawned_instances": [{"instance_id": "inst-1"}],
+                            }
+                        }
+                    },
+                },
+                {
+                    "external_key": "task-2",
+                    "task_brief": {
+                        "context_package": {
+                            "collaboration_plan": {
+                                "interaction_mode": "mixed_phased",
+                                "interaction_phases": [{"phase_id": "phase_1_framing"}, {"phase_id": "phase_2_parallel_audit"}],
+                                "spawned_instances": [{"instance_id": "inst-2"}],
+                            }
+                        }
+                    },
+                },
+            ]
+
+            report = sync.execute_seed_collaboration_plans(tasks, log_dir=Path(".logs/agents"), limit=1)
+        finally:
+            sync.DISPATCHER = original_dispatcher
+
+        self.assertEqual(report["attempted"], 1)
+        self.assertEqual(report["completed"], 1)
+        self.assertEqual(report["failed"], 0)
+        self.assertEqual(report["results"][0]["task_id"], "task-1")
+        self.assertEqual(len(calls), 1)
+
+    def test_execute_seed_collaboration_plans_collects_failures_and_skips_missing_plan(self):
+        class _DispatcherStub:
+            @staticmethod
+            def execute_collaboration_plan(*, task_id, collaboration_plan, log_dir):
+                raise RuntimeError(f"boom:{task_id}")
+
+        original_dispatcher = sync.DISPATCHER
+        sync.DISPATCHER = _DispatcherStub()
+        try:
+            tasks = [
+                {
+                    "external_key": "task-skip",
+                    "task_brief": {"context_package": {}},
+                },
+                {
+                    "external_key": "task-fail",
+                    "task_brief": {
+                        "context_package": {
+                            "collaboration_plan": {
+                                "interaction_mode": "mixed_phased",
+                                "interaction_phases": [{"phase_id": "phase_1_framing"}],
+                                "spawned_instances": [{"instance_id": "inst-fail"}],
+                            }
+                        }
+                    },
+                },
+            ]
+
+            report = sync.execute_seed_collaboration_plans(tasks, log_dir=Path(".logs/agents"))
+        finally:
+            sync.DISPATCHER = original_dispatcher
+
+        self.assertEqual(report["attempted"], 1)
+        self.assertEqual(report["completed"], 0)
+        self.assertEqual(report["failed"], 1)
+        self.assertEqual(report["skipped"], 1)
+        self.assertEqual(report["results"][0]["status"], "skipped")
+        self.assertEqual(report["results"][1]["status"], "failed")
+        self.assertIn("boom:task-fail", report["results"][1]["error"])
+
+    def test_execute_seed_collaboration_plans_skips_tasks_with_non_ready_status(self):
+        class _DispatcherStub:
+            @staticmethod
+            def execute_collaboration_plan(*, task_id, collaboration_plan, log_dir):
+                raise AssertionError("dispatcher must not be called for non-eligible status")
+
+        original_dispatcher = sync.DISPATCHER
+        sync.DISPATCHER = _DispatcherStub()
+        try:
+            tasks = [
+                {
+                    "external_key": "task-done",
+                    "task_brief": {
+                        "context_package": {
+                            "collaboration_plan": {
+                                "interaction_mode": "sequential",
+                                "interaction_phases": [{"phase_id": "phase_1_framing"}],
+                                "spawned_instances": [{"instance_id": "inst-done"}],
+                            }
+                        }
+                    },
+                }
+            ]
+
+            report = sync.execute_seed_collaboration_plans(
+                tasks,
+                log_dir=Path(".logs/agents"),
+                eligible_statuses_by_task={"task-done": "done"},
+            )
+        finally:
+            sync.DISPATCHER = original_dispatcher
+
+        self.assertEqual(report["attempted"], 0)
+        self.assertEqual(report["completed"], 0)
+        self.assertEqual(report["skipped"], 1)
+        self.assertEqual(report["results"][0]["reason"], "task_status_not_eligible(done)")
+
     def test_seed_tasks_keep_explicit_origin_cycle_id_only_when_provided(self):
         registry = {
             "agents": [
@@ -301,6 +433,31 @@ class SyncAgentTasksTests(unittest.TestCase):
         self.assertNotIn("analyst-agent", suggested)
         self.assertIn("reader-agent", suggested)
         self.assertIn("designer-agent", suggested)
+
+    def test_resolve_executor_routes_complex_task_to_orchestrator(self):
+        resolved = sync.resolve_executor_agent_id(
+            default_executor_agent_id="analyst-agent",
+            available_agent_ids={"analyst-agent", "orchestrator-agent", "designer-agent"},
+            hint_text="Нужно проверить retrieval evidence и UI карточки",
+            target_metric="evidence_link_coverage",
+            owner_section="UI",
+            linked_snapshot={
+                "problem": "Риски в telemetry и contract связках",
+                "solution": "Нужна согласованная фазовая оркестрация",
+            },
+        )
+        self.assertEqual(resolved, "orchestrator-agent")
+
+    def test_resolve_executor_keeps_default_on_simple_scope(self):
+        resolved = sync.resolve_executor_agent_id(
+            default_executor_agent_id="analyst-agent",
+            available_agent_ids={"analyst-agent", "orchestrator-agent"},
+            hint_text="Переименовать заголовок в блоке карточки",
+            target_metric="",
+            owner_section="",
+            linked_snapshot=None,
+        )
+        self.assertEqual(resolved, "analyst-agent")
 
     def test_task_context_fixture_contract(self):
         fixture_path = Path(__file__).resolve().parent / "fixtures" / "task_context_package_v2.json"

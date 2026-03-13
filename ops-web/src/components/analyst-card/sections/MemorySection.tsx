@@ -25,21 +25,46 @@ type MemoryEntry = {
 
 type FilePreviewResolver = (path: string) => { path: string; content: string; updatedAt: string | null } | null;
 
+type OperationStats = {
+  operationsTotal: number;
+  readTotal: number;
+  writeTotal: number;
+  deleteTotal: number;
+};
+
+function summarizeOperations(operations: SessionFileOperation[]): OperationStats {
+  return {
+    operationsTotal: operations.length,
+    readTotal: operations.filter((entry) => entry.op === "read").length,
+    writeTotal: operations.filter((entry) => entry.op === "write").length,
+    deleteTotal: operations.filter((entry) => entry.op === "delete").length,
+  };
+}
+
+function formatOperationStats(stats: OperationStats): string {
+  return `операций: ${stats.operationsTotal} read: ${stats.readTotal} write: ${stats.writeTotal} delete: ${stats.deleteTotal}`;
+}
+
 function MemorySubsectionTitle({
   title,
   tooltip,
+  rightAction,
 }: {
   title: string;
   tooltip: string;
+  rightAction?: React.ReactNode;
 }) {
   return (
-    <Stack direction="row" alignItems="center" spacing={0.5}>
-      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-        {title}
-      </Typography>
-      <Tooltip title={tooltip} placement="top">
-        <InfoOutlinedIcon sx={{ fontSize: 15, color: "text.secondary", cursor: "help" }} />
-      </Tooltip>
+    <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap>
+      <Stack direction="row" alignItems="center" spacing={0.5}>
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          {title}
+        </Typography>
+        <Tooltip title={tooltip} placement="top">
+          <InfoOutlinedIcon sx={{ fontSize: 15, color: "text.secondary", cursor: "help" }} />
+        </Tooltip>
+      </Stack>
+      {rightAction}
     </Stack>
   );
 }
@@ -102,6 +127,7 @@ export function MemorySection({
   onOpenSelfImprovementTasks?: () => void;
 }) {
   const [localOperativeMemoryModalOpen, setLocalOperativeMemoryModalOpen] = React.useState(false);
+  const [persistentMemoryModalOpen, setPersistentMemoryModalOpen] = React.useState(false);
 
   const operative: MemoryEntry[] =
     operativeMemoryEntries ??
@@ -109,23 +135,27 @@ export function MemorySection({
       title: anchor.title,
       path: anchor.filePath,
     }));
-  const persistent: MemoryEntry[] =
-    persistentMemoryEntries ??
-    (memoryContext?.persistentRules ?? []).map((rule) => ({
-      title: rule.title,
-      path: rule.location,
-    }));
+  const persistent: MemoryEntry[] = persistentMemoryEntries ?? [];
   const openablePersistent = isPathOpenable ? persistent.filter((entry) => isPathOpenable(entry.path)) : persistent;
   const lessonsOpenable = isPathOpenable ? isPathOpenable(selfImprovementLessonsPath) : true;
   const tasksCountLabel = selfImprovementTasksLoading ? "загрузка..." : `${selfImprovementTasksCount} задач`;
-  const readCount = operative.filter((entry) => (entry.status || "read") !== "write").length;
-  const writeCount = operative.filter((entry) => entry.status === "write").length;
   const traceOperations = React.useMemo<SessionFileOperation[]>(() => {
     const fromTrace = (operativeMemoryTrace ?? []).filter((entry) => String(entry.path || "").trim().length > 0);
     if (fromTrace.length > 0) return fromTrace;
     return buildFallbackOperations(operative);
   }, [operative, operativeMemoryTrace]);
-  const deleteCount = traceOperations.filter((entry) => entry.op === "delete").length;
+  const persistentTraceOperations = React.useMemo<SessionFileOperation[]>(
+    () => buildFallbackOperations(openablePersistent),
+    [openablePersistent],
+  );
+  const operativeStats = React.useMemo<OperationStats>(
+    () => summarizeOperations(traceOperations),
+    [traceOperations],
+  );
+  const persistentStats = React.useMemo<OperationStats>(
+    () => summarizeOperations(persistentTraceOperations),
+    [persistentTraceOperations],
+  );
   const isOperativeMemoryModalOpen = operativeMemoryModalOpen ?? localOperativeMemoryModalOpen;
   const openOperativeMemoryModal = React.useCallback(() => {
     const sessionId = operativeMemoryDefaultSessionId || operativeMemorySessionId || null;
@@ -146,95 +176,66 @@ export function MemorySection({
   return (
     <SectionBlock
       title="Память"
-      tooltip="Оперативная память — контекстные документы, загружаемые на каждый цикл. Долговременная память — правила и уроки, действующие постоянно"
+      tooltip="Оперативная память — контекстные документы текущего цикла. Долговременная память — уроки и устойчивые знания из предыдущих циклов."
     >
       <MemorySubsectionTitle
         title="Оперативная память"
         tooltip="Документы и контекст, которые агент подгружает на текущий цикл работы, чтобы решить задачу здесь и сейчас."
-      />
-      {operative.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">не зафиксировано</Typography>
-      ) : (
-        <Stack spacing={0.35}>
+        rightAction={operative.length > 0 ? (
           <Link
             component="button"
             type="button"
             variant="body2"
             underline="hover"
-            sx={{ textAlign: "left", width: "fit-content" }}
+            sx={{ textAlign: "right", width: "fit-content", whiteSpace: "nowrap" }}
             onClick={openOperativeMemoryModal}
           >
             Документов: {operative.length}
           </Link>
-          <Typography variant="caption" color="text.secondary">
-            {`active-набор: read ${readCount} · write ${writeCount}. Журнал операций: ${traceOperations.length} (delete: ${deleteCount}).`}
-          </Typography>
-        </Stack>
-      )}
+        ) : null}
+      />
+      <Stack spacing={0.35}>
+        <Typography variant="caption" color="text.secondary">
+          {formatOperationStats(operativeStats)}
+        </Typography>
+        {operative.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">не зафиксировано</Typography>
+        ) : null}
+      </Stack>
 
       <Divider sx={{ my: 0.5 }} />
 
       <MemorySubsectionTitle
         title="Долговременная память"
-        tooltip="Постоянные правила, стандарты и опорные знания, которые агент использует не только в одной задаче, а в работе в целом."
+        tooltip="Уроки и устойчивые знания, накопленные в предыдущих циклах и влияющие на следующие решения агента."
+        rightAction={openablePersistent.length > 0 ? (
+          <Link
+            component="button"
+            type="button"
+            variant="body2"
+            underline="hover"
+            sx={{ textAlign: "right", width: "fit-content", whiteSpace: "nowrap" }}
+            onClick={() => setPersistentMemoryModalOpen(true)}
+          >
+            Документов: {openablePersistent.length}
+          </Link>
+        ) : null}
       />
-      {openablePersistent.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">не зафиксировано</Typography>
-      ) : (
-        <Stack spacing={0.5}>
-          {openablePersistent.map((entry) => (
+      <Stack spacing={0.5}>
+        <Typography variant="caption" color="text.secondary">
+          {formatOperationStats(persistentStats)}
+        </Typography>
+        {openablePersistent.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">не зафиксировано</Typography>
+        ) : (
+          openablePersistent.map((entry) => (
             <Stack key={`${entry.title}:${entry.path}`} spacing={0.15}>
               <Typography variant="body2">{entry.title}</Typography>
               <FilePathLink path={entry.path} onClick={onOpenFile} />
             </Stack>
-          ))}
-        </Stack>
-      )}
-
-      <Divider sx={{ my: 0.5 }} />
-
-      <MemorySubsectionTitle
-        title="Самоулучшение агента (Self-improvement loop)"
-        tooltip="Уроки из практического опыта агента: какие ошибки и выводы уже зафиксированы, чтобы не повторять их в следующих циклах."
-      />
-
-      <Stack spacing={0.35}>
-        <Stack direction="row" alignItems="center" spacing={0.5}>
-          <Typography variant="body2">
-            Память и правила, полученные из практического опыта агента
-          </Typography>
-          <Tooltip
-            title="Это журнал опыта агента: какие ошибки уже были, почему они возникали и какое правило помогает не повторять их в следующих циклах."
-            placement="top"
-          >
-            <InfoOutlinedIcon sx={{ fontSize: 15, color: "text.secondary", cursor: "help" }} />
-          </Tooltip>
-        </Stack>
-        <Box sx={{ pl: 1.5 }}>
-          {lessonsOpenable ? (
-            <FilePathLink
-              path={selfImprovementLessonsPath}
-              label={selfImprovementLessonsPath}
-              onClick={onOpenFile}
-            />
-          ) : (
-            <Typography variant="body2" color="text.secondary">
-              путь не найден в индексе контента: {selfImprovementLessonsPath}
-            </Typography>
-          )}
-        </Box>
+          ))
+        )}
       </Stack>
-
-      <Link
-        component="button"
-        type="button"
-        variant="body2"
-        underline="hover"
-        sx={{ textAlign: "left" }}
-        onClick={() => onOpenSelfImprovementTasks?.()}
-      >
-        Список актуальных задач, созданных для самоулучшения агента: {tasksCountLabel}
-      </Link>
 
       <OperativeMemoryModal
         open={isOperativeMemoryModalOpen}
@@ -245,6 +246,18 @@ export function MemorySection({
         onOpenFile={onOpenFile}
         isPathOpenable={isPathOpenable}
         resolveFilePreview={resolveFilePreview}
+      />
+
+      <OperativeMemoryModal
+        open={persistentMemoryModalOpen}
+        onClose={() => setPersistentMemoryModalOpen(false)}
+        documentCount={openablePersistent.length}
+        sessionId={null}
+        operations={persistentTraceOperations}
+        onOpenFile={onOpenFile}
+        isPathOpenable={isPathOpenable}
+        resolveFilePreview={resolveFilePreview}
+        title="Журнал файлов долговременной памяти"
       />
     </SectionBlock>
   );

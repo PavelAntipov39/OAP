@@ -105,6 +105,11 @@ export type SessionFlowSchema = {
 
 export type AnalystSession = {
   id: string;
+  taskId: string;
+  runId: string;
+  participationMode: "direct" | "delegated";
+  sourceAgentId: string;
+  rootAgentId: string | null;
   source: "mock" | "telemetry";
   startedAt: string;
   completedAt: string;
@@ -187,6 +192,8 @@ type TelemetryEvent = {
   event_id?: string;
   timestamp?: string;
   agent_id?: string;
+  profile_id?: string;
+  root_agent_id?: string;
   task_id?: string;
   run_id?: string;
   step?: string;
@@ -244,6 +251,16 @@ type ErrorLogEvent = {
   error?: string | null;
 };
 
+type AnalystParticipatingEvent = {
+  event: TelemetryEvent;
+  taskId: string;
+  runId: string;
+  sessionKey: string;
+  participationMode: AnalystSession["participationMode"];
+  sourceAgentId: string;
+  rootAgentId: string | null;
+};
+
 export const METRIC_META: Record<string, { label: string; description: string; formula: string }> = {
   verification_pass_rate: {
     label: "Верификация",
@@ -285,6 +302,35 @@ function toDateMs(value: string | undefined): number {
   if (!value) return 0;
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function normalizeId(value: unknown): string {
+  return String(value || "").trim();
+}
+
+function resolveAnalystParticipation(event: TelemetryEvent): {
+  participationMode: AnalystSession["participationMode"];
+  sourceAgentId: string;
+  rootAgentId: string | null;
+} | null {
+  const agentId = normalizeId(event.agent_id);
+  const profileId = normalizeId(event.profile_id);
+  const rootAgentId = normalizeId(event.root_agent_id);
+  if (agentId === "analyst-agent") {
+    return {
+      participationMode: "direct",
+      sourceAgentId: agentId,
+      rootAgentId: rootAgentId || null,
+    };
+  }
+  if (profileId === "analyst-agent" || rootAgentId === "analyst-agent") {
+    return {
+      participationMode: "delegated",
+      sourceAgentId: agentId || profileId || rootAgentId || "unknown-agent",
+      rootAgentId: rootAgentId || null,
+    };
+  }
+  return null;
 }
 
 function roundTo(value: number, digits = 1): number {
@@ -789,6 +835,43 @@ function parseJsonLines<T>(content: string): T[] {
   return parsed;
 }
 
+function collectAnalystTelemetryEvents(rawLogs: OapKbDocument[]): TelemetryEvent[] {
+  const events: TelemetryEvent[] = [];
+  for (const doc of rawLogs) {
+    if (!doc.path.endsWith(".jsonl")) continue;
+    if (doc.path.endsWith("-errors.jsonl")) continue;
+    const parsed = parseJsonLines<TelemetryEvent>(doc.content);
+    for (const event of parsed) {
+      if (!resolveAnalystParticipation(event)) continue;
+      if (!normalizeId(event.task_id)) continue;
+      events.push(event);
+    }
+  }
+  return events;
+}
+
+function collectAnalystParticipatingEvents(events: TelemetryEvent[]): AnalystParticipatingEvent[] {
+  const items: AnalystParticipatingEvent[] = [];
+  for (const event of events) {
+    const participation = resolveAnalystParticipation(event);
+    if (!participation) continue;
+    const taskId = normalizeId(event.task_id);
+    if (!taskId) continue;
+    const runId = normalizeId(event.run_id);
+    const sessionKey = runId ? `${taskId}::${runId}` : taskId;
+    items.push({
+      event,
+      taskId,
+      runId,
+      sessionKey,
+      participationMode: participation.participationMode,
+      sourceAgentId: participation.sourceAgentId,
+      rootAgentId: participation.rootAgentId,
+    });
+  }
+  return items;
+}
+
 function uniqueStrings(values: string[]): string[] {
   return Array.from(new Set(values.filter(Boolean)));
 }
@@ -1237,21 +1320,45 @@ function buildKeyMetricsSnapshot(agent: AgentSummary): AnalystKeyMetricsSnapshot
   };
 }
 
-function buildSessions(agent: AgentSummary, cycle: AgentLatestCycleSnapshot): AnalystSession[] {
-  const rawLogs = getOapKbRawLogs();
-  const telemetryDoc = rawLogs.find((doc) => doc.path === ".logs/agents/analyst-agent.jsonl");
-  const errorDoc = rawLogs.find((doc) => doc.path === ".logs/agents/analyst-agent-errors.jsonl");
-
-  const telemetryEvents = telemetryDoc ? parseJsonLines<TelemetryEvent>(telemetryDoc.content) : [];
-  const grouped = new Map<string, TelemetryEvent[]>();
-  for (const event of telemetryEvents) {
-    if (!event.task_id) continue;
-    if (event.agent_id && event.agent_id !== "analyst-agent") continue;
-    if (!grouped.has(event.task_id)) grouped.set(event.task_id, []);
-    grouped.get(event.task_id)?.push(event);
+function buildSessions(
+  agent: AgentSummary,
+  cycle: AgentLatestCycleSnapshot,
+  telemetryEvents: TelemetryEvent[],
+  errorEvents: ErrorLogEvent[],
+): AnalystSession[] {
+  const grouped = new Map<string, {
+    taskId: string;
+    runId: string;
+    participationMode: AnalystSession["participationMode"];
+    sourceAgentId: string;
+    rootAgentId: string | null;
+    events: TelemetryEvent[];
+  }>();
+  for (const item of collectAnalystParticipatingEvents(telemetryEvents)) {
+    const existing = grouped.get(item.sessionKey);
+    if (!existing) {
+      grouped.set(item.sessionKey, {
+        taskId: item.taskId,
+        runId: item.runId,
+        participationMode: item.participationMode,
+        sourceAgentId: item.sourceAgentId,
+        rootAgentId: item.rootAgentId,
+        events: [item.event],
+      });
+      continue;
+    }
+    existing.events.push(item.event);
+    if (item.participationMode === "direct") {
+      existing.participationMode = "direct";
+    }
+    if ((!existing.sourceAgentId || existing.sourceAgentId === "unknown-agent") && item.sourceAgentId) {
+      existing.sourceAgentId = item.sourceAgentId;
+    }
+    if (!existing.rootAgentId && item.rootAgentId) {
+      existing.rootAgentId = item.rootAgentId;
+    }
   }
 
-  const errorEvents = errorDoc ? parseJsonLines<ErrorLogEvent>(errorDoc.content) : [];
   const errorsByCycle = new Map<string, ErrorLogEvent[]>();
   for (const item of errorEvents) {
     const cycleId = item.cycle_id || "";
@@ -1267,7 +1374,8 @@ function buildSessions(agent: AgentSummary, cycle: AgentLatestCycleSnapshot): An
   }));
 
   const sessions = Array.from(grouped.entries())
-    .map(([taskId, events]) => {
+    .map(([sessionKey, groupedSession]) => {
+      const { taskId, runId, events, participationMode, sourceAgentId, rootAgentId } = groupedSession;
       const sorted = [...events].sort((a, b) => toDateMs(a.timestamp) - toDateMs(b.timestamp));
       const first = sorted[0];
       const last = sorted[sorted.length - 1];
@@ -1292,7 +1400,12 @@ function buildSessions(agent: AgentSummary, cycle: AgentLatestCycleSnapshot): An
       const tasksTotal = Math.max(1, startedSteps.size);
 
       return {
-        id: taskId,
+        id: sessionKey,
+        taskId,
+        runId: runId || normalizeId(last?.run_id),
+        participationMode,
+        sourceAgentId: sourceAgentId || "unknown-agent",
+        rootAgentId,
         source: "telemetry" as const,
         startedAt,
         completedAt,
@@ -1333,7 +1446,7 @@ function buildSessions(agent: AgentSummary, cycle: AgentLatestCycleSnapshot): An
         },
         controlExcalidrawUrl: null,
         controlTaskListUrl: `#/tasks?session_id=${encodeURIComponent(taskId)}`,
-        flowSchema: buildSessionFlowSchema(sorted, taskId, startedAt, agent),
+        flowSchema: buildSessionFlowSchema(sorted, sessionKey, startedAt, agent),
       };
     })
     .sort((a, b) => toDateMs(b.completedAt) - toDateMs(a.completedAt));
@@ -1369,6 +1482,11 @@ function buildSessions(agent: AgentSummary, cycle: AgentLatestCycleSnapshot): An
   return [
     {
       id: cycle.latest_cycle.task_id,
+      taskId: cycle.latest_cycle.task_id,
+      runId: "",
+      participationMode: "direct",
+      sourceAgentId: "analyst-agent",
+      rootAgentId: "analyst-agent",
       source: "telemetry",
       startedAt: fallbackStartedAt,
       completedAt: fallbackCompletedAt,
@@ -1430,11 +1548,10 @@ export function getAnalystCardData(): AnalystCardData | null {
 
   const cycle = getAnalystLatestCycle();
   const rawLogs = getOapKbRawLogs();
-  const telemetryDoc = rawLogs.find((doc) => doc.path === ".logs/agents/analyst-agent.jsonl");
   const errorDoc = rawLogs.find((doc) => doc.path === ".logs/agents/analyst-agent-errors.jsonl");
-  const telemetryEvents = telemetryDoc ? parseJsonLines<TelemetryEvent>(telemetryDoc.content) : [];
+  const telemetryEvents = collectAnalystTelemetryEvents(rawLogs);
   const errorEvents = errorDoc ? parseJsonLines<ErrorLogEvent>(errorDoc.content) : [];
-  const sessions = buildSessions(agent, cycle);
+  const sessions = buildSessions(agent, cycle, telemetryEvents, errorEvents);
   const errorEntries = buildErrorEntries(errorEvents, telemetryEvents);
 
   return {

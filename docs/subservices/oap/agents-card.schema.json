@@ -388,7 +388,14 @@
         "mission": { "$ref": "#/$defs/nonEmptyString" },
         "entryCriteria": { "$ref": "#/$defs/stringArray" },
         "doneCondition": { "$ref": "#/$defs/nonEmptyString" },
-        "outputSchema": { "$ref": "#/$defs/nonEmptyString" }
+        "outputSchema": { "$ref": "#/$defs/nonEmptyString" },
+        "useWhen": { "$ref": "#/$defs/stringArray" },
+        "avoidWhen": { "$ref": "#/$defs/stringArray" },
+        "requiredContext": { "$ref": "#/$defs/stringArray" },
+        "expectedOutput": { "$ref": "#/$defs/nonEmptyString" },
+        "failureModes": { "$ref": "#/$defs/stringArray" },
+        "fallbackTo": { "$ref": "#/$defs/stringArray" },
+        "examples": { "$ref": "#/$defs/stringArray" }
       }
     },
     "contextRef": {

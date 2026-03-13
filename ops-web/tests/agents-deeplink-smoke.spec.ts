@@ -5,7 +5,7 @@ const drawerCloseButton = (page: Page) => page.locator('button[aria-label="За�
 const drawerSurface = (page: Page) => page.locator(".MuiDrawer-paper").last();
 const gotoHash = async (page: Page, hash: string) => {
   await page.goto(hash, { waitUntil: "domcontentloaded" });
-  await page.waitForLoadState("networkidle");
+  await expect(page.locator("#root")).toBeVisible({ timeout: 15_000 });
 };
 
 const expectDrawerOpened = async (page: Page) => {
@@ -17,24 +17,44 @@ test.describe("Agents deep-link smoke", () => {
   test("shows cross-host smoke status for active top-level set", async ({ page }) => {
     await gotoHash(page, "/#/agents");
 
-    await expect(page.getByText("Cross-host smoke", { exact: true })).toBeVisible();
+    await expect(page.getByText("Синхронизация агентов", { exact: true })).toBeVisible();
+    await expect(page.getByText("cross-host smoke", { exact: true })).toBeVisible();
     await expect(page.getByText("Claude Code: ok (4)", { exact: true })).toBeVisible();
     await expect(page.getByText("GitHub Copilot: ok (4)", { exact: true })).toBeVisible();
     await expect(page.getByText("Codex: ok (4)", { exact: true })).toBeVisible();
-    await expect(page.getByText("Handoff targets: ok", { exact: true })).toBeVisible();
-    await expect(page.getByText("orchestrator-agent", { exact: true })).toBeVisible();
-    await expect(page.getByText("analyst-agent", { exact: true })).toBeVisible();
-    await expect(page.getByText("designer-agent", { exact: true })).toBeVisible();
-    await expect(page.getByText("reader-agent", { exact: true })).toBeVisible();
+    await expect(page.getByText("Передача задач: ok", { exact: true })).toBeVisible();
+    await expect(page.getByText("Проверяемые агенты", { exact: true })).toHaveCount(0);
   });
 
   test("opens analyst agent on explicit deeplink and preserves canonical tab", async ({ page }) => {
     await gotoHash(page, "/#/agents?agent=analyst-agent&tab=tasks_quality");
 
     await expectDrawerOpened(page);
-    await expect(drawerSurface(page).getByText("Аналитик", { exact: true })).toBeVisible();
+    const drawer = drawerSurface(page);
+    await expect(drawer.getByText("Аналитик", { exact: true })).toBeVisible();
     await expect(page).toHaveURL(/#\/agents\?agent=analyst-agent&tab=overview$/);
     await expect(page.getByText("Анализ эффективности агента", { exact: true })).toBeVisible();
+    await expect(drawer.getByText("Автономный агент", { exact: true })).toBeVisible();
+  });
+
+  test("shows process agent type label for specialist profile", async ({ page }) => {
+    await gotoHash(page, "/#/agents?agent=ui-verification&tab=overview");
+
+    await expectDrawerOpened(page);
+    const drawer = drawerSurface(page);
+    await expect(drawer.getByText("Процессный агент", { exact: true })).toBeVisible();
+  });
+
+  test("keeps designer overview UX aligned with analyst card controls", async ({ page }) => {
+    await gotoHash(page, "/#/agents?agent=designer-agent&tab=overview");
+
+    await expectDrawerOpened(page);
+    const drawer = drawerSurface(page);
+
+    await expect(drawer.getByText("Продакт дизайнер", { exact: true })).toBeVisible();
+    await expect(drawer.getByText("Анализ эффективности агента", { exact: true })).toBeVisible();
+    await expect(drawer.getByText("Настроить метрики", { exact: true })).toBeVisible();
+    await expect(drawer.getByText("Каталог метрик", { exact: true })).toHaveCount(0);
   });
 
   test("opens orchestrator agent on explicit deeplink and renders the same overview structure", async ({ page }) => {
@@ -108,5 +128,26 @@ test.describe("Agents deep-link smoke", () => {
 
     await page.getByLabel("Закрыть список сессий").click();
     await expect(page).toHaveURL(/#\/agents\?agent=reader-agent&tab=overview$/);
+  });
+
+  test("analyst sessions deeplink keeps latest list with participation marker", async ({ page }) => {
+    await gotoHash(page, "/#/agents?agent=analyst-agent&tab=overview&modal=sessions&entity=latest");
+
+    await expectDrawerOpened(page);
+    await expect(page.getByLabel("Закрыть список сессий")).toBeVisible();
+    await expect(page).toHaveURL(/#\/agents\?agent=analyst-agent&tab=overview&modal=sessions&entity=latest$/);
+
+    const sessionSummaries = page.locator(".MuiAccordionSummary-root");
+    const count = await sessionSummaries.count();
+    if (count === 0) {
+      test.skip(true, "No analyst sessions data available");
+      return;
+    }
+
+    await expect(sessionSummaries.first().getByText(/direct|delegated/)).toBeVisible();
+    const staleWarning = page.getByText("Generated-данные устарели", { exact: false });
+    if (await staleWarning.count()) {
+      await expect(staleWarning.first()).toBeVisible();
+    }
   });
 });

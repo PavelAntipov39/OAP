@@ -7,6 +7,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
+SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+from agent_plan_metadata import extract_active_agents, load_json, parse_frontmatter, validate_frontmatter
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REGISTRY = REPO_ROOT / "docs/agents/registry.yaml"
@@ -27,36 +33,24 @@ REQUIRED_OPERATING_PLAN_MARKERS = [
     "<!-- contract-marker: self-improvement-gate -->",
     "<!-- contract-marker: capability-refresh -->",
 ]
-
-
 def load_registry(path: Path) -> dict[str, Any]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict):
-        raise ValueError(f"invalid_registry:{path}")
-    return payload
+    return load_json(path)
 
 
 def extract_agent_ids(registry: dict[str, Any]) -> list[str]:
-    raw_agents = registry.get("agents")
-    if not isinstance(raw_agents, list):
-        return []
-    ids: list[str] = []
-    seen: set[str] = set()
-    for item in raw_agents:
-        if not isinstance(item, dict):
-            continue
-        agent_id = str(item.get("id") or "").strip()
-        if not agent_id or not agent_id.endswith("-agent"):
-            continue
-        if agent_id in seen:
-            continue
-        seen.add(agent_id)
-        ids.append(agent_id)
-    return ids
+    return [str(item.get("id") or "").strip() for item in extract_active_agents(registry)]
 
 
 def required_files_for_agent(agent_id: str) -> list[str]:
     return AGENT_REQUIRED_FILES.get(agent_id, DEFAULT_REQUIRED_FILES)
+
+
+def validate_frontmatter_content(path: Path, payload: dict[str, Any]) -> list[str]:
+    try:
+        validate_frontmatter(payload, agent_id=path.parent.name, path=path)
+    except ValueError as exc:
+        return [f"invalid operating plan frontmatter: {exc}"]
+    return []
 
 
 def validate_operating_plan_content(path: Path) -> list[str]:
@@ -65,15 +59,24 @@ def validate_operating_plan_content(path: Path) -> list[str]:
     except OSError as exc:
         return [f"cannot read agent doc: {path} ({exc})"]
 
+    errors: list[str] = []
+    try:
+        payload = parse_frontmatter(path)
+    except ValueError as exc:
+        errors.append(f"invalid operating plan frontmatter: {exc}")
+    else:
+        errors.extend(validate_frontmatter_content(path, payload))
+
     missing_markers = [
         marker
         for marker in REQUIRED_OPERATING_PLAN_MARKERS
         if marker not in content
     ]
-    return [
+    errors.extend([
         f"missing operating plan marker: {path} :: {marker}"
         for marker in missing_markers
-    ]
+    ])
+    return errors
 
 
 def validate_operating_plan_layout(agent_ids: list[str], agents_root: Path) -> list[str]:

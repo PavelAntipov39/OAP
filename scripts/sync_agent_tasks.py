@@ -11,6 +11,7 @@ import re
 from pathlib import Path
 from typing import Any, TYPE_CHECKING
 from uuid import UUID
+import copy
 
 if TYPE_CHECKING:
     import psycopg
@@ -81,6 +82,24 @@ def _load_orchestration_module():
 
 
 ORCHESTRATION = _load_orchestration_module()
+DISPATCHER: Any | None = None
+
+
+def _load_dispatcher_module():
+    module_path = Path(__file__).resolve().with_name("oap_agent_dispatcher.py")
+    spec = importlib.util.spec_from_file_location("oap_agent_dispatcher", module_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Cannot load dispatcher module from {module_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)  # type: ignore[attr-defined]
+    return module
+
+
+def get_dispatcher_module():
+    global DISPATCHER
+    if DISPATCHER is None:
+        DISPATCHER = _load_dispatcher_module()
+    return DISPATCHER
 
 
 def parse_args() -> argparse.Namespace:
@@ -106,6 +125,8 @@ def parse_args() -> argparse.Namespace:
     )
     sync_parser.add_argument("--out-json", default="artifacts/agent_tasks_sync_report.json")
     sync_parser.add_argument("--dry-run", action="store_true")
+    sync_parser.add_argument("--execute-collaboration-plans", action="store_true")
+    sync_parser.add_argument("--execution-limit", type=int, default=0)
 
     report_parser = subparsers.add_parser("report", help="Build status summary report from DB.")
     report_parser.add_argument(
@@ -561,6 +582,182 @@ def suggest_collaboration_agents(
     return [agent_id for agent_id, _score in ordered]
 
 
+def resolve_executor_agent_id(
+    *,
+    default_executor_agent_id: str,
+    available_agent_ids: set[str],
+    hint_text: str,
+    target_metric: str = "",
+    owner_section: str = "",
+    linked_snapshot: dict[str, Any] | None = None,
+) -> str:
+    fallback_executor = safe_str(default_executor_agent_id) or "analyst-agent"
+    if fallback_executor == "orchestrator-agent":
+        return fallback_executor
+    if "orchestrator-agent" not in available_agent_ids:
+        return fallback_executor
+    requirements = build_orchestration_requirements(
+        hint_text=hint_text,
+        target_metric=target_metric,
+        owner_section=owner_section,
+        linked_snapshot=linked_snapshot,
+    )
+    if not requirements:
+        return fallback_executor
+
+    complexity = safe_str(requirements.get("complexity")).lower()
+    complexity_signals = sum(
+        1
+        for key in ("retrieval_related", "ui_related", "telemetry_related", "contract_related")
+        if bool(requirements.get(key))
+    )
+    if complexity == "high" or complexity_signals >= 2:
+        return "orchestrator-agent"
+    return fallback_executor
+
+
+def build_orchestration_requirements(
+    *,
+    hint_text: str,
+    target_metric: str = "",
+    owner_section: str = "",
+    linked_snapshot: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    if not hasattr(ORCHESTRATION, "build_requirements"):
+        return {}
+    try:
+        requirements = ORCHESTRATION.build_requirements(
+            hint_text=hint_text,
+            target_metric=target_metric,
+            owner_section=owner_section,
+            linked_snapshot=linked_snapshot,
+        )
+    except Exception:
+        return {}
+    return requirements if isinstance(requirements, dict) else {}
+
+
+def build_routing_task_class(requirements: dict[str, Any]) -> str:
+    signal_labels: list[str] = []
+    if bool(requirements.get("retrieval_related")):
+        signal_labels.append("retrieval")
+    if bool(requirements.get("ui_related")):
+        signal_labels.append("ui")
+    if bool(requirements.get("telemetry_related")):
+        signal_labels.append("telemetry")
+    if bool(requirements.get("contract_related")):
+        signal_labels.append("contract")
+    if not signal_labels:
+        return "general_change"
+    if len(signal_labels) == 1:
+        return f"{signal_labels[0]}_change"
+    return "multi_signal_" + "_".join(signal_labels)
+
+
+def build_routing_comparison_metrics(requirements: dict[str, Any]) -> list[str]:
+    metrics = ["quality", "token_cost", "verification_coverage"]
+    if bool(requirements.get("ui_related")):
+        metrics.append("ui_regression_risk")
+    if bool(requirements.get("telemetry_related")):
+        metrics.append("telemetry_completeness")
+    if bool(requirements.get("contract_related")):
+        metrics.append("contract_validity")
+    if bool(requirements.get("retrieval_related")):
+        metrics.append("evidence_coverage")
+    return safe_list_str(metrics)
+
+
+def build_routing_decision(
+    *,
+    root_agent_id: str,
+    suggested_agents: list[str],
+    orchestration_plan: dict[str, Any],
+    requirements: dict[str, Any],
+) -> dict[str, Any]:
+    def _ordered_unique(values: list[str]) -> list[str]:
+        result: list[str] = []
+        seen: set[str] = set()
+        for item in values:
+            value = safe_str(item)
+            if not value or value in seen:
+                continue
+            seen.add(value)
+            result.append(value)
+        return result
+
+    interaction_mode = safe_str(orchestration_plan.get("interaction_mode")).lower() or "sequential"
+    selected_agents = safe_list_str(orchestration_plan.get("selected_agents"))
+    coordinator_agent_id = safe_str(orchestration_plan.get("primary_coordinator_agent_id")) or root_agent_id
+    merge_owner_agent_id = safe_str(orchestration_plan.get("merge_owner_agent_id")) or root_agent_id
+    final_synthesizer_agent_id = safe_str(orchestration_plan.get("final_synthesizer_agent_id")) or coordinator_agent_id
+
+    process_agents = _ordered_unique(
+        [root_agent_id, coordinator_agent_id, merge_owner_agent_id, final_synthesizer_agent_id]
+        + selected_agents
+        + safe_list_str(suggested_agents)
+        + [
+            safe_str(item.get("profile_id"))
+            for item in (
+                orchestration_plan.get("spawned_instances")
+                if isinstance(orchestration_plan.get("spawned_instances"), list)
+                else []
+            )
+            if isinstance(item, dict)
+        ]
+    )
+    delegated_agents = [agent_id for agent_id in process_agents if agent_id and agent_id != root_agent_id]
+    selected_route = (
+        "delegated_path"
+        if interaction_mode != "sequential" or safe_str(coordinator_agent_id) == "orchestrator-agent" or delegated_agents
+        else "single_agent_path"
+    )
+    fallback_route = "single_agent_path" if selected_route == "delegated_path" else "delegated_path"
+    task_class = build_routing_task_class(requirements)
+
+    signal_titles: list[str] = []
+    if bool(requirements.get("retrieval_related")):
+        signal_titles.append("нужна проверка источников и контекста")
+    if bool(requirements.get("ui_related")):
+        signal_titles.append("есть UI-риск")
+    if bool(requirements.get("telemetry_related")):
+        signal_titles.append("нужен telemetry-контур")
+    if bool(requirements.get("contract_related")):
+        signal_titles.append("есть контрактный риск")
+
+    if selected_route == "delegated_path":
+        why_this_route = (
+            "Выбран делегированный маршрут, потому что задача требует координации нескольких ролей: "
+            + (", ".join(signal_titles) if signal_titles else "обнаружены сигналы повышенной сложности")
+            + "."
+        )
+        expected_gain = "Выше полнота проверки и ниже риск пропустить дефект на merge/verify этапах."
+    else:
+        why_this_route = "Выбран одиночный маршрут, потому что сильных сигналов для multi-agent координации не найдено."
+        expected_gain = "Ниже расход токенов и меньше накладные затраты на orchestration для простой задачи."
+
+    signal_count = sum(
+        1
+        for key in ("retrieval_related", "ui_related", "telemetry_related", "contract_related")
+        if bool(requirements.get(key))
+    )
+    decision_confidence = round(min(0.65 + (signal_count * 0.1), 0.95), 2)
+
+    return {
+        "route_id": f"{task_class}:{selected_route}",
+        "task_class": task_class,
+        "primary_executor_agent_id": root_agent_id,
+        "process_agents": process_agents,
+        "why_this_route": why_this_route,
+        "expected_gain": expected_gain,
+        "verify_owner_agent_id": merge_owner_agent_id,
+        "fallback_route": fallback_route,
+        "considered_routes": ["single_agent_path", "delegated_path"],
+        "decision_confidence": decision_confidence,
+        "comparison_basis": "baseline_vs_selected",
+        "comparison_metrics": build_routing_comparison_metrics(requirements),
+    }
+
+
 def build_operational_memory_entries(
     *,
     goal: str,
@@ -742,6 +939,12 @@ def build_collaboration_plan(
     linked_snapshot: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     created_profiles: list[dict[str, Any]] = []
+    requirements = build_orchestration_requirements(
+        hint_text=hint_text,
+        target_metric=target_metric,
+        owner_section=owner_section,
+        linked_snapshot=linked_snapshot,
+    )
     try:
         orchestration_plan, created_profiles = ORCHESTRATION.build_collaboration_plan(
             task_id=task_id,
@@ -819,6 +1022,12 @@ def build_collaboration_plan(
             "max_no_progress_hops": 2,
         },
         "delegation_depth": int(orchestration_plan.get("delegation_depth", 0) or 0),
+        "routing_decision": build_routing_decision(
+            root_agent_id=root_agent_id,
+            suggested_agents=suggested_agents,
+            orchestration_plan=orchestration_plan,
+            requirements=requirements,
+        ),
     }
     return plan
 
@@ -1234,10 +1443,25 @@ def build_seed_tasks(registry: dict[str, Any], executor_agent_id: str) -> list[d
                     evidence.append(detection_basis)
                 if prompt_path:
                     evidence.append(prompt_path)
+                hint_text = " ".join([
+                    title,
+                    safe_str(item.get("ownerSection")),
+                    safe_str(item.get("targetMetric")),
+                    prompt_path,
+                    detection_basis,
+                ])
+                task_executor_id = resolve_executor_agent_id(
+                    default_executor_agent_id=executor_agent_id,
+                    available_agent_ids=available_agent_ids,
+                    hint_text=hint_text,
+                    target_metric=safe_str(item.get("targetMetric")),
+                    owner_section=safe_str(item.get("ownerSection")),
+                    linked_snapshot=item if isinstance(item, dict) else None,
+                )
                 task_brief = build_task_brief_for_improvement(
                     registry=registry,
                     source_agent_id=source_agent_id,
-                    executor_agent_id=executor_agent_id,
+                    executor_agent_id=task_executor_id,
                     available_agent_ids=available_agent_ids,
                     item=item,
                     improvement_id=improvement_id,
@@ -1249,7 +1473,7 @@ def build_seed_tasks(registry: dict[str, Any], executor_agent_id: str) -> list[d
                         "external_key": external_key,
                         "title": title,
                         "source_agent_id": source_agent_id,
-                        "executor_agent_id": executor_agent_id,
+                        "executor_agent_id": task_executor_id,
                         "status": STATUS_READY,
                         "priority": normalize_priority(safe_str(item.get("priority"))),
                         "origin_type": "improvement",
@@ -1286,13 +1510,29 @@ def build_seed_tasks(registry: dict[str, Any], executor_agent_id: str) -> list[d
                         linked_snapshot = fallback["snapshot"]
                         link_mode = "fallback"
                         similarity_score = score
+                recommendation_target_metric = safe_str(linked_snapshot.get("targetMetric")) if linked_snapshot else ""
+                recommendation_owner_section = safe_str(linked_snapshot.get("ownerSection")) if linked_snapshot else ""
+                recommendation_hint_text = " ".join([
+                    title,
+                    recommendation_target_metric,
+                    recommendation_owner_section,
+                    origin_ref,
+                ])
+                task_executor_id = resolve_executor_agent_id(
+                    default_executor_agent_id=executor_agent_id,
+                    available_agent_ids=available_agent_ids,
+                    hint_text=recommendation_hint_text,
+                    target_metric=recommendation_target_metric,
+                    owner_section=recommendation_owner_section,
+                    linked_snapshot=linked_snapshot,
+                )
 
                 result.append(
                     {
                         "external_key": external_key,
                         "title": title,
                         "source_agent_id": source_agent_id,
-                        "executor_agent_id": executor_agent_id,
+                        "executor_agent_id": task_executor_id,
                         "status": STATUS_READY,
                         "priority": "medium",
                         "origin_type": "recommendation",
@@ -1301,7 +1541,7 @@ def build_seed_tasks(registry: dict[str, Any], executor_agent_id: str) -> list[d
                         "task_brief": build_task_brief_for_recommendation(
                             registry=registry,
                             source_agent_id=source_agent_id,
-                            executor_agent_id=executor_agent_id,
+                            executor_agent_id=task_executor_id,
                             available_agent_ids=available_agent_ids,
                             recommendation_id=recommendation_id,
                             rec_text=title,
@@ -1353,6 +1593,199 @@ def load_telemetry_events(log_dir: Path) -> list[dict[str, Any]]:
                 )
     events.sort(key=lambda item: item["event_time"] or dt.datetime.min.replace(tzinfo=dt.timezone.utc))
     return events
+
+
+def execute_seed_collaboration_plans(
+    tasks: list[dict[str, Any]],
+    *,
+    log_dir: Path,
+    limit: int = 0,
+    eligible_statuses_by_task: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    dispatcher = get_dispatcher_module()
+    report: dict[str, Any] = {
+        "enabled": True,
+        "limit": max(int(limit or 0), 0),
+        "attempted": 0,
+        "completed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "results": [],
+    }
+    max_runs = max(int(limit or 0), 0)
+
+    for task in tasks:
+        if max_runs and report["attempted"] >= max_runs:
+            break
+        brief = task.get("task_brief") if isinstance(task.get("task_brief"), dict) else {}
+        context_package = brief.get("context_package") if isinstance(brief.get("context_package"), dict) else {}
+        collaboration_plan = (
+            context_package.get("collaboration_plan")
+            if isinstance(context_package.get("collaboration_plan"), dict)
+            else None
+        )
+        spawned_instances = (
+            collaboration_plan.get("spawned_instances")
+            if isinstance(collaboration_plan, dict) and isinstance(collaboration_plan.get("spawned_instances"), list)
+            else []
+        )
+        task_id = safe_str(task.get("external_key")) or safe_str(task.get("title")) or "unknown-task"
+        current_status = (
+            safe_str((eligible_statuses_by_task or {}).get(task_id)).lower()
+            if isinstance(eligible_statuses_by_task, dict)
+            else ""
+        )
+        if current_status and current_status not in {STATUS_READY, STATUS_BACKLOG}:
+            report["skipped"] += 1
+            report["results"].append(
+                {
+                    "task_id": task_id,
+                    "status": "skipped",
+                    "reason": f"task_status_not_eligible({current_status})",
+                }
+            )
+            continue
+        if collaboration_plan is None or not spawned_instances:
+            report["skipped"] += 1
+            report["results"].append(
+                {
+                    "task_id": task_id,
+                    "status": "skipped",
+                    "reason": "collaboration_plan_missing_or_empty",
+                }
+            )
+            continue
+
+        report["attempted"] += 1
+        try:
+            execution = dispatcher.execute_collaboration_plan(
+                task_id=task_id,
+                collaboration_plan=collaboration_plan,
+                log_dir=log_dir,
+            )
+        except Exception as exc:
+            report["failed"] += 1
+            report["results"].append(
+                {
+                    "task_id": task_id,
+                    "status": "failed",
+                    "error": str(exc),
+                }
+            )
+            continue
+
+        updated_collaboration_plan = merge_execution_into_collaboration_plan(collaboration_plan, execution)
+        task_brief = task.get("task_brief") if isinstance(task.get("task_brief"), dict) else {}
+        context_package = task_brief.get("context_package") if isinstance(task_brief.get("context_package"), dict) else {}
+        context_package["collaboration_plan"] = updated_collaboration_plan
+        task_brief["context_package"] = context_package
+        task["task_brief"] = task_brief
+        task["_execution_persisted"] = True
+
+        report["completed"] += 1
+        report["results"].append(
+            {
+                "task_id": task_id,
+                "status": safe_str(execution.get("status")) or "completed",
+                "interaction_mode": safe_str(execution.get("interaction_mode")) or None,
+                "phases_total": len(execution.get("phases")) if isinstance(execution.get("phases"), list) else 0,
+                "runs_total": int(execution.get("runs_total", 0) or 0),
+                "persisted_to_task_brief": True,
+            }
+        )
+
+    return report
+
+
+def merge_execution_into_collaboration_plan(
+    collaboration_plan: dict[str, Any],
+    execution: dict[str, Any],
+) -> dict[str, Any]:
+    if not isinstance(collaboration_plan, dict):
+        return {}
+    if not isinstance(execution, dict):
+        return copy.deepcopy(collaboration_plan)
+
+    updated = copy.deepcopy(collaboration_plan)
+    execution_phases = execution.get("phases") if isinstance(execution.get("phases"), list) else []
+    execution_runs = execution.get("runs") if isinstance(execution.get("runs"), list) else []
+    phase_reports = {
+        safe_str(item.get("phase_id")): item
+        for item in execution_phases
+        if isinstance(item, dict) and safe_str(item.get("phase_id"))
+    }
+    run_reports = {
+        safe_str(item.get("instance_id")): item
+        for item in execution_runs
+        if isinstance(item, dict) and safe_str(item.get("instance_id"))
+    }
+
+    interaction_phases = updated.get("interaction_phases") if isinstance(updated.get("interaction_phases"), list) else []
+    if interaction_phases:
+        for phase in interaction_phases:
+            if not isinstance(phase, dict):
+                continue
+            phase_id = safe_str(phase.get("phase_id"))
+            report = phase_reports.get(phase_id)
+            if not report:
+                continue
+            phase["status"] = safe_str(report.get("status")) or safe_str(phase.get("status")) or "planned"
+            participants = safe_list_str(report.get("participants"))
+            if participants:
+                phase["participants"] = participants
+    elif phase_reports:
+        updated["interaction_phases"] = [
+            {
+                "phase_id": phase_id,
+                "label": safe_str(report.get("phase_id")) or phase_id,
+                "mode": safe_str(report.get("mode")) or "sequential",
+                "goal": "",
+                "participants": safe_list_str(report.get("participants")),
+                "depends_on": [],
+                "outputs": [],
+                "status": safe_str(report.get("status")) or "completed",
+                "merge_into": None,
+            }
+            for phase_id, report in phase_reports.items()
+        ]
+
+    spawned_instances = updated.get("spawned_instances") if isinstance(updated.get("spawned_instances"), list) else []
+    for instance in spawned_instances:
+        if not isinstance(instance, dict):
+            continue
+        instance_id = safe_str(instance.get("instance_id"))
+        report = run_reports.get(instance_id)
+        if not report:
+            continue
+        instance["status"] = safe_str(report.get("status")) or safe_str(instance.get("status")) or "completed"
+        instance["verify_status"] = safe_str(report.get("verify_status")) or safe_str(instance.get("verify_status")) or "passed"
+        result_path = safe_str(report.get("result_path"))
+        existing_output_refs = safe_list_str(instance.get("output_refs"))
+        if result_path and result_path not in existing_output_refs:
+            existing_output_refs.append(result_path)
+        instance["output_refs"] = existing_output_refs
+
+    roundtable_phase = phase_reports.get("phase_3_roundtable")
+    if roundtable_phase and safe_str(roundtable_phase.get("status")) == "completed":
+        discussion_rounds = updated.get("discussion_rounds") if isinstance(updated.get("discussion_rounds"), list) else []
+        has_round_one = any(
+            isinstance(item, dict) and safe_str(item.get("round_id")) == "round-1"
+            for item in discussion_rounds
+        )
+        if not has_round_one:
+            discussion_rounds.append(
+                {
+                    "round_id": "round-1",
+                    "round_index": 1,
+                    "participants": safe_list_str(roundtable_phase.get("participants")),
+                    "summary": "Roundtable завершен через dispatcher-backed execution; итоговый owner может переходить к merge-фазе.",
+                    "status": "completed",
+                    "next_owner_agent_id": safe_str(updated.get("merge_owner_agent_id")) or None,
+                }
+            )
+        updated["discussion_rounds"] = discussion_rounds
+
+    return updated
 
 
 def fetch_tasks_by_external_key(conn, *, db_schema: str) -> dict[str, dict[str, Any]]:
@@ -1579,7 +2012,6 @@ def run_sync(args: argparse.Namespace) -> int:
         for item in agents_before
         if isinstance(item, dict) and safe_str(item.get("id"))
     }
-    events = load_telemetry_events(Path(args.logs_dir))
     executor_agent_id = safe_str(args.executor_agent_id) or "analyst-agent"
     seeds = build_seed_tasks(registry, executor_agent_id)
     agents_after = registry.get("agents") if isinstance(registry.get("agents"), list) else []
@@ -1606,6 +2038,8 @@ def run_sync(args: argparse.Namespace) -> int:
         "logs_dir": str(args.logs_dir),
         "seed_tasks": len(seeds),
         "dry_run": bool(args.dry_run),
+        "execution_enabled": bool(args.execute_collaboration_plans),
+        "execution_limit": max(int(getattr(args, "execution_limit", 0) or 0), 0),
         "promoted_profiles_total": len(promoted_profiles),
         "promoted_profile_ids": [item["id"] for item in promoted_profiles],
     }
@@ -1619,7 +2053,17 @@ def run_sync(args: argparse.Namespace) -> int:
             ).fetchone()["total"]
         report["tasks_before"] = int(before_total)
 
+        execution_report = {
+            "enabled": bool(args.execute_collaboration_plans),
+            "limit": max(int(getattr(args, "execution_limit", 0) or 0), 0),
+            "attempted": 0,
+            "completed": 0,
+            "failed": 0,
+            "skipped": 0,
+            "results": [],
+        }
         if args.dry_run:
+            events = load_telemetry_events(Path(args.logs_dir))
             projection = {
                 "events_total": len(events),
                 "events_inserted": 0,
@@ -1631,6 +2075,21 @@ def run_sync(args: argparse.Namespace) -> int:
         else:
             for task in seeds:
                 upsert_seed_task(conn, task, db_schema=db_schema)
+            task_status_snapshot = {
+                external_key: safe_str(row.get("status")).lower()
+                for external_key, row in fetch_tasks_by_external_key(conn, db_schema=db_schema).items()
+            }
+            if args.execute_collaboration_plans:
+                execution_report = execute_seed_collaboration_plans(
+                    seeds,
+                    log_dir=Path(args.logs_dir),
+                    limit=max(int(getattr(args, "execution_limit", 0) or 0), 0),
+                    eligible_statuses_by_task=task_status_snapshot,
+                )
+                for task in seeds:
+                    if task.get("_execution_persisted"):
+                        upsert_seed_task(conn, task, db_schema=db_schema)
+            events = load_telemetry_events(Path(args.logs_dir))
             projection = apply_telemetry_projection(conn, events=events, db_schema=db_schema)
 
         with conn.cursor() as cur:
@@ -1661,6 +2120,7 @@ def run_sync(args: argparse.Namespace) -> int:
             "tasks_delta": int(after_total) - int(before_total),
             "task_events_total_db": events_total_db,
             "projection": projection,
+            "execution": execution_report,
             "registry_updated": registry_updated,
         }
     )

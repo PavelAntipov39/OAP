@@ -95,6 +95,7 @@ class AgentOrchestrationTests(unittest.TestCase):
         self.assertTrue(any(item["verify_status"] == "pending" for item in plan["spawned_instances"]))
         self.assertEqual(plan["interaction_mode"], "mixed_phased")
         self.assertTrue(any(phase["mode"] == "roundtable" for phase in plan["interaction_phases"]))
+        self.assertTrue(any(item.get("phase_id") == "phase_3_roundtable" for item in plan["spawned_instances"]))
 
     def test_duplicate_specialist_is_reused_by_scope_and_tool_envelope(self):
         template_payload = {
@@ -151,6 +152,46 @@ class AgentOrchestrationTests(unittest.TestCase):
         self.assertEqual(plan["created_profiles"], [])
         self.assertTrue(any(item["profile_id"] == "specialist-retrieval-existing" for item in plan["spawned_instances"]))
         self.assertEqual(plan["merge_owner_agent_id"], "analyst-agent")
+
+    def test_low_score_template_does_not_create_dynamic_profile(self):
+        template_payload = {
+            "templates": [
+                {
+                    "id": "retrieval-audit",
+                    "name": "Retrieval Audit Specialist",
+                    "specializationScope": "Audit retrieval evidence quality",
+                    "defaultSkills": ["doc"],
+                    "defaultTools": ["QMD retrieval"],
+                    "defaultMcp": ["qmd"],
+                    "defaultRules": ["QMD Retrieval Policy"],
+                    "capabilityContract": {
+                        "mission": "Validate retrieval quality.",
+                        "entryCriteria": ["Task requires retrieval audit."],
+                        "doneCondition": "Evidence map is validated.",
+                        "outputSchema": "retrieval_audit_report.v1",
+                    },
+                }
+            ]
+        }
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            catalog_path = Path(tmp_dir) / "templates.yaml"
+            catalog_path.write_text(json.dumps(template_payload, ensure_ascii=False), encoding="utf-8")
+            plan, created_profiles = orch.build_collaboration_plan(
+                task_id="imp:reader:weak-template-match",
+                root_agent_id="analyst-agent",
+                purpose="General cleanup task",
+                hint_text="rename one label and tidy docs",
+                registry={"agents": []},
+                suggested_agents=[],
+                target_metric="",
+                owner_section="",
+                template_catalog_path=catalog_path,
+            )
+
+        self.assertEqual(created_profiles, [])
+        self.assertEqual(plan["created_profiles"], [])
+        self.assertEqual(plan["strategy"], "reuse_existing")
+        self.assertFalse(any(str(item.get("profile_id", "")).startswith("specialist-") for item in plan["spawned_instances"]))
 
     def test_terminology_triggers_prioritize_terminology_consistency_template(self):
         template_payload = {

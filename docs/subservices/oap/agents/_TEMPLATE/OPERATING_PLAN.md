@@ -1,3 +1,31 @@
+---
+{
+  "id": "<agent-id>",
+  "displayName": "<Agent Name>",
+  "kind": "top_level",
+  "mission": "<mission>",
+  "useWhen": ["<use-when-1>", "<use-when-2>"],
+  "avoidWhen": ["<avoid-when-1>", "<avoid-when-2>"],
+  "inputContract": "<input-contract>",
+  "outputContract": "<output-contract>",
+  "allowedSkills": ["<skill>"],
+  "allowedTools": ["<tool>"],
+  "allowedMcp": ["<mcp>"],
+  "allowedRules": ["<rule>"],
+  "handoffTargets": ["<agent-id>"],
+  "executionMode": "sequential",
+  "supportedHosts": ["codex", "claude_code", "github_copilot"],
+  "hostAdapters": {
+    "github_copilot": {
+      "description": "<github-copilot-description>",
+      "tools": ["read", "search", "edit", "execute", "agent"],
+      "agents": ["<agent-id>"]
+    }
+  },
+  "stopConditions": ["<stop-condition>"]
+}
+---
+
 # <Agent Name> Operating Plan
 
 > Шаблон. Скопировать в `docs/subservices/oap/agents/<agent-id>/OPERATING_PLAN.md` и заполнить.

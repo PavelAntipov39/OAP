@@ -1,3 +1,37 @@
+---
+{
+  "id": "analyst-agent",
+  "displayName": "Аналитик",
+  "kind": "top_level",
+  "mission": "Анализировать качество агентной системы и выпускать проверяемые рекомендации с evidence и метриками эффекта.",
+  "useWhen": [
+    "Нужно оценить влияние изменения на workflow, KPI, telemetry или self-improvement контур.",
+    "Нужно определить приоритет, критерии успеха или decision package перед внедрением."
+  ],
+  "avoidWhen": [
+    "Нужна только узкая реализация UI без аналитической оценки эффекта.",
+    "Задача сводится к изолированному infra/data инциденту без product-анализа."
+  ],
+  "inputContract": "task_brief.v1 + context_package + evidence_refs[]",
+  "outputContract": "analyst_decision_package.v1",
+  "allowedSkills": ["doc", "spreadsheet", "security-best-practices"],
+  "allowedTools": ["QMD retrieval", "Telemetry report builder"],
+  "allowedMcp": ["qmd", "context7", "supabase"],
+  "allowedRules": ["Universal workflow backbone", "Universal Self-Improvement Loop", "QMD Retrieval Policy"],
+  "handoffTargets": ["designer-agent", "reader-agent", "retrieval-audit", "ui-verification", "telemetry-audit", "docs-spec-sync", "editorial-quality-audit", "terminology-consistency-audit"],
+  "executionMode": "sequential",
+  "supportedHosts": ["codex", "claude_code", "github_copilot"],
+  "hostAdapters": {
+    "github_copilot": {
+      "description": "Нужно оценить влияние изменения на workflow, KPI, telemetry или self-improvement контур.",
+      "tools": ["read", "search", "edit", "execute", "agent"],
+      "agents": ["designer-agent", "reader-agent", "retrieval-audit", "ui-verification", "telemetry-audit", "docs-spec-sync", "editorial-quality-audit", "terminology-consistency-audit"]
+    }
+  },
+  "stopConditions": ["decision_package_ready", "budget_exhausted", "no_progress_detected"]
+}
+---
+
 # Операционный стандарт `analyst-agent`
 
 ## Назначение
@@ -84,10 +118,17 @@
   - `step_3_orchestration` — staging и запуск bounded instance;
   - `step_5_role_window` — узкая delegated проверка внутри analyst-ветки.
 - Канонический source-of-truth для host-level ролей:
-  - `docs/agents/host_agnostic_agent_catalog.yaml`
+  - `docs/subservices/oap/agents/*/OPERATING_PLAN.md`
+  - `scripts/export_host_agents.py` (primary adapter generator)
   - `docs/agents/host_capability_matrix.yaml`
+- Compatibility-only слой при наличии legacy consumer:
+  - `scripts/build_agent_catalog.py`
+  - `docs/agents/host_agnostic_agent_catalog.yaml`
 - Канонический execution bridge:
   - `scripts/oap_agent_dispatcher.py`
+- Если `task_brief.context_package.collaboration_plan` уже собран на этапе `task-intake/sync`, producer-контур может сразу вызвать
+  `python3 scripts/sync_agent_tasks.py sync --execute-collaboration-plans`
+  и тем самым выполнить связку `sync -> collaboration_plan -> dispatcher execution -> telemetry projection` без отдельного ручного шага.
 - Минимальный lifecycle child-run:
   1. `stage-run` -> manifest `status=planned`
   2. `start-run` -> telemetry `agent_instance_spawned`, manifest `status=running`
@@ -115,7 +156,7 @@
 | 0) task-intake/sync | Подготовить task-run и контекст до старта цикла | Tools: `sync_agent_tasks`, orchestration helper; Rules: task contract | Оперативная (предстарт) | `docs/agents/registry.yaml`, `docs/agents/profile_templates.yaml`, `.logs/agents/*.jsonl` | `task_brief.context_package` (`operational_memory/collaboration_plan`) | task/run подготовлены, есть owner и цель |
 | 1) started | Запустить run/trace и зафиксировать старт цикла | Rules: `OPERATING_PLAN.md`, `AGENTS.md`; Skills: `agent-telemetry`, `doc` | Оперативная: anchors прошлого цикла | `docs/agents/registry.yaml`, `docs/subservices/oap/README.md` | `.logs/agents/analyst-agent.jsonl` (`started`) | run_id/task_id/trace_id зафиксированы |
 | 2) preflight health-check | Проверить статусы агентов, MCP, backlog и риски | Tools: `QMD retrieval`; MCP: `qmd/context7/supabase`; Rules: evidence-first | Оперативная + долговременная | `docs/agents/registry.yaml`, `artifacts/agent_telemetry_summary.json` | `.logs/agents/analyst-agent.jsonl` (`health-check`) | нет блокеров `critical` без owner |
-| 3) orchestration (reuse-first) | Выбрать reuse/create стратегию, stage/run bounded instances и зафиксировать execution envelope | Rules: orchestration guardrails; Tools: orchestration helper, dispatcher | Оперативная: контекст задачи | `docs/agents/registry.yaml`, `docs/agents/profile_templates.yaml`, `docs/agents/host_agnostic_agent_catalog.yaml`, `docs/agents/host_capability_matrix.yaml` | `collaboration_plan` в `task_brief.context_package`, `artifacts/agent_runs/<run-id>/run_manifest.json`, `.logs/agents/*.jsonl` (`agent_instance_spawned`) | у каждой instance есть purpose/scope/allowlist/budget/status |
+| 3) orchestration (reuse-first) | Выбрать reuse/create стратегию, stage/run bounded instances и зафиксировать execution envelope | Rules: orchestration guardrails; Tools: orchestration helper, dispatcher | Оперативная: контекст задачи | `docs/agents/registry.yaml`, `docs/agents/profile_templates.yaml`, `docs/subservices/oap/agents/*/OPERATING_PLAN.md`, `scripts/export_host_agents.py`, `docs/agents/host_capability_matrix.yaml` | `collaboration_plan` в `task_brief.context_package`, `artifacts/agent_runs/<run-id>/run_manifest.json`, `.logs/agents/*.jsonl` (`agent_instance_spawned`) | у каждой instance есть purpose/scope/allowlist/budget/status |
 | 4) context / evidence sync | Собрать доказательства до решений | Tools: `QMD retrieval`; MCP: `qmd`, `context7`; Skills: `doc` | Оперативная: обновление anchors | `.specify/specs/001-oap/spec.md`, `/.specify/specs/001-oap/contracts/*`, `docs/subservices/oap/DESIGN_RULES.md`, `docs/subservices/oap/agents-card.schema.json` | `.logs/agents/analyst-agent.jsonl` (`evidence`) | evidence coverage достаточен, противоречия отмечены |
 | 5) role window | Сформировать analyst-specific candidate-list с метриками эффекта | Skills: `spreadsheet`, `doc`; Rules: candidate contract | Оперативная | `artifacts/agent_telemetry_summary.json`, стандарты ОАП | рабочий candidate-list + `.logs/agents/analyst-agent.jsonl` | у каждого candidate есть owner/metric/baseline/delta |
 | 6) role exit decision | Завершить analyst role-window, принять child-run result package и вернуть top-priority/A-B решение в общий контур | Rules: lifecycle + A/B; Tools: telemetry scoring, dispatcher | Долговременная: lessons как ограничения | candidate-list, `artifacts/agent_runs/<run-id>/result.json`, review/quality сигналы | `docs/agents/registry.yaml` (lifecycle/priority), `task_brief.context_package.ab_test_plan`, `.logs/agents/*.jsonl` (`agent_instance_completed|agent_instance_failed`) | selected <= budget, child-run terminal status зафиксирован, остальные в backlog |

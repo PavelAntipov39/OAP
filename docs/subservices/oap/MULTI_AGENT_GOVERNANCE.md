@@ -3,6 +3,11 @@
 ## Назначение
 Этот документ фиксирует, когда в ОАП можно заводить новый автономный агент, а когда роль должна остаться процессным агентом.
 
+Host-level каталог ролей `docs/agents/host_agnostic_agent_catalog.yaml` больше не является ручным source-of-truth:
+- каноническая metadata живет в `docs/subservices/oap/agents/<agent-id>/OPERATING_PLAN.md`;
+- host adapters генерируются напрямую через `python3 scripts/export_host_agents.py`;
+- каталог, если нужен runtime consumer, собирается автоматически через `python3 scripts/build_agent_catalog.py` как compatibility artifact.
+
 Цель:
 - не раздувать active set без доказанной пользы;
 - сохранять единый backbone `0..9.1` и learning core;
@@ -64,7 +69,7 @@
 - роль не имеет переносимого host adapter contract.
 
 ## Процедура повышения process agent -> autonomous agent
-1. Зафиксировать миссию и contracts в repo-owned catalog.
+1. Зафиксировать миссию и contracts в `OPERATING_PLAN.md`.
 2. Добавить `OPERATING_PLAN.md`.
 3. Подключить telemetry viability KPI.
 4. Сгенерировать host adapters.
@@ -79,7 +84,8 @@
 Правило выше теперь проверяется не только вручную.
 
 `npm --prefix ops-web run check-agents` обязан падать, если active автономный агент:
-- отсутствует в `docs/agents/host_agnostic_agent_catalog.yaml`;
+- отсутствует в active metadata, которую отдает `python3 scripts/export_host_agents.py list-active-agents`;
+- отсутствует canonical metadata во frontmatter `docs/subservices/oap/agents/<agent-id>/OPERATING_PLAN.md`;
 - не имеет полного top-level host-contract (`mission`, `useWhen`, `avoidWhen`, `inputContract`, `outputContract`, `handoffTargets`, `supportedHosts`, `stopConditions`);
 - не поддерживает `codex`, `claude_code`, `github_copilot`;
 - выпал из `host-agent-smoke` parity-check или имеет drift по adapters/handoff targets.
@@ -87,7 +93,7 @@
 ## Процедура обратного понижения
 Если роль перестала быть целесообразной:
 - она не удаляется из истории;
-- active profile убирается из registry/catalog;
+- active profile убирается из registry, после чего host adapters пересобираются, а compatibility catalog обновляется только если он еще нужен consumer'ам;
 - docs и lessons переносятся в `archive`;
 - `agent_id` остается зарезервированным для возможного возврата.
 
@@ -104,7 +110,14 @@
 - `telemetry-audit`
 - `contract-audit`
 - `docs-spec-sync`
+- `editorial-quality-audit`
 - `automation-governance`
+- `terminology-consistency-audit`
+
+Для `editorial-quality-audit` правило явно такое:
+- это процессный агент, а не автономный;
+- он нужен для bounded editorial-review задач: ясность, фактология, отсутствие лишних обещаний в описательном тексте;
+- он не заменяет `designer-agent`, `terminology-consistency-audit` или `docs-spec-sync`, а работает рядом с ними на своем узком слое.
 
 Все новые роли сначала идут через процессный агент (`runtime specialist`).
 

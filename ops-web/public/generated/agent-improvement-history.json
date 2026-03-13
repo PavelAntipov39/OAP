@@ -1,8 +1,25 @@
 {
-  "generated_at": "2026-03-12T06:34:05.233Z",
+  "generated_at": "2026-03-13T13:07:02.352Z",
   "version": "improvement_history.v1",
   "source": "docs/agents/registry.yaml + artifacts/candidate_*.json + .logs/agents/*.jsonl",
   "events": [
+    {
+      "event_id": "5198dd7d-045c-4a9b-a2a8-c9b534270cf0",
+      "occurred_at": "2026-03-13T12:19:55.204Z",
+      "agent_id": "orchestrator-agent",
+      "source_tool": "other",
+      "source_ref": "task-memory-ui-cleanup-2026-03-13",
+      "extracted_value": "MemorySection очищен: long-term memory показывает только lessons, статистика унифицирована",
+      "applied_change": "Результат подтвержден этапом verify.",
+      "target_scope": "8) verify",
+      "result_status": "verified",
+      "result_note": "process=vibe_coding, status=verify_passed",
+      "metric_name": null,
+      "metric_delta": null,
+      "evidence_refs": [
+        ".logs/agents/orchestrator-agent.jsonl"
+      ]
+    },
     {
       "event_id": "e1a50000-1001-4000-a000-100000000003",
       "occurred_at": "2026-03-10T14:11:00.000Z",
@@ -922,7 +939,7 @@
       ]
     },
     {
-      "event_id": "improvement_5d4cba19e3adb05a",
+      "event_id": "improvement_67c2a35752319332",
       "occurred_at": "2026-02-24T18:35:00.000Z",
       "agent_id": "reader-agent",
       "source_tool": "other",
@@ -931,7 +948,7 @@
       "applied_change": "Добавить линт-правило на ключевые статусные чипы и e2e ассерты по русским текстам.",
       "target_scope": "Навыки и правила",
       "result_status": "applied",
-      "result_note": "Снижение регрессий в UX и быстреее принятие изменений ревьюером. Целевая валидация: 2026-03-26.",
+      "result_note": "Снижение регрессий в UX и быстреее принятие изменений ревьюером. Целевая валидация: 2026-03-27.",
       "metric_name": "recommendation_action_rate",
       "metric_delta": 10,
       "evidence_refs": [
@@ -940,7 +957,7 @@
       ]
     },
     {
-      "event_id": "improvement_cad0d0531545f056",
+      "event_id": "improvement_19685bc8f0bef484",
       "occurred_at": "2026-02-24T18:35:00.000Z",
       "agent_id": "reader-agent",
       "source_tool": "other",
@@ -949,7 +966,7 @@
       "applied_change": "Добавить единый стартовый шаблон: spec -> contracts -> целевая страница -> тесты.",
       "target_scope": "Задачи и качество",
       "result_status": "applied",
-      "result_note": "Стабильное время старта и меньше пропущенных зависимостей. Целевая валидация: 2026-03-26.",
+      "result_note": "Стабильное время старта и меньше пропущенных зависимостей. Целевая валидация: 2026-03-27.",
       "metric_name": "review_error_rate",
       "metric_delta": 10,
       "evidence_refs": [
@@ -958,7 +975,7 @@
       ]
     },
     {
-      "event_id": "improvement_b624b32c4c5f790d",
+      "event_id": "improvement_45635ebf9714e742",
       "occurred_at": "2026-02-24T18:35:00.000Z",
       "agent_id": "reader-agent",
       "source_tool": "other",
@@ -967,7 +984,7 @@
       "applied_change": "Построить автоматический отчет по review findings и сопоставление с навыками.",
       "target_scope": "Навыки и правила",
       "result_status": "applied",
-      "result_note": "Быстрая персональная прокачка агента по фактическим ошибкам. Целевая валидация: 2026-03-26.",
+      "result_note": "Быстрая персональная прокачка агента по фактическим ошибкам. Целевая валидация: 2026-03-27.",
       "metric_name": "recommendation_action_rate",
       "metric_delta": 10,
       "evidence_refs": [

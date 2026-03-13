@@ -79,6 +79,7 @@ type ModalState = {
 const EMPTY_MODAL: ModalState = { open: false, title: "", content: "", path: null, updatedAt: null };
 const AGENT_LOG_PATH = ".logs/agents/analyst-agent.jsonl";
 const DEFAULT_LESSONS_PATH = "docs/subservices/oap/tasks/lessons/analyst-agent.md";
+const GLOBAL_LESSONS_PATH = "docs/subservices/oap/tasks/lessons.global.md";
 const PRODUCT_DESIGNER_AGENT_ID = "designer-agent";
 const ORCHESTRATOR_AGENT_ID = "orchestrator-agent";
 const ANALYST_FLOW_HASH = "#/agent-flow";
@@ -1954,6 +1955,7 @@ export function AnalystCardDrawer({
   const effectiveAgent = data?.agent ?? agent;
   const effectiveAgentId = effectiveAgent?.id ?? null;
   const isAnalystAgent = effectiveAgentId === "analyst-agent";
+  const isAnalystStyleAgent = isAnalystAgent || effectiveAgentId === PRODUCT_DESIGNER_AGENT_ID;
   const telemetryAgentSummary = React.useMemo<AgentTelemetrySummaryAgent | null>(
     () => (effectiveAgentId ? getAgentTelemetrySummaryByAgent(effectiveAgentId) : null),
     [effectiveAgentId],
@@ -1976,6 +1978,29 @@ export function AnalystCardDrawer({
   );
   const cycle = data?.cycle ?? null;
   const sessions = isAnalystAgent ? data?.sessions ?? [] : [];
+  const latestSession = React.useMemo<AnalystSession | null>(
+    () => sessions[0] ?? null,
+    [sessions],
+  );
+  const sessionsDataFreshnessWarning = React.useMemo<{
+    generatedAt: string;
+    newestTelemetryAt: string;
+  } | null>(() => {
+    const generatedAt = asString(cycle?.generated_at);
+    if (!generatedAt) return null;
+    const generatedAtMs = toDateMs(generatedAt);
+    if (!generatedAtMs) return null;
+    const newestSession = sessions.reduce<AnalystSession | null>((acc, session) => {
+      if (!acc) return session;
+      return toDateMs(session.completedAt) > toDateMs(acc.completedAt) ? session : acc;
+    }, null);
+    if (!newestSession?.completedAt) return null;
+    if (toDateMs(newestSession.completedAt) <= generatedAtMs) return null;
+    return {
+      generatedAt,
+      newestTelemetryAt: newestSession.completedAt,
+    };
+  }, [cycle?.generated_at, sessions]);
   const efficiency = isAnalystAgent ? data?.efficiency ?? null : null;
   const keyMetrics = isAnalystAgent ? data?.keyMetrics ?? null : null;
   const lessonsPath = effectiveAgent?.learningArtifacts?.lessonsPath || DEFAULT_LESSONS_PATH;
@@ -2208,8 +2233,14 @@ export function AnalystCardDrawer({
   );
   const activeMemorySession = React.useMemo<AnalystSession | null>(() => {
     const latestCycleTaskId = asString(cycle?.latest_cycle?.task_id);
-    return sessions.find((session) => (latestCycleTaskId ? session.id === latestCycleTaskId : false)) ?? sessions[0] ?? null;
-  }, [cycle?.latest_cycle?.task_id, sessions]);
+    if (latestCycleTaskId) {
+      const exact = sessions.find((session) => session.id === latestCycleTaskId);
+      if (exact) return exact;
+      const byTaskId = sessions.find((session) => session.taskId === latestCycleTaskId);
+      if (byTaskId) return byTaskId;
+    }
+    return latestSession;
+  }, [cycle?.latest_cycle?.task_id, latestSession, sessions]);
 
   const operativeMemoryEntries = React.useMemo<MemoryLinkEntry[]>(() => {
 
@@ -2373,12 +2404,18 @@ export function AnalystCardDrawer({
   const persistentMemoryEntries = React.useMemo<MemoryLinkEntry[]>(
     () =>
       uniqueMemoryEntries(
-        (effectiveAgent?.memoryContext?.persistentRules ?? []).map((rule) => ({
-          title: rule.title || "Правило",
-          path: rule.location,
-        })),
+        [
+          {
+            title: "Уроки агента",
+            path: lessonsPath,
+          },
+          {
+            title: "Глобальные уроки",
+            path: GLOBAL_LESSONS_PATH,
+          },
+        ],
       ).filter((entry) => isOpenablePath(entry.path)),
-    [effectiveAgent?.memoryContext?.persistentRules, isOpenablePath],
+    [isOpenablePath, lessonsPath],
   );
 
   React.useEffect(() => {
@@ -2478,7 +2515,18 @@ export function AnalystCardDrawer({
       const started = formatDateTime(session.startedAt).toLowerCase();
       const dateKey = session.completedAt.slice(0, 10).toLowerCase();
       const timeKey = new Date(session.completedAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }).toLowerCase();
-      return [completed, started, dateKey, timeKey, session.id.toLowerCase()].some((value) => value.includes(q));
+      return [
+        completed,
+        started,
+        dateKey,
+        timeKey,
+        session.id.toLowerCase(),
+        session.taskId.toLowerCase(),
+        session.runId.toLowerCase(),
+        session.participationMode.toLowerCase(),
+        session.sourceAgentId.toLowerCase(),
+        asString(session.rootAgentId).toLowerCase(),
+      ].some((value) => value.includes(q));
     });
   }, [sessions, sessionsSearch]);
 
@@ -2487,9 +2535,15 @@ export function AnalystCardDrawer({
     const wasOpen = sessionsModalWasOpenRef.current;
     if (isSessionsModalOpen && !wasOpen) {
       if (sessionsRouteEntity && sessionsRouteEntity !== "latest") {
-        setSessionsSearch(sessionsRouteEntity);
-        const matchedSession = sessions.find((session) => session.id === sessionsRouteEntity) ?? null;
-        if (matchedSession) setSelectedSession(matchedSession);
+        const matchedSession = sessions.find(
+          (session) => session.id === sessionsRouteEntity || session.taskId === sessionsRouteEntity,
+        ) ?? null;
+        if (matchedSession) {
+          setSessionsSearch(sessionsRouteEntity);
+          setSelectedSession(matchedSession);
+        } else {
+          setSessionsSearch("");
+        }
       } else {
         setSessionsSearch("");
       }
@@ -2819,13 +2873,13 @@ export function AnalystCardDrawer({
         impact: "Качество выполнения задач и длительность цикла.",
       },
       {
-        key: "state_consistency",
-        title: "Консистентность состояний",
+        key: "state_typography_consistency",
+        title: "Консистентность состояний и типографики",
         score: errorRate == null ? 0.5 : errorRate <= 0.03 ? 1 : errorRate <= 0.1 ? 0.5 : 0,
         note: errorRate == null
-          ? "Сигналы ошибок по журналу не зафиксированы."
+          ? "Сигналы ошибок по журналу не зафиксированы. Типографическая консистентность проверяется по UX-гейту."
           : `Доля fail/error событий: ${(errorRate * 100).toFixed(1)}%.`,
-        impact: "Количество ошибок проверки и стабильность процесса.",
+        impact: "Количество ошибок проверки, стабильность процесса и единый ритм чтения карточки.",
       },
       {
         key: "help_in_risky_points",
@@ -2962,7 +3016,7 @@ export function AnalystCardDrawer({
   }, [designerUxGateSignals, effectiveAgentId, genericTaskQualityMetrics, openDesignerUxGateDetails]);
 
   const roleViabilityMetrics = React.useMemo<MetricDefinition[]>(() => {
-    if (!effectiveAgentId || isAnalystAgent) return [];
+    if (!effectiveAgentId || isAnalystStyleAgent) return [];
     const telemetry = telemetryAgentSummary;
     return [
       {
@@ -3040,32 +3094,39 @@ export function AnalystCardDrawer({
         example: "Если контракт и generated adapters пересобраны без расхождений, статус будет «синхронизированы».",
       },
     ];
-  }, [effectiveAgentId, isAnalystAgent, telemetryAgentSummary]);
+  }, [effectiveAgentId, isAnalystStyleAgent, telemetryAgentSummary]);
 
   const analystMetricCatalog = React.useMemo<MetricCatalogItem[]>(
-    () =>
-      isAnalystAgent
-        ? buildMetricCatalog(
-            [...efficiencyMetrics, ...primaryKeyMetrics, ...additionalEfficiencyMetrics, ...genericTaskQualityMetrics],
-            effectiveAgentId,
-          )
-        : [],
+    () => {
+      if (!isAnalystStyleAgent) return [];
+      const sourceMetrics = isAnalystAgent
+        ? [...efficiencyMetrics, ...primaryKeyMetrics, ...additionalEfficiencyMetrics, ...genericTaskQualityMetrics]
+        : [...nonAnalystPrimaryMetrics, ...additionalEfficiencyMetrics];
+      return buildMetricCatalog(sourceMetrics, effectiveAgentId);
+    },
     [
-      efficiencyMetrics,
       additionalEfficiencyMetrics,
+      efficiencyMetrics,
       effectiveAgentId,
       genericTaskQualityMetrics,
       isAnalystAgent,
+      isAnalystStyleAgent,
+      nonAnalystPrimaryMetrics,
       primaryKeyMetrics,
     ],
   );
 
   const defaultMainMetricIds = React.useMemo<string[]>(
-    () =>
-      ANALYST_DEFAULT_MAIN_METRIC_IDS
-        .filter((metricId) => analystMetricCatalog.some((metric) => metric.metricId === metricId))
-        .slice(0, METRIC_CATALOG_MAIN_LIMIT),
-    [analystMetricCatalog],
+    () => {
+      if (!isAnalystStyleAgent) return [];
+      if (isAnalystAgent) {
+        return ANALYST_DEFAULT_MAIN_METRIC_IDS
+          .filter((metricId) => analystMetricCatalog.some((metric) => metric.metricId === metricId))
+          .slice(0, METRIC_CATALOG_MAIN_LIMIT);
+      }
+      return analystMetricCatalog.slice(0, METRIC_CATALOG_MAIN_LIMIT).map((metric) => metric.metricId);
+    },
+    [analystMetricCatalog, isAnalystAgent, isAnalystStyleAgent],
   );
   const defaultExtraMetricIds = React.useMemo<string[]>(
     () => analystMetricCatalog
@@ -3111,7 +3172,7 @@ export function AnalystCardDrawer({
   );
 
   React.useEffect(() => {
-    if (!isAnalystAgent || !effectiveAgentId) {
+    if (!isAnalystStyleAgent || !effectiveAgentId) {
       setMetricPreferences(null);
       setMetricPreferencesLoading(false);
       setMetricPreferencesNotice(null);
@@ -3165,7 +3226,7 @@ export function AnalystCardDrawer({
       active = false;
       controller.abort();
     };
-  }, [effectiveAgentId, isAnalystAgent, viewerId]);
+  }, [effectiveAgentId, isAnalystStyleAgent, viewerId]);
 
   const setMetricCatalogDraftNormalized = React.useCallback((nextDraft: MetricSelectionDraft) => {
     const allowedMetricIds = new Set(analystMetricCatalog.map((metric) => metric.metricId));
@@ -3185,7 +3246,6 @@ export function AnalystCardDrawer({
   }, [
     effectiveExtraMetricIds,
     effectiveMainMetricIds,
-    isAnalystAgent,
     isMetricsCatalogDialogOpen,
     metricsCatalogDraft,
     setMetricCatalogDraftNormalized,
@@ -3211,7 +3271,7 @@ export function AnalystCardDrawer({
       return;
     }
 
-    if (!isAnalystAgent) {
+    if (!isAnalystStyleAgent) {
       closeMetricsCatalogWithCleanup();
       return;
     }
@@ -3275,7 +3335,7 @@ export function AnalystCardDrawer({
   }, [
     closeMetricsCatalogWithCleanup,
     effectiveAgentId,
-    isAnalystAgent,
+    isAnalystStyleAgent,
     metricsCatalogDraft,
     viewerId,
   ]);
@@ -3439,7 +3499,7 @@ export function AnalystCardDrawer({
                 title="Анализ эффективности агента"
                 tooltip="Единый блок эффективности агента: ключевые фактические метрики цикла, нагрузки и результата в одном формате."
               >
-                {isAnalystAgent && metricPreferencesNotice ? (
+                {isAnalystStyleAgent && metricPreferencesNotice ? (
                   <Paper
                     variant="outlined"
                     sx={{
@@ -3453,23 +3513,23 @@ export function AnalystCardDrawer({
                     </Typography>
                   </Paper>
                 ) : null}
-                {isAnalystAgent ? (
+                {isAnalystStyleAgent ? (
                   <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
                     Бейдж «Ключевая» отмечает метрики бизнес-результата агента. На карточке показывается не более {METRIC_CATALOG_MAIN_LIMIT} метрик.
                   </Typography>
                 ) : null}
                 <Stack spacing={1}>
-                  {(isAnalystAgent ? configuredMainMetrics : nonAnalystPrimaryMetrics).length === 0 ? (
+                  {(isAnalystStyleAgent ? configuredMainMetrics : nonAnalystPrimaryMetrics).length === 0 ? (
                     <Paper variant="outlined" sx={{ p: 1.2 }}>
                       <Typography variant="body2" color="text.secondary">
                         Метрики не выбраны. Откройте «Настроить метрики», чтобы собрать свой набор.
                       </Typography>
                     </Paper>
-                  ) : (isAnalystAgent ? configuredMainMetrics : nonAnalystPrimaryMetrics).map((metric) => (
+                  ) : (isAnalystStyleAgent ? configuredMainMetrics : nonAnalystPrimaryMetrics).map((metric) => (
                     <AnalystMetricRow key={metric.key} metric={metric} />
                   ))}
                 </Stack>
-                {!isAnalystAgent && roleViabilityMetrics.length > 0 ? (
+                {!isAnalystStyleAgent && roleViabilityMetrics.length > 0 ? (
                   <Stack spacing={1} sx={{ pt: 0.5 }}>
                     <Typography variant="subtitle2">Жизнеспособность роли</Typography>
                     <Typography variant="caption" color="text.secondary">
@@ -3483,7 +3543,7 @@ export function AnalystCardDrawer({
                     </Stack>
                   </Stack>
                 ) : null}
-                {isAnalystAgent ? (
+                {isAnalystStyleAgent ? (
                   <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap flexWrap="wrap" sx={{ pt: 0.25 }}>
                     <Link
                       component="button"
@@ -3494,9 +3554,7 @@ export function AnalystCardDrawer({
                     >
                       Открыть остальные метрики
                     </Link>
-                    <Button size="small" variant="outlined" onClick={openMetricsCatalogDialog}>
-                      Настроить метрики
-                    </Button>
+                    <Button size="small" variant="outlined" onClick={openMetricsCatalogDialog}>Настроить метрики</Button>
                     {metricPreferencesLoading ? (
                       <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.35 }}>
                         Загружаю профиль метрик...
@@ -3715,10 +3773,10 @@ export function AnalystCardDrawer({
         open={additionalMetricsOpen}
         onClose={() => setAdditionalMetricsOpen(false)}
         title="Остальные метрики эффективности"
-        subtitle={isAnalystAgent
-          ? "Дополнительные workflow и benchmark-показатели аналитика. Каждая метрика раскрывается через tooltip с формулой, источником и примером."
+        subtitle={isAnalystStyleAgent
+          ? "Дополнительные workflow и benchmark-показатели агента. Каждая метрика раскрывается через tooltip с формулой, источником и примером."
           : "Дополнительные показатели агента в том же формате: значение, объяснение, формула и источник данных."}
-        metrics={isAnalystAgent ? configuredExtraMetrics : additionalEfficiencyMetrics}
+        metrics={isAnalystStyleAgent ? configuredExtraMetrics : additionalEfficiencyMetrics}
         actions={(
           <Button
             size="small"
@@ -3728,7 +3786,7 @@ export function AnalystCardDrawer({
               openMetricsCatalogDialog();
             }}
           >
-            {isAnalystAgent ? "Изменить набор метрик" : "Открыть каталог метрик"}
+            {isAnalystStyleAgent ? "Изменить набор метрик" : "Открыть каталог метрик"}
           </Button>
         )}
       />
@@ -3745,7 +3803,7 @@ export function AnalystCardDrawer({
         isSaving={metricPreferencesSaving}
         notice={metricPreferencesNotice}
         agentName={effectiveAgent?.name || effectiveAgentId || "Агент"}
-        isCustomizable={isAnalystAgent}
+        isCustomizable={isAnalystStyleAgent}
       />
 
       <Drawer
@@ -3775,6 +3833,13 @@ export function AnalystCardDrawer({
         </Box>
 
         <Box sx={{ p: 2.5, overflowY: "auto" }}>
+          {sessionsDataFreshnessWarning ? (
+            <Alert severity="warning" sx={{ mb: 1.5 }}>
+              Generated-данные устарели: последний `generated_at` {formatDateTime(sessionsDataFreshnessWarning.generatedAt)},
+              но в telemetry есть более новое событие от {formatDateTime(sessionsDataFreshnessWarning.newestTelemetryAt)}.
+              Обновите данные: `make agent-telemetry-report` и `npm --prefix ops-web run prepare-content`.
+            </Alert>
+          ) : null}
           {filteredSessions.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
               {sessions.length === 0 ? "Сессии цикла пока не зафиксированы." : "Сессии по заданному поиску не найдены."}
@@ -3794,7 +3859,13 @@ export function AnalystCardDrawer({
                         №{filteredSessions.length - index}
                       </Typography>
                       <Typography variant="body2">{formatDateTime(session.completedAt)}</Typography>
-                      <Chip size="small" variant="outlined" label={`${cycleTasksMap.get(session.id) ?? 0} задач`} />
+                      <Chip size="small" variant="outlined" label={`${cycleTasksMap.get(session.taskId) ?? 0} задач`} />
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        color={session.participationMode === "delegated" ? "info" : "default"}
+                        label={session.participationMode}
+                      />
                       {session.errorsCount > 0 ? <Chip size="small" color="error" variant="outlined" label={`${session.errorsCount} ошибок`} /> : null}
                     </Stack>
                   </AccordionSummary>
@@ -3809,6 +3880,22 @@ export function AnalystCardDrawer({
                       <Typography variant="body2">
                         <strong>Длительность:</strong> {formatDuration(session.durationMs)}
                       </Typography>
+                      <Typography variant="body2">
+                        <strong>Участие:</strong> {session.participationMode}
+                      </Typography>
+                      <Typography variant="body2">
+                        <strong>Источник:</strong> {session.sourceAgentId}
+                      </Typography>
+                      {session.rootAgentId ? (
+                        <Typography variant="body2">
+                          <strong>Root Agent:</strong> {session.rootAgentId}
+                        </Typography>
+                      ) : null}
+                      {session.runId ? (
+                        <Typography variant="body2">
+                          <strong>Run ID:</strong> {session.runId}
+                        </Typography>
+                      ) : null}
                       <Typography variant="body2">
                         <strong>Токены:</strong> {formatTokens(session.tokensUsed)}
                       </Typography>
@@ -3938,7 +4025,7 @@ export function AnalystCardDrawer({
         session={selectedSession}
         onClose={() => setSelectedSession(null)}
         onResolveFile={resolveDocByPath}
-        cycleTaskCount={selectedSession ? (cycleTasksMap.get(selectedSession.id) ?? 0) : null}
+        cycleTaskCount={selectedSession ? (cycleTasksMap.get(selectedSession.taskId) ?? 0) : null}
       />
 
       <ImprovementHistoryModal

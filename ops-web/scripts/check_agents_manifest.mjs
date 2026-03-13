@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs/promises";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -17,7 +18,6 @@ const assistantGovernanceContractPath = path.join(
   "assistant-governance.json",
 );
 const uiSectionContractPath = path.join(opsRoot, "src", "generated", "ui-section-contract.json");
-const hostCatalogPath = path.join(repoRoot, "docs", "agents", "host_agnostic_agent_catalog.yaml");
 const hostSmokeReportPath = path.join(opsRoot, "src", "generated", "host-agent-smoke.json");
 const schemaPath = path.resolve(opsRoot, "..", "docs", "subservices", "oap", "agents-card.schema.json");
 const MODERN_AGENT_IDS = new Set(["analyst-agent", "designer-agent"]);
@@ -249,55 +249,66 @@ function sortedUniqueStrings(value) {
 }
 
 async function validateTopLevelHostGovernance(manifest) {
-  const catalogRaw = await fs.readFile(hostCatalogPath, "utf8");
-  const catalog = JSON.parse(catalogRaw);
-  assert(Array.isArray(catalog?.agents), "host_catalog_agents_missing");
+  const activeAgentsRaw = execFileSync("python3", ["scripts/export_host_agents.py", "list-active-agents"], {
+    cwd: repoRoot,
+    stdio: "pipe",
+  }).toString("utf8");
+  const activeAgentsPayload = JSON.parse(activeAgentsRaw);
+  const activeAgents = Array.isArray(activeAgentsPayload?.agents) ? activeAgentsPayload.agents : [];
+  assert(activeAgents.length > 0, "host_active_agents_missing");
 
   const smokeRaw = await fs.readFile(hostSmokeReportPath, "utf8");
   const smokeReport = JSON.parse(smokeRaw);
 
-  const topLevelAgents = catalog.agents.filter((item) => item && item.kind === "top_level");
-  assert(topLevelAgents.length > 0, "host_catalog_top_level_empty");
+  const topLevelAgents = activeAgents.filter((item) => item && item.kind === "top_level");
+  assert(topLevelAgents.length > 0, "host_active_top_level_empty");
+  const topLevelAgentIds = new Set(topLevelAgents.map((item) => asString(item?.id)).filter(Boolean));
 
   const manifestAgents = manifest.agents.filter((item) => item && item.lifecycle === "active");
-  const manifestAgentIds = sortedUniqueStrings(manifestAgents.map((item) => item.id));
-  const catalogAgentIds = sortedUniqueStrings(topLevelAgents.map((item) => item.id));
+  const manifestTopLevelAgents = manifestAgents.filter((item) => topLevelAgentIds.has(asString(item?.id)));
+  const manifestAgentIds = sortedUniqueStrings(manifestTopLevelAgents.map((item) => item.id));
+  const topLevelAgentList = sortedUniqueStrings(topLevelAgents.map((item) => item.id));
   assert(
-    JSON.stringify(manifestAgentIds) === JSON.stringify(catalogAgentIds),
-    `top_level_manifest_catalog_mismatch:${JSON.stringify(manifestAgentIds)}!=${JSON.stringify(catalogAgentIds)}`,
+    JSON.stringify(manifestAgentIds) === JSON.stringify(topLevelAgentList),
+    `top_level_manifest_active_agents_mismatch:${JSON.stringify(manifestAgentIds)}!=${JSON.stringify(topLevelAgentList)}`,
   );
 
-  const manifestById = new Map(manifestAgents.map((item) => [item.id, item]));
+  const manifestById = new Map(manifestTopLevelAgents.map((item) => [item.id, item]));
 
   for (const topLevelAgent of topLevelAgents) {
     const agentId = asString(topLevelAgent?.id);
-    assertNonEmptyString(agentId, "host_catalog_top_level_id_missing");
-    assert(asString(topLevelAgent?.sourceProfileId) === agentId, `host_catalog_source_profile_mismatch:${agentId}`);
-    assertNonEmptyString(topLevelAgent?.mission, `host_catalog_mission_missing:${agentId}`);
-    assertStringArray(topLevelAgent?.useWhen, `host_catalog_use_when_invalid:${agentId}`);
-    assert(topLevelAgent.useWhen.length > 0, `host_catalog_use_when_empty:${agentId}`);
-    assertStringArray(topLevelAgent?.avoidWhen, `host_catalog_avoid_when_invalid:${agentId}`);
-    assert(topLevelAgent.avoidWhen.length > 0, `host_catalog_avoid_when_empty:${agentId}`);
-    assertNonEmptyString(topLevelAgent?.inputContract, `host_catalog_input_contract_missing:${agentId}`);
-    assertNonEmptyString(topLevelAgent?.outputContract, `host_catalog_output_contract_missing:${agentId}`);
-    assertStringArray(topLevelAgent?.allowedSkills, `host_catalog_allowed_skills_invalid:${agentId}`);
-    assert(topLevelAgent.allowedSkills.length > 0, `host_catalog_allowed_skills_empty:${agentId}`);
-    assertStringArray(topLevelAgent?.allowedTools, `host_catalog_allowed_tools_invalid:${agentId}`);
-    assert(topLevelAgent.allowedTools.length > 0, `host_catalog_allowed_tools_empty:${agentId}`);
-    assertStringArray(topLevelAgent?.allowedRules, `host_catalog_allowed_rules_invalid:${agentId}`);
-    assert(topLevelAgent.allowedRules.length > 0, `host_catalog_allowed_rules_empty:${agentId}`);
-    assertStringArray(topLevelAgent?.supportedHosts, `host_catalog_supported_hosts_invalid:${agentId}`);
+    assertNonEmptyString(agentId, "host_active_top_level_id_missing");
+    assert(asString(topLevelAgent?.sourceProfileId) === agentId, `host_active_source_profile_mismatch:${agentId}`);
+    assertNonEmptyString(topLevelAgent?.mission, `host_active_mission_missing:${agentId}`);
+    assertStringArray(topLevelAgent?.useWhen, `host_active_use_when_invalid:${agentId}`);
+    assert(topLevelAgent.useWhen.length > 0, `host_active_use_when_empty:${agentId}`);
+    assertStringArray(topLevelAgent?.avoidWhen, `host_active_avoid_when_invalid:${agentId}`);
+    assert(topLevelAgent.avoidWhen.length > 0, `host_active_avoid_when_empty:${agentId}`);
+    assertNonEmptyString(topLevelAgent?.inputContract, `host_active_input_contract_missing:${agentId}`);
+    assertNonEmptyString(topLevelAgent?.outputContract, `host_active_output_contract_missing:${agentId}`);
+    assertStringArray(topLevelAgent?.allowedSkills, `host_active_allowed_skills_invalid:${agentId}`);
+    assert(topLevelAgent.allowedSkills.length > 0, `host_active_allowed_skills_empty:${agentId}`);
+    assertStringArray(topLevelAgent?.allowedTools, `host_active_allowed_tools_invalid:${agentId}`);
+    assert(topLevelAgent.allowedTools.length > 0, `host_active_allowed_tools_empty:${agentId}`);
+    assertStringArray(topLevelAgent?.allowedRules, `host_active_allowed_rules_invalid:${agentId}`);
+    assert(topLevelAgent.allowedRules.length > 0, `host_active_allowed_rules_empty:${agentId}`);
+    assertStringArray(topLevelAgent?.supportedHosts, `host_active_supported_hosts_invalid:${agentId}`);
     assert(
       REQUIRED_TOP_LEVEL_HOSTS.every((hostId) => topLevelAgent.supportedHosts.includes(hostId)),
-      `host_catalog_supported_hosts_missing:${agentId}:${JSON.stringify(topLevelAgent.supportedHosts)}`,
+      `host_active_supported_hosts_missing:${agentId}:${JSON.stringify(topLevelAgent.supportedHosts)}`,
     );
-    assertStringArray(topLevelAgent?.supportedScopes, `host_catalog_supported_scopes_invalid:${agentId}`);
-    assert(topLevelAgent.supportedScopes.includes("repo"), `host_catalog_supported_scopes_repo_missing:${agentId}`);
-    assertStringArray(topLevelAgent?.handoffTargets, `host_catalog_handoffs_invalid:${agentId}`);
-    assert(topLevelAgent.handoffTargets.length > 0, `host_catalog_handoffs_empty:${agentId}`);
-    assertStringArray(topLevelAgent?.stopConditions, `host_catalog_stop_conditions_invalid:${agentId}`);
-    assert(topLevelAgent.stopConditions.length > 0, `host_catalog_stop_conditions_empty:${agentId}`);
-    assert(topLevelAgent?.executionMode === "sequential", `host_catalog_execution_mode_invalid:${agentId}`);
+    assertStringArray(topLevelAgent?.supportedScopes, `host_active_supported_scopes_invalid:${agentId}`);
+    assert(topLevelAgent.supportedScopes.includes("repo"), `host_active_supported_scopes_repo_missing:${agentId}`);
+    assertStringArray(topLevelAgent?.handoffTargets, `host_active_handoffs_invalid:${agentId}`);
+    assert(topLevelAgent.handoffTargets.length > 0, `host_active_handoffs_empty:${agentId}`);
+    assertStringArray(topLevelAgent?.stopConditions, `host_active_stop_conditions_invalid:${agentId}`);
+    assert(topLevelAgent.stopConditions.length > 0, `host_active_stop_conditions_empty:${agentId}`);
+    assert(topLevelAgent?.executionMode === "sequential", `host_active_execution_mode_invalid:${agentId}`);
+    assert(topLevelAgent?.hostAdapters && typeof topLevelAgent.hostAdapters === "object", `host_active_host_adapters_missing:${agentId}`);
+    assert(topLevelAgent.hostAdapters.github_copilot && typeof topLevelAgent.hostAdapters.github_copilot === "object", `host_active_github_adapter_missing:${agentId}`);
+    assertNonEmptyString(topLevelAgent.hostAdapters.github_copilot.description, `host_active_github_description_missing:${agentId}`);
+    assertStringArray(topLevelAgent.hostAdapters.github_copilot.tools, `host_active_github_tools_invalid:${agentId}`);
+    assertStringArray(topLevelAgent.hostAdapters.github_copilot.agents, `host_active_github_agents_invalid:${agentId}`);
 
     const manifestAgent = manifestById.get(agentId);
     assert(manifestAgent, `top_level_agent_missing_in_manifest:${agentId}`);
@@ -317,8 +328,8 @@ async function validateTopLevelHostGovernance(manifest) {
   assert(smokeReport.available === true, "host_smoke_report_unavailable");
   assert(smokeReport.ok === true, "host_smoke_report_not_ok");
   assert(
-    JSON.stringify(sortedUniqueStrings(smokeReport.active_top_level_agents)) === JSON.stringify(catalogAgentIds),
-    `host_smoke_active_set_mismatch:${JSON.stringify(smokeReport.active_top_level_agents)}!=${JSON.stringify(catalogAgentIds)}`,
+    JSON.stringify(sortedUniqueStrings(smokeReport.active_top_level_agents)) === JSON.stringify(topLevelAgentList),
+    `host_smoke_active_set_mismatch:${JSON.stringify(smokeReport.active_top_level_agents)}!=${JSON.stringify(topLevelAgentList)}`,
   );
   assert(smokeReport.handoff_validation?.ok === true, "host_smoke_handoff_validation_failed");
   for (const hostId of REQUIRED_TOP_LEVEL_HOSTS) {

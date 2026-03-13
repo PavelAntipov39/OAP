@@ -74,8 +74,11 @@
 - Stale snapshot блокирует promotion/replace до следующего refresh.
 
 ## Источники
-- `docs/agents/host_agnostic_agent_catalog.yaml`
+- `docs/subservices/oap/agents/*/OPERATING_PLAN.md`
 - `docs/agents/registry.yaml`
 - `scripts/oap_agent_dispatcher.py`
 - `AGENTS.md`
 - `/.specify/specs/001-oap/spec.md`
+
+Compatibility-only источник при наличии legacy consumer:
+- `docs/agents/host_agnostic_agent_catalog.yaml`

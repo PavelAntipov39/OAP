@@ -333,6 +333,13 @@ VALID_VERIFY_STATUSES = {"pending", "passed", "failed", "skipped"}
 AUTO_CAPABILITY_REFRESH_FINAL_STEPS = {"step_9_finalize", "step_9_publish_snapshots"}
 AUTO_CAPABILITY_REFRESH_MODES = {"off", "on_run"}
 TAXONOMY_UNKNOWN_WARNING_THRESHOLD_PCT = 10.0
+VALID_ROUTING_LESSON_KINDS = {
+    "wrong_executor",
+    "over_orchestration",
+    "under_orchestration",
+    "missing_verify_owner",
+    "budget_overspend",
+}
 _SKILL_SHADOW_TRIAL_MODULE: Any | None = None
 
 
@@ -1056,6 +1063,13 @@ def build_log_event(args: argparse.Namespace) -> dict[str, Any]:
     target_delta_pct = getattr(args, "target_delta_pct", None)
     guardrail_breached = getattr(args, "guardrail_breached", None)
     ab_sessions_required = getattr(args, "ab_sessions_required", None)
+    routing_decision_ok = getattr(args, "routing_decision_ok", None)
+    routing_task_class = getattr(args, "routing_task_class", None)
+    routing_route_kind = getattr(args, "routing_route_kind", None)
+    routing_baseline_route = getattr(args, "routing_baseline_route", None)
+    routing_selected_route = getattr(args, "routing_selected_route", None)
+    routing_comparison_basis = getattr(args, "routing_comparison_basis", None)
+    routing_lesson_kind = normalize_routing_lesson_kind(getattr(args, "routing_lesson_kind", None))
 
     if duration_ms is not None:
         metrics["duration_ms"] = duration_ms
@@ -1071,6 +1085,20 @@ def build_log_event(args: argparse.Namespace) -> dict[str, Any]:
         metrics["guardrail_breached"] = guardrail_breached
     if ab_sessions_required is not None:
         metrics["ab_sessions_required"] = ab_sessions_required
+    if routing_decision_ok is not None:
+        metrics["routing_decision_ok"] = routing_decision_ok
+    if routing_task_class:
+        metrics["routing_task_class"] = str(routing_task_class).strip()
+    if routing_route_kind:
+        metrics["routing_route_kind"] = str(routing_route_kind).strip()
+    if routing_baseline_route:
+        metrics["routing_baseline_route"] = str(routing_baseline_route).strip()
+    if routing_selected_route:
+        metrics["routing_selected_route"] = str(routing_selected_route).strip()
+    if routing_comparison_basis:
+        metrics["routing_comparison_basis"] = str(routing_comparison_basis).strip()
+    if routing_lesson_kind:
+        metrics["routing_lesson_kind"] = routing_lesson_kind
 
     tools, skills = normalize_tools_and_skills(
         getattr(args, "tool", []) or [],
@@ -1963,6 +1991,13 @@ def normalize_verify_status(value: Any) -> str:
     return "pending"
 
 
+def normalize_routing_lesson_kind(value: Any) -> str:
+    normalized = str(value or "").strip().lower()
+    if normalized in VALID_ROUTING_LESSON_KINDS:
+        return normalized
+    return ""
+
+
 def find_last_status_before(statuses: list[str], accepted: set[str], end_index: int) -> int | None:
     index = min(end_index - 1, len(statuses) - 1)
     while index >= 0:
@@ -2242,8 +2277,15 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
                 "_merge_conflicts_detected": 0,
                 "_merge_conflicts_resolved": 0,
                 "_tasks_with_parallel_mode": set(),
-                "_routing_tasks_total": 0,
-                "_routing_tasks_ok": 0,
+                "_routing_tasks_seen": set(),
+                "_routing_tasks_ok_set": set(),
+                "_routing_comparison_tasks": set(),
+                "_routing_lesson_tasks": set(),
+                "_routing_wrong_executor_tasks": set(),
+                "_routing_over_orchestration_tasks": set(),
+                "_routing_under_orchestration_tasks": set(),
+                "_routing_missing_verify_owner_tasks": set(),
+                "_routing_budget_overspend_tasks": set(),
                 "_no_progress_tasks": set(),
                 "_specialist_verify_pass": 0,
                 "_specialist_verify_total": 0,
@@ -2286,6 +2328,15 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
         metrics_payload = event.get("metrics") if isinstance(event.get("metrics"), dict) else {}
         interaction_mode = safe_str(event.get("interaction_mode") or metrics_payload.get("interaction_mode")).lower()
         outcome = safe_str(event.get("outcome")).lower()
+        routing_ok = metrics_payload.get("routing_decision_ok")
+        routing_baseline_route = safe_str(metrics_payload.get("routing_baseline_route"))
+        routing_selected_route = safe_str(metrics_payload.get("routing_selected_route"))
+        routing_comparison_basis = safe_str(metrics_payload.get("routing_comparison_basis"))
+        routing_lesson_kind = normalize_routing_lesson_kind(metrics_payload.get("routing_lesson_kind"))
+        has_routing_comparison = bool(
+            routing_comparison_basis
+            or (routing_baseline_route and routing_selected_route)
+        )
         event_ts_dt = parse_iso8601(str(event.get("timestamp") or ""))
         if status:
             item["status_counts"][status] += 1
@@ -2308,10 +2359,12 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
             item["_retire_recommended"] += 1
         elif status == ORCHESTRATION_MODE_SELECTED_STATUS:
             item["_orchestration_mode_selected"] += 1
-            item["_routing_tasks_total"] += 1
-            routing_ok = metrics_payload.get("routing_decision_ok")
-            if routing_ok is True:
-                item["_routing_tasks_ok"] += 1
+            if task_id:
+                item["_routing_tasks_seen"].add(task_id)
+                if routing_ok is True:
+                    item["_routing_tasks_ok_set"].add(task_id)
+                if has_routing_comparison:
+                    item["_routing_comparison_tasks"].add(task_id)
             if task_id and interaction_mode in {"parallel_read_only", "mixed_phased"}:
                 item["_tasks_with_parallel_mode"].add(task_id)
         elif status == ORCHESTRATION_PHASE_STARTED_STATUS:
@@ -2348,6 +2401,18 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
             item["_capability_snapshot_published"] += 1
         elif status == CAPABILITY_STALE_DETECTED_STATUS:
             item["_capability_stale_detected"] += 1
+        if task_id and routing_lesson_kind:
+            item["_routing_lesson_tasks"].add(task_id)
+            if routing_lesson_kind == "wrong_executor":
+                item["_routing_wrong_executor_tasks"].add(task_id)
+            elif routing_lesson_kind == "over_orchestration":
+                item["_routing_over_orchestration_tasks"].add(task_id)
+            elif routing_lesson_kind == "under_orchestration":
+                item["_routing_under_orchestration_tasks"].add(task_id)
+            elif routing_lesson_kind == "missing_verify_owner":
+                item["_routing_missing_verify_owner_tasks"].add(task_id)
+            elif routing_lesson_kind == "budget_overspend":
+                item["_routing_budget_overspend_tasks"].add(task_id)
         if status == ORCHESTRATION_INSTANCE_SPAWNED_STATUS and task_id:
             item["_tasks_with_handoff"].add(task_id)
         if task_id and outcome == "no_progress_detected":
@@ -2591,8 +2656,10 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
     total_merge_completed = 0
     total_merge_conflicts_detected = 0
     total_merge_conflicts_resolved = 0
-    total_routing_tasks_total = 0
-    total_routing_tasks_ok = 0
+    total_routing_tasks_seen: set[tuple[str, str]] = set()
+    total_routing_tasks_ok: set[tuple[str, str]] = set()
+    total_routing_comparison_tasks: set[tuple[str, str]] = set()
+    total_routing_over_orchestration_tasks: set[tuple[str, str]] = set()
     total_tasks_with_parallel_mode = 0
     total_no_progress_tasks = 0
     total_specialist_verify_pass = 0
@@ -2741,14 +2808,31 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
             if instances_spawned > 0
             else None
         )
-        routing_tasks_total = int(item["_routing_tasks_total"])
-        routing_tasks_ok = int(item["_routing_tasks_ok"])
+        routing_tasks_total = len(item["_routing_tasks_seen"])
+        routing_tasks_ok = len(item["_routing_tasks_ok_set"])
+        routing_comparison_tasks = len(item["_routing_comparison_tasks"])
+        routing_lesson_tasks = len(item["_routing_lesson_tasks"])
+        routing_wrong_executor_tasks = len(item["_routing_wrong_executor_tasks"])
+        routing_over_orchestration_tasks = len(item["_routing_over_orchestration_tasks"])
+        routing_under_orchestration_tasks = len(item["_routing_under_orchestration_tasks"])
+        routing_missing_verify_owner_tasks = len(item["_routing_missing_verify_owner_tasks"])
+        routing_budget_overspend_tasks = len(item["_routing_budget_overspend_tasks"])
         tasks_with_parallel_mode = len(item["_tasks_with_parallel_mode"])
         merge_started = int(item["_merge_started"])
         merge_conflicts_detected = int(item["_merge_conflicts_detected"])
         no_progress_tasks = len(item["_no_progress_tasks"])
         routing_accuracy_rate = (
             round((routing_tasks_ok / routing_tasks_total) * 100, 2)
+            if routing_tasks_total > 0
+            else None
+        )
+        route_comparison_coverage_rate = (
+            round((routing_comparison_tasks / routing_tasks_total) * 100, 2)
+            if routing_tasks_total > 0
+            else None
+        )
+        over_orchestration_rate = (
+            round((routing_over_orchestration_tasks / routing_tasks_total) * 100, 2)
             if routing_tasks_total > 0
             else None
         )
@@ -2964,6 +3048,8 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
                 "profile_sprawl_ratio": profile_sprawl_ratio,
                 "tool_overreach_rate": tool_overreach_rate,
                 "routing_accuracy_rate": routing_accuracy_rate,
+                "route_comparison_coverage_rate": route_comparison_coverage_rate,
+                "over_orchestration_rate": over_orchestration_rate,
                 "parallelization_gain_rate": parallelization_gain_rate,
                 "merge_conflict_rate": merge_conflict_rate,
                 "no_progress_loop_rate": no_progress_loop_rate,
@@ -3009,6 +3095,15 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
                     "specialist_verify_total": specialist_verify_total,
                     "created_profiles": len(item["_created_profiles"]),
                     "tool_overreach_events": tool_overreach_events,
+                    "routing_tasks_total": routing_tasks_total,
+                    "routing_tasks_ok": routing_tasks_ok,
+                    "routing_comparison_tasks": routing_comparison_tasks,
+                    "routing_lesson_tasks": routing_lesson_tasks,
+                    "routing_wrong_executor_tasks": routing_wrong_executor_tasks,
+                    "routing_over_orchestration_tasks": routing_over_orchestration_tasks,
+                    "routing_under_orchestration_tasks": routing_under_orchestration_tasks,
+                    "routing_missing_verify_owner_tasks": routing_missing_verify_owner_tasks,
+                    "routing_budget_overspend_tasks": routing_budget_overspend_tasks,
                 },
                 "capability_refresh_counts": {
                     "started": capability_refresh_started_count,
@@ -3046,8 +3141,10 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
         total_merge_completed += int(item["_merge_completed"])
         total_merge_conflicts_detected += int(item["_merge_conflicts_detected"])
         total_merge_conflicts_resolved += int(item["_merge_conflicts_resolved"])
-        total_routing_tasks_total += int(item["_routing_tasks_total"])
-        total_routing_tasks_ok += int(item["_routing_tasks_ok"])
+        total_routing_tasks_seen.update((agent_id, task_id) for task_id in item["_routing_tasks_seen"])
+        total_routing_tasks_ok.update((agent_id, task_id) for task_id in item["_routing_tasks_ok_set"])
+        total_routing_comparison_tasks.update((agent_id, task_id) for task_id in item["_routing_comparison_tasks"])
+        total_routing_over_orchestration_tasks.update((agent_id, task_id) for task_id in item["_routing_over_orchestration_tasks"])
         total_tasks_with_parallel_mode += len(item["_tasks_with_parallel_mode"])
         total_no_progress_tasks += len(item["_no_progress_tasks"])
         total_specialist_verify_pass += specialist_verify_pass
@@ -3175,8 +3272,22 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
         if total_instances_spawned > 0
         else None
     )
+    total_routing_tasks_total = len(total_routing_tasks_seen)
+    total_routing_tasks_ok_count = len(total_routing_tasks_ok)
+    total_routing_comparison_tasks_count = len(total_routing_comparison_tasks)
+    total_routing_over_orchestration_tasks_count = len(total_routing_over_orchestration_tasks)
     total_routing_accuracy_rate = (
-        round((total_routing_tasks_ok / total_routing_tasks_total) * 100, 2)
+        round((total_routing_tasks_ok_count / total_routing_tasks_total) * 100, 2)
+        if total_routing_tasks_total > 0
+        else None
+    )
+    total_route_comparison_coverage_rate = (
+        round((total_routing_comparison_tasks_count / total_routing_tasks_total) * 100, 2)
+        if total_routing_tasks_total > 0
+        else None
+    )
+    total_over_orchestration_rate = (
+        round((total_routing_over_orchestration_tasks_count / total_routing_tasks_total) * 100, 2)
         if total_routing_tasks_total > 0
         else None
     )
@@ -3302,6 +3413,8 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
             "profile_sprawl_ratio": total_profile_sprawl_ratio,
             "tool_overreach_rate": total_tool_overreach_rate,
             "routing_accuracy_rate": total_routing_accuracy_rate,
+            "route_comparison_coverage_rate": total_route_comparison_coverage_rate,
+            "over_orchestration_rate": total_over_orchestration_rate,
             "parallelization_gain_rate": total_parallelization_gain_rate,
             "merge_conflict_rate": total_merge_conflict_rate,
             "no_progress_loop_rate": total_no_progress_loop_rate,
@@ -3353,6 +3466,10 @@ def summarize(events: list[dict[str, Any]], invalid_lines: int, log_dir: Path) -
                 "specialist_verify_total": total_specialist_verify_total,
                 "created_profiles": len(total_created_profiles),
                 "tool_overreach_events": total_tool_overreach_events,
+                "routing_tasks_total": total_routing_tasks_total,
+                "routing_tasks_ok": total_routing_tasks_ok_count,
+                "routing_comparison_tasks": total_routing_comparison_tasks_count,
+                "routing_over_orchestration_tasks": total_routing_over_orchestration_tasks_count,
                 "tasks_with_parallel_mode": total_tasks_with_parallel_mode,
                 "no_progress_tasks": total_no_progress_tasks,
             },
@@ -3769,6 +3886,9 @@ def render_markdown_report(summary: dict[str, Any]) -> str:
     file_ops_gate = summary.get("file_ops_gate") if isinstance(summary.get("file_ops_gate"), dict) else None
     if file_ops_gate:
         lines.append(f"- File ops gate status: {file_ops_gate.get('status', 'unknown')}")
+    orchestration_gate = summary.get("orchestration_gate") if isinstance(summary.get("orchestration_gate"), dict) else None
+    if orchestration_gate:
+        lines.append(f"- Orchestration gate status: {orchestration_gate.get('status', 'unknown')}")
     if benchmark_summary:
         benchmark_metrics = benchmark_summary.get("metrics") if isinstance(benchmark_summary.get("metrics"), dict) else {}
         benchmark_gate = benchmark_summary.get("gate") if isinstance(benchmark_summary.get("gate"), dict) else {}
@@ -3962,6 +4082,120 @@ def evaluate_file_ops_gate(
     }
 
 
+def _select_orchestration_mode(modes: set[str]) -> str:
+    if "mixed_phased" in modes:
+        return "mixed_phased"
+    if "parallel_read_only" in modes:
+        return "parallel_read_only"
+    if "sequential" in modes:
+        return "sequential"
+    return ""
+
+
+def evaluate_orchestration_gate(
+    events: list[dict[str, Any]],
+    *,
+    mode: str,
+) -> dict[str, Any]:
+    grouped: dict[str, dict[str, Any]] = {}
+    for event in events:
+        task_id = safe_str(event.get("task_id"))
+        if not task_id:
+            continue
+        metrics_payload = event.get("metrics") if isinstance(event.get("metrics"), dict) else {}
+        item = grouped.setdefault(
+            task_id,
+            {
+                "statuses": set(),
+                "interaction_modes": set(),
+            },
+        )
+        status = normalize_status(event.get("status"))
+        if status:
+            item["statuses"].add(status)
+        interaction_mode = safe_str(event.get("interaction_mode") or metrics_payload.get("interaction_mode")).lower()
+        if interaction_mode:
+            item["interaction_modes"].add(interaction_mode)
+
+    results: list[dict[str, Any]] = []
+    failed_tasks: list[str] = []
+    warning_tasks: list[str] = []
+    orchestrated_tasks_total = 0
+
+    for task_id in sorted(grouped.keys()):
+        item = grouped[task_id]
+        interaction_mode = _select_orchestration_mode(item["interaction_modes"])
+        if interaction_mode not in {"parallel_read_only", "mixed_phased"}:
+            continue
+        orchestrated_tasks_total += 1
+        statuses = set(item["statuses"])
+        detail = {
+            "task_id": task_id,
+            "interaction_mode": interaction_mode,
+            "has_final_status": bool(statuses.intersection(CYCLE_FINAL_STATUSES)),
+            "missing_statuses": [],
+            "status": "pass",
+            "message": "ok",
+        }
+
+        if interaction_mode == "parallel_read_only":
+            required_statuses = {
+                ORCHESTRATION_MODE_SELECTED_STATUS,
+                ORCHESTRATION_PHASE_STARTED_STATUS,
+                ORCHESTRATION_PHASE_COMPLETED_STATUS,
+            }
+        else:
+            required_statuses = {
+                ORCHESTRATION_MODE_SELECTED_STATUS,
+                ORCHESTRATION_PHASE_STARTED_STATUS,
+                ORCHESTRATION_PHASE_COMPLETED_STATUS,
+                ROUNDTABLE_STARTED_STATUS,
+                ROUNDTABLE_ROUND_COMPLETED_STATUS,
+                ROUNDTABLE_CONVERGED_STATUS,
+                ORCHESTRATION_MERGE_STARTED_STATUS,
+                ORCHESTRATION_MERGE_COMPLETED_STATUS,
+            }
+
+        if not detail["has_final_status"]:
+            detail["status"] = "warning"
+            detail["message"] = "task_not_finalized"
+            warning_tasks.append(task_id)
+            results.append(detail)
+            continue
+
+        missing_statuses = sorted(status for status in required_statuses if status not in statuses)
+        if not missing_statuses:
+            results.append(detail)
+            continue
+
+        detail["missing_statuses"] = missing_statuses
+        detail["status"] = "fail" if mode == "strict" else "warning"
+        detail["message"] = "required_orchestration_statuses_missing"
+        if detail["status"] == "fail":
+            failed_tasks.append(task_id)
+        else:
+            warning_tasks.append(task_id)
+        results.append(detail)
+
+    if orchestrated_tasks_total == 0:
+        status = "not_applicable"
+    elif failed_tasks:
+        status = "failed"
+    elif warning_tasks:
+        status = "warning"
+    else:
+        status = "passed"
+
+    return {
+        "mode": mode,
+        "status": status,
+        "orchestrated_tasks_total": orchestrated_tasks_total,
+        "failed_tasks": failed_tasks,
+        "warning_tasks": warning_tasks,
+        "results": results,
+    }
+
+
 def command_report(args: argparse.Namespace) -> int:
     events, invalid_lines = read_events(Path(args.log_dir))
     summary = summarize(events=events, invalid_lines=invalid_lines, log_dir=Path(args.log_dir))
@@ -3976,6 +4210,11 @@ def command_report(args: argparse.Namespace) -> int:
         min_events=max(1, int(getattr(args, "file_ops_min_events", 5))),
     )
     summary["file_ops_gate"] = file_ops_gate
+    orchestration_gate = evaluate_orchestration_gate(
+        events,
+        mode=str(getattr(args, "orchestration_gate_mode", "soft_warning")),
+    )
+    summary["orchestration_gate"] = orchestration_gate
 
     out_json = Path(args.out_json)
     out_json.parent.mkdir(parents=True, exist_ok=True)
@@ -4010,8 +4249,12 @@ def command_report(args: argparse.Namespace) -> int:
     print(f"[agent-telemetry] cycle report written: {out_cycle_json}")
     print(f"[agent-telemetry] latest cycle written: {out_latest_cycle}")
     print(f"[agent-telemetry] file ops gate status: {file_ops_gate.get('status', 'warning')}")
+    print(f"[agent-telemetry] orchestration gate status: {orchestration_gate.get('status', 'warning')}")
     if file_ops_gate.get("status") == "failed" and str(getattr(args, "file_ops_gate_mode", "soft_warning")) == "strict":
         print("[agent-telemetry] strict mode: file ops gate failed")
+        return 1
+    if orchestration_gate.get("status") == "failed" and str(getattr(args, "orchestration_gate_mode", "soft_warning")) == "strict":
+        print("[agent-telemetry] strict mode: orchestration gate failed")
         return 1
     return 0
 
@@ -4186,6 +4429,11 @@ def build_orchestration_event(
     error: str | None = None,
 ) -> dict[str, Any]:
     event_timestamp = safe_str(timestamp) or utc_now_iso()
+    normalized_agent_id = safe_str(agent_id) or "unknown-agent"
+    normalized_task_id = safe_str(task_id) or "unknown-task"
+    normalized_run_id = safe_str(run_id) or f"run-orchestration-{uuid.uuid4().hex[:12]}"
+    normalized_profile_id = safe_str(profile_id) or normalized_agent_id
+    normalized_root_agent_id = safe_str(root_agent_id) or normalized_profile_id
     step_raw = safe_str(step) or "step_3_orchestration"
     step_value = normalize_step_name(step_raw) or step_raw
     read_refs = normalize_artifact_refs(artifact_read or [], step=step_value)
@@ -4195,8 +4443,8 @@ def build_orchestration_event(
         write_refs=write_refs,
         step=step_value,
         timestamp=event_timestamp,
-        task_id=task_id,
-        run_id=run_id,
+        task_id=normalized_task_id,
+        run_id=normalized_run_id,
         source="telemetry",
         write_op="write",
     )
@@ -4206,12 +4454,12 @@ def build_orchestration_event(
         "artifact_ops_origin": "mirrored_legacy",
         "event_id": str(uuid.uuid4()),
         "timestamp": event_timestamp,
-        "agent_id": safe_str(agent_id),
+        "agent_id": normalized_agent_id,
         "process": safe_str(process) or "agent_dispatcher",
-        "run_id": safe_str(run_id),
+        "run_id": normalized_run_id,
         "trace_id": safe_str(trace_id),
         "span_id": None,
-        "task_id": safe_str(task_id),
+        "task_id": normalized_task_id,
         "step": step_value,
         "step_raw": step_raw,
         "step_label": resolve_step_label(step_value, step_raw),
@@ -4221,10 +4469,10 @@ def build_orchestration_event(
         "benchmark_run_id": None,
         "benchmark_case_id": None,
         "attempt_index": None,
-        "profile_id": safe_str(profile_id) or None,
+        "profile_id": normalized_profile_id,
         "instance_id": safe_str(instance_id) or None,
         "parent_instance_id": safe_str(parent_instance_id) or None,
-        "root_agent_id": safe_str(root_agent_id) or None,
+        "root_agent_id": normalized_root_agent_id,
         "depth": depth if depth is not None else None,
         "phase_id": safe_str(phase_id) or None,
         "execution_mode": safe_str(execution_mode) or None,
@@ -4424,6 +4672,13 @@ def build_parser() -> argparse.ArgumentParser:
     log_parser.add_argument("--target-delta-pct", type=float)
     log_parser.add_argument("--guardrail-breached", type=parse_bool)
     log_parser.add_argument("--ab-sessions-required", type=int)
+    log_parser.add_argument("--routing-decision-ok", type=parse_bool)
+    log_parser.add_argument("--routing-task-class")
+    log_parser.add_argument("--routing-route-kind")
+    log_parser.add_argument("--routing-baseline-route")
+    log_parser.add_argument("--routing-selected-route")
+    log_parser.add_argument("--routing-comparison-basis")
+    log_parser.add_argument("--routing-lesson-kind", choices=sorted(VALID_ROUTING_LESSON_KINDS))
     log_parser.add_argument("--error")
     log_parser.add_argument("--timestamp")
     log_parser.add_argument("--log-dir", default=".logs/agents")
@@ -4446,6 +4701,7 @@ def build_parser() -> argparse.ArgumentParser:
     report_parser.add_argument("--file-ops-fallback-max-pct", type=float, default=10.0)
     report_parser.add_argument("--file-ops-gate-mode", choices=["soft_warning", "strict"], default="soft_warning")
     report_parser.add_argument("--file-ops-min-events", type=int, default=5)
+    report_parser.add_argument("--orchestration-gate-mode", choices=["soft_warning", "strict"], default="soft_warning")
     report_parser.set_defaults(handler=command_report)
 
     benchmark_parser = subparsers.add_parser(

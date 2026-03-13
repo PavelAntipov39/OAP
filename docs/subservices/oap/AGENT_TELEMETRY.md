@@ -151,6 +151,8 @@ Workflow-статусы (рекомендуемый минимум):
 - `profile_sprawl_ratio` — число новых профилей на одну задачу
 - `tool_overreach_rate` — доля запусков с признаком overreach
 - `routing_accuracy_rate` — доля routing-решений, подтвержденных как корректные
+- `route_comparison_coverage_rate` — доля routing-решений, где зафиксировано сравнение baseline route vs selected route
+- `over_orchestration_rate` — доля routing-задач, для которых lesson помечен как `over_orchestration`
 - `parallelization_gain_rate` — доля задач, где orchestration реально использовала non-sequential режим
 - `merge_conflict_rate` — доля merge-циклов, где были зафиксированы конфликты
 - `no_progress_loop_rate` — доля задач, где orchestration попала в no-progress loop
@@ -191,6 +193,9 @@ Workflow-статусы (рекомендуемый минимум):
 - `trajectory_compliance_rate = trajectory_ok_attempts / attempts_total`
 - `judge_disagreement_rate = judge_disagreed / human_checked`
 - `cost_per_success = total_cost_usd / successful_cases`
+- `routing_accuracy_rate = unique routing task_id with routing_decision_ok=true / unique routing task_id * 100`
+- `route_comparison_coverage_rate = unique routing task_id with baseline+selected route or comparison basis / unique routing task_id * 100`
+- `over_orchestration_rate = unique routing task_id with routing_lesson_kind=over_orchestration / unique routing task_id * 100`
 - `canonical_event_compliance_rate = canonical_cycle_events / cycle_events_total * 100`
 - `non_canonical_events_total = count(step not in canonical set)`
 - `capability_refresh_coverage_rate = capability_refresh_completed_tasks / tasks_total * 100`
@@ -220,6 +225,46 @@ python3 scripts/agent_telemetry.py log \
 - `none` — без проверки;
 - `warning` — событие пишется, но в событие добавляется `metrics.step_contract_violation=true`;
 - `strict` — неканонический этап блокирует запись события (exit code 1).
+
+Записать routing-решение оркестратора:
+
+```bash
+python3 scripts/agent_telemetry.py log \
+  --agent-id orchestrator-agent \
+  --task-id task-route-17 \
+  --step step_3_orchestration \
+  --status orchestration_mode_selected \
+  --routing-decision-ok true \
+  --routing-task-class ui_change \
+  --routing-baseline-route single_agent_path \
+  --routing-selected-route delegated_path \
+  --routing-comparison-basis baseline_vs_selected \
+  --verify-status pending
+```
+
+Записать routing-lesson для самоулучшения оркестратора:
+
+```bash
+python3 scripts/agent_telemetry.py log \
+  --agent-id orchestrator-agent \
+  --task-id task-route-17 \
+  --step step_9_finalize \
+  --status lesson_captured \
+  --routing-lesson-kind over_orchestration \
+  --outcome "delegated path was more expensive without quality gain"
+```
+
+Routing-поля:
+- `--routing-decision-ok` — итоговая оценка, был ли выбран правильный маршрут
+- `--routing-task-class` — класс задачи, на котором сравнивается маршрут
+- `--routing-baseline-route` и `--routing-selected-route` — что сравнивали
+- `--routing-comparison-basis` — почему маршрут считается сопоставимым (`baseline_vs_selected`, `same_task_class`, и т.п.)
+- `--routing-lesson-kind` — тип урока для coordinator self-improvement:
+  - `wrong_executor`
+  - `over_orchestration`
+  - `under_orchestration`
+  - `missing_verify_owner`
+  - `budget_overspend`
 
 Правило `--auto-capability-refresh`:
 - `on_run` (по умолчанию) — при финальном каноническом событии (`step_9_finalize`/`step_9_publish_snapshots` + `completed|failed|review_passed`) автоматически запускается capability-refresh для текущего `agent_id` с логированием `capability_refresh_*`.

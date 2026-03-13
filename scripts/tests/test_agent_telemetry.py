@@ -62,6 +62,13 @@ def build_log_args(**overrides):
         "target_delta_pct": None,
         "guardrail_breached": None,
         "ab_sessions_required": None,
+        "routing_decision_ok": None,
+        "routing_task_class": None,
+        "routing_route_kind": None,
+        "routing_baseline_route": None,
+        "routing_selected_route": None,
+        "routing_comparison_basis": None,
+        "routing_lesson_kind": None,
         "error": None,
         "log_dir": "",
         "enforce_cycle": False,
@@ -108,6 +115,39 @@ class AgentTelemetryTests(unittest.TestCase):
         self.assertEqual(event["artifacts_read"][1]["semantic_layer"], "tools")
         self.assertEqual(event["artifacts_written"][0]["path"], "agent_tasks.task_brief.context_package")
         self.assertEqual(event["artifacts_written"][0]["semantic_layer"], "tasks")
+
+    def test_build_orchestration_event_normalizes_identity_fields(self):
+        event = telemetry.build_orchestration_event(
+            agent_id="orchestrator-agent",
+            task_id="task-123",
+            run_id="run-123",
+            trace_id="trace-123",
+            profile_id="",
+            instance_id="inst-123",
+            status="agent_instance_spawned",
+            step="step_3_orchestration",
+        )
+        self.assertEqual(event["agent_id"], "orchestrator-agent")
+        self.assertEqual(event["profile_id"], "orchestrator-agent")
+        self.assertEqual(event["root_agent_id"], "orchestrator-agent")
+        self.assertEqual(event["task_id"], "task-123")
+        self.assertEqual(event["run_id"], "run-123")
+
+    def test_build_orchestration_event_uses_profile_as_root_fallback(self):
+        event = telemetry.build_orchestration_event(
+            agent_id="orchestrator-agent",
+            task_id="task-456",
+            run_id="",
+            trace_id="trace-456",
+            profile_id="analyst-agent",
+            instance_id="inst-456",
+            status="agent_instance_spawned",
+            step="step_3_orchestration",
+            root_agent_id="",
+        )
+        self.assertEqual(event["profile_id"], "analyst-agent")
+        self.assertEqual(event["root_agent_id"], "analyst-agent")
+        self.assertTrue(str(event["run_id"]).startswith("run-orchestration-"))
 
     def test_infer_artifact_semantic_layer_is_step_aware_for_registry(self):
         self.assertEqual(
@@ -1203,6 +1243,158 @@ class AgentTelemetryTests(unittest.TestCase):
             self.assertEqual(rc, 1)
             payload = json.loads(Path(args.out_json).read_text(encoding="utf-8"))
             self.assertEqual(payload["file_ops_gate"]["status"], "failed")
+
+    def test_build_log_event_includes_routing_metrics(self):
+        args = build_log_args(
+            agent_id="orchestrator-agent",
+            step="step_3_orchestration",
+            status=telemetry.ORCHESTRATION_MODE_SELECTED_STATUS,
+            routing_decision_ok=True,
+            routing_task_class="ui_change",
+            routing_route_kind="delegated_path",
+            routing_baseline_route="single_agent_path",
+            routing_selected_route="delegated_path",
+            routing_comparison_basis="baseline_vs_selected",
+            routing_lesson_kind="wrong_executor",
+        )
+        event = telemetry.build_log_event(args)
+        metrics = event["metrics"]
+        self.assertEqual(metrics["routing_decision_ok"], True)
+        self.assertEqual(metrics["routing_task_class"], "ui_change")
+        self.assertEqual(metrics["routing_route_kind"], "delegated_path")
+        self.assertEqual(metrics["routing_baseline_route"], "single_agent_path")
+        self.assertEqual(metrics["routing_selected_route"], "delegated_path")
+        self.assertEqual(metrics["routing_comparison_basis"], "baseline_vs_selected")
+        self.assertEqual(metrics["routing_lesson_kind"], "wrong_executor")
+
+    def test_command_report_computes_routing_comparison_and_lesson_metrics_by_unique_task(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            log_dir = Path(tmp) / "logs"
+            log_dir.mkdir(parents=True, exist_ok=True)
+            log_file = log_dir / "orchestrator-agent.jsonl"
+
+            rows = []
+            rows.append(
+                json.dumps(
+                    telemetry.build_log_event(
+                        build_log_args(
+                            agent_id="orchestrator-agent",
+                            task_id="task-route-a",
+                            run_id="run-route-a",
+                            trace_id="trace-route-a",
+                            step="step_3_orchestration",
+                            status=telemetry.ORCHESTRATION_MODE_SELECTED_STATUS,
+                            routing_decision_ok=True,
+                            routing_task_class="ui_change",
+                            routing_baseline_route="single_agent_path",
+                            routing_selected_route="delegated_path",
+                            routing_comparison_basis="baseline_vs_selected",
+                        )
+                    ),
+                    ensure_ascii=False,
+                )
+            )
+            rows.append(
+                json.dumps(
+                    telemetry.build_log_event(
+                        build_log_args(
+                            agent_id="orchestrator-agent",
+                            task_id="task-route-b",
+                            run_id="run-route-b",
+                            trace_id="trace-route-b",
+                            step="step_3_orchestration",
+                            status=telemetry.ORCHESTRATION_MODE_SELECTED_STATUS,
+                            routing_decision_ok=False,
+                            routing_task_class="ui_change",
+                            routing_baseline_route="single_agent_path",
+                            routing_selected_route="delegated_path",
+                            routing_comparison_basis="baseline_vs_selected",
+                        )
+                    ),
+                    ensure_ascii=False,
+                )
+            )
+            rows.append(
+                json.dumps(
+                    telemetry.build_log_event(
+                        build_log_args(
+                            agent_id="orchestrator-agent",
+                            task_id="task-route-b",
+                            run_id="run-route-b",
+                            trace_id="trace-route-b",
+                            step="step_9_finalize",
+                            status="lesson_captured",
+                            routing_lesson_kind="wrong_executor",
+                        )
+                    ),
+                    ensure_ascii=False,
+                )
+            )
+            rows.append(
+                json.dumps(
+                    telemetry.build_log_event(
+                        build_log_args(
+                            agent_id="orchestrator-agent",
+                            task_id="task-route-c",
+                            run_id="run-route-c",
+                            trace_id="trace-route-c",
+                            step="step_3_orchestration",
+                            status=telemetry.ORCHESTRATION_MODE_SELECTED_STATUS,
+                            routing_decision_ok=False,
+                            routing_task_class="workflow_change",
+                            routing_baseline_route="single_agent_path",
+                            routing_selected_route="delegated_path",
+                            routing_comparison_basis="baseline_vs_selected",
+                        )
+                    ),
+                    ensure_ascii=False,
+                )
+            )
+            rows.append(
+                json.dumps(
+                    telemetry.build_log_event(
+                        build_log_args(
+                            agent_id="orchestrator-agent",
+                            task_id="task-route-c",
+                            run_id="run-route-c",
+                            trace_id="trace-route-c",
+                            step="step_9_finalize",
+                            status="lesson_captured",
+                            routing_lesson_kind="over_orchestration",
+                        )
+                    ),
+                    ensure_ascii=False,
+                )
+            )
+            log_file.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+            args = argparse.Namespace(
+                log_dir=str(log_dir),
+                out_json=str(Path(tmp) / "agent_telemetry_summary.json"),
+                out_md=str(Path(tmp) / "agent_telemetry_summary.md"),
+                out_cycle_json=str(Path(tmp) / "agent_cycle_validation_report.json"),
+                out_latest_analyst_json=str(Path(tmp) / "agent_latest_cycle_analyst.json"),
+                benchmark_summary_json=str(Path(tmp) / "agent_benchmark_summary.json"),
+                file_ops_explicit_min_pct=90.0,
+                file_ops_fallback_max_pct=10.0,
+                file_ops_gate_mode="soft_warning",
+                file_ops_min_events=5,
+            )
+            rc = telemetry.command_report(args)
+            self.assertEqual(rc, 0)
+            payload = json.loads(Path(args.out_json).read_text(encoding="utf-8"))
+            orchestrator = next(item for item in payload["agents"] if item["agent_id"] == "orchestrator-agent")
+
+            self.assertEqual(orchestrator["routing_accuracy_rate"], 33.33)
+            self.assertEqual(orchestrator["route_comparison_coverage_rate"], 100.0)
+            self.assertEqual(orchestrator["over_orchestration_rate"], 33.33)
+            self.assertEqual(orchestrator["orchestration_counts"]["routing_tasks_total"], 3)
+            self.assertEqual(orchestrator["orchestration_counts"]["routing_tasks_ok"], 1)
+            self.assertEqual(orchestrator["orchestration_counts"]["routing_comparison_tasks"], 3)
+            self.assertEqual(orchestrator["orchestration_counts"]["routing_wrong_executor_tasks"], 1)
+            self.assertEqual(orchestrator["orchestration_counts"]["routing_over_orchestration_tasks"], 1)
+            self.assertEqual(payload["totals"]["route_comparison_coverage_rate"], 100.0)
+            self.assertEqual(payload["totals"]["over_orchestration_rate"], 33.33)
 
 
 if __name__ == "__main__":

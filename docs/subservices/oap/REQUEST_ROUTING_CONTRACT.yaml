@@ -173,6 +173,20 @@
       "verify": ["verify_links_and_rule_text_behavior"]
     },
     {
+      "id": "editorial_content_update",
+      "origin": "user_chat",
+      "domain": "agent-card/content",
+      "capabilities": ["rules", "session_state", "long_term_memory"],
+      "readFirst": [
+        ".specify/specs/001-oap/spec.md",
+        "docs/subservices/oap/PROJECT_OVERVIEW.md",
+        "docs/subservices/oap/README.md",
+        "docs/subservices/oap/DESIGN_RULES.md",
+        "docs/subservices/oap/CAPABILITY_GLOSSARY.json"
+      ],
+      "verify": ["verify_editorial_fact_alignment", "verify_no_overclaim_copy", "prepare_content"]
+    },
+    {
       "id": "terminology_consistency_flow",
       "origin": "user_chat",
       "domain": "agent-card/content",

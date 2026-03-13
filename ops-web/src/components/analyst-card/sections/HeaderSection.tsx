@@ -25,6 +25,37 @@ const STATUS_TOOLTIP = (
   </Box>
 );
 
+type AgentTypeMeta = {
+  label: string;
+  color: "primary" | "info" | "default";
+  description: string;
+};
+
+const AGENT_TYPE_META: Record<AgentSummary["agentClass"], AgentTypeMeta> = {
+  core: {
+    label: "Автономный агент",
+    color: "primary",
+    description: "Самостоятельная роль системы: может быть основной точкой входа в задачу.",
+  },
+  specialist: {
+    label: "Процессный агент",
+    color: "info",
+    description: "Узкий sub-agent: подключается внутри цикла и работает через orchestration.",
+  },
+};
+
+const AGENT_TYPE_FALLBACK: AgentTypeMeta = {
+  label: "Процессный агент",
+  color: "default",
+  description: "Тип агента уточняется.",
+};
+
+function resolveAgentTypeMeta(agentClass: unknown): AgentTypeMeta {
+  return agentClass === "core" || agentClass === "specialist"
+    ? AGENT_TYPE_META[agentClass]
+    : AGENT_TYPE_FALLBACK;
+}
+
 function formatRunAt(iso: string): string {
   try {
     return new Date(iso).toLocaleString("ru-RU", {
@@ -46,6 +77,16 @@ export function HeaderSection({
   agent: AgentSummary;
   lastRunAt?: string | null;
 }) {
+  const agentTypeMeta = resolveAgentTypeMeta((agent as { agentClass?: string | null }).agentClass);
+  const agentTypeTooltip = (
+    <Box sx={{ p: 0.25 }}>
+      <Typography variant="caption" display="block" fontWeight={700} sx={{ mb: 0.5 }}>
+        Тип агента:
+      </Typography>
+      <Typography variant="caption" display="block">{agentTypeMeta.description}</Typography>
+    </Box>
+  );
+
   return (
     <Box>
       <Stack direction="row" alignItems="center" spacing={0.75}>
@@ -59,6 +100,15 @@ export function HeaderSection({
         </Tooltip>
         <Tooltip title={STATUS_TOOLTIP} arrow placement="top">
           <InfoOutlinedIcon sx={{ fontSize: 16, color: "text.secondary", cursor: "help" }} />
+        </Tooltip>
+        <Tooltip title={agentTypeTooltip} arrow placement="top">
+          <Chip
+            size="small"
+            variant="outlined"
+            color={agentTypeMeta.color}
+            label={agentTypeMeta.label}
+            sx={{ cursor: "help" }}
+          />
         </Tooltip>
       </Stack>
       {lastRunAt ? (

@@ -15,7 +15,7 @@ export function SessionTasksBlock({
   const displayCount = cycleTaskCount ?? 0;
   const handleTasksLink = () => {
     const url = new URL(window.location.href);
-    url.hash = `#/tasks?session_id=${encodeURIComponent(session.id)}`;
+    url.hash = `#/tasks?session_id=${encodeURIComponent(session.taskId || session.id)}`;
     window.open(url.toString(), "_blank", "noopener,noreferrer");
   };
 

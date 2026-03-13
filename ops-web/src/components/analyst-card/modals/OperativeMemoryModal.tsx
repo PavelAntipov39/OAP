@@ -543,6 +543,7 @@ export function OperativeMemoryModal({
   onOpenFile,
   isPathOpenable,
   resolveFilePreview,
+  title,
 }: {
   open: boolean;
   onClose: () => void;
@@ -552,6 +553,7 @@ export function OperativeMemoryModal({
   onOpenFile: (path: string) => void;
   isPathOpenable?: (path: string) => boolean;
   resolveFilePreview?: FilePreviewResolver;
+  title?: string;
 }) {
   const sortedOperations = React.useMemo(
     () =>
@@ -590,7 +592,7 @@ export function OperativeMemoryModal({
         <Stack direction="row" spacing={1} alignItems="flex-start">
           <Box sx={{ minWidth: 0, flex: 1 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
-              Журнал файлов оперативной памяти
+              {title ?? "Журнал файлов оперативной памяти"}
             </Typography>
             <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 0.5 }}>
               <Chip size="small" variant="outlined" label={`Документов: ${activeDocuments.length}`} />

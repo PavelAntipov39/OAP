@@ -1,5 +1,6 @@
 import React from "react";
-import { Box, Link, Stack, Typography } from "@mui/material";
+import { Box, Link, Stack, Tooltip, Typography } from "@mui/material";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import {
   getDocsIndex,
@@ -36,11 +37,11 @@ const DESIGNER_UX_GATE_ITEMS: Array<{
     impacts: "Влияет на качество выполнения задач и длительность рабочего цикла.",
   },
   {
-    key: "state-consistency",
-    title: "Консистентность состояний",
-    check: "Одинаковые статусы, цвета и подписи трактуются одинаково во всех блоках.",
-    prevents: "Убирает противоречивые трактовки состояния задачи в разных частях интерфейса.",
-    impacts: "Влияет на количество ошибок проверки и стабильность процесса.",
+    key: "state-typography-consistency",
+    title: "Консистентность состояний и типографики",
+    check: "Одинаковые статусы, цвета, подписи и типографический ритм (font-size/weight/line-height) трактуются одинаково во всех блоках.",
+    prevents: "Убирает противоречивые трактовки состояния задачи и визуальные расхождения между однотипными элементами интерфейса.",
+    impacts: "Влияет на количество ошибок проверки, стабильность процесса и скорость чтения карточки.",
   },
   {
     key: "tooltip-inline-help",
@@ -130,6 +131,11 @@ export function AgentProcessSection({
   onOpenSessionsList: () => void;
   onOpenImprovementHistory: () => void;
 }) {
+  const bodyTextSx = { lineHeight: 1.55, color: "text.primary" } as const;
+  const actionTextSx = { fontWeight: 600, lineHeight: 1.45, cursor: "pointer", display: "inline-flex", alignItems: "center" } as const;
+  const secondaryTextSx = { display: "block", mt: 0.25, lineHeight: 1.45, color: "text.secondary" } as const;
+  const hintIconSx = { fontSize: 14, color: "text.secondary", cursor: "help", ml: 0.5, verticalAlign: "middle" } as const;
+
   const modeValue = doneGatePolicy?.mode === "strict" ? "strict" : "soft_warning";
   const modeLabel = doneGatePolicy?.mode === "strict" ? "строгий" : "мягкий";
   const isDesignerAgent = operatingPlanPath.trim().toLowerCase() === DESIGNER_OPERATING_PLAN_PATH.toLowerCase();
@@ -150,17 +156,18 @@ export function AgentProcessSection({
       <Stack spacing={1.25}>
         {/* Описание — перенесено из шапки */}
         {shortDescription ? (
-          <Typography variant="body2" sx={{ lineHeight: 1.6, color: "text.primary" }}>
+          <Typography variant="body2" sx={bodyTextSx}>
             {shortDescription}
           </Typography>
         ) : null}
 
         <Box>
-          <Typography variant="body2">
-            <strong>Режим работы агента:</strong> {modeValue}
-          </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
-            Фактический режим: {modeLabel}. Fallback status: {doneGatePolicy?.fallbackStatus || "in_review"}.
+          <Typography variant="body2" sx={bodyTextSx}>
+            <Box component="span" sx={{ fontWeight: 600 }}>Режим работы агента:</Box>{" "}
+            <Box component="span">{modeValue}</Box>
+            <Tooltip title="Определяет, как строго агент проверяет результат перед завершением задачи. В мягком режиме (soft_warning) нарушения фиксируются, но не блокируют. В строгом (strict) — задача не закроется без прохождения всех проверок." arrow placement="top">
+              <InfoOutlinedIcon sx={hintIconSx} />
+            </Tooltip>
           </Typography>
         </Box>
 
@@ -171,11 +178,14 @@ export function AgentProcessSection({
             type="button"
             variant="body2"
             underline="hover"
-            sx={{ fontWeight: 600, cursor: "pointer", display: "inline" }}
+            sx={actionTextSx}
             onClick={() => onOpenFile(operatingPlanPath)}
           >
             Описание правил работы агента
           </Link>
+          <Tooltip title="Открывает операционный стандарт агента: ежедневный цикл, политику источников, правила принятия решений, метрики и жизненный цикл улучшений." arrow placement="top">
+            <InfoOutlinedIcon sx={hintIconSx} />
+          </Tooltip>
         </Box>
 
         <Box>
@@ -184,22 +194,22 @@ export function AgentProcessSection({
             type="button"
             variant="body2"
             underline="hover"
-            sx={{ fontWeight: 600, cursor: "pointer", display: "inline" }}
+            sx={actionTextSx}
             onClick={onOpenImprovementHistory}
           >
             История улучшений агента
           </Link>
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
-            Откуда пришла практика, что взяли, что изменили, где применили и какой результат получили.
-          </Typography>
+          <Tooltip title="Журнал всех принятых улучшений: откуда пришла практика, что изменилось, на какие метрики повлияло и был ли откат. Помогает отслеживать эволюцию агента." arrow placement="top">
+            <InfoOutlinedIcon sx={hintIconSx} />
+          </Tooltip>
         </Box>
 
         {isDesignerAgent ? (
           <Box>
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            <Typography variant="body2" sx={{ ...actionTextSx, cursor: "default" }}>
               UX-гейт качества перед передачей в разработку
             </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
+            <Typography variant="body2" sx={secondaryTextSx}>
               Контрольный список продакт-дизайнера, который снижает риск регрессий и возвратов после внедрения.
             </Typography>
             <Stack spacing={0.75} sx={{ mt: 0.8 }}>
@@ -208,13 +218,13 @@ export function AgentProcessSection({
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
                     {index + 1}. {item.title}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.2 }}>
+                  <Typography variant="body2" sx={{ ...secondaryTextSx, mt: 0.2 }}>
                     Что проверяем: {item.check}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.1 }}>
+                  <Typography variant="body2" sx={{ ...secondaryTextSx, mt: 0.1 }}>
                     Что предотвращает: {item.prevents}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.1 }}>
+                  <Typography variant="body2" sx={{ ...secondaryTextSx, mt: 0.1 }}>
                     На какие метрики влияет: {item.impacts}
                   </Typography>
                 </Box>
@@ -238,12 +248,15 @@ export function AgentProcessSection({
               type="button"
               variant="body2"
               underline="hover"
-              sx={{ fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 0.5 }}
+              sx={{ ...actionTextSx, gap: 0.5 }}
               onClick={() => openInNewTab(flowLinkHash)}
             >
               <OpenInNewIcon sx={{ fontSize: 14 }} />
               Схема работы агента
             </Link>
+            <Tooltip title="Визуальная схема бизнес-процесса агента: шаги, точки принятия решений, источники данных и результаты каждого этапа. Открывается в новой вкладке." arrow placement="top">
+              <InfoOutlinedIcon sx={hintIconSx} />
+            </Tooltip>
           </Box>
         ) : null}
 
@@ -254,7 +267,7 @@ export function AgentProcessSection({
               type="button"
               variant="body2"
               underline="hover"
-              sx={{ fontWeight: 600, cursor: "pointer", display: "inline" }}
+              sx={actionTextSx}
               onClick={onOpenSessionsList}
             >
               Список сессий цикла агента
@@ -264,17 +277,23 @@ export function AgentProcessSection({
               Список сессий цикла агента
             </Typography>
           )}
+          <Tooltip title="Хронологический список рабочих сессий агента: когда запускался, какие задачи выполнял, сколько длилась сессия и какой был результат." arrow placement="top">
+            <InfoOutlinedIcon sx={hintIconSx} />
+          </Tooltip>
           <Box sx={{ mt: 0.45 }}>
             <Link
               component="button"
               type="button"
-              variant="caption"
+              variant="body2"
               underline="hover"
-              sx={{ cursor: "pointer", display: "inline" }}
+              sx={actionTextSx}
               onClick={onOpenLessonsModal}
             >
                 Самоулучшение агента (Self-improvement loop): {lessonsCount}
             </Link>
+            <Tooltip title="Контур обучения агента: сколько уроков зафиксировано после ошибок и коррекций. Каждый урок содержит причину, превентивное правило и влияние на будущие решения." arrow placement="top">
+              <InfoOutlinedIcon sx={hintIconSx} />
+            </Tooltip>
           </Box>
         </Box>
 

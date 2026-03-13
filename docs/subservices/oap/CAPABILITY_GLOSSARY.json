@@ -90,7 +90,7 @@
       "what": "Процессные агенты - это bounded runtime-агенты для отдельных подпроцессов: проверки evidence, runtime UI, telemetry и других узких задач. Они не являются самостоятельной основной точкой входа.",
       "where": "В `step_3 orchestration`, внутри roleWindow, в dispatcher-backed delegation и в `collaboration_plan.spawned_instances[]`.",
       "why": "Позволяют не раздувать active set автономных ролей и подключать узкую экспертизу только там, где она реально нужна.",
-      "howInTable": "В текущем контуре ОАП к процессным агентам относятся `retrieval-audit`, `ui-verification`, `telemetry-audit`, `contract-audit`, `docs-spec-sync`, `automation-governance`."
+      "howInTable": "В текущем контуре ОАП к процессным агентам относятся `retrieval-audit`, `ui-verification`, `telemetry-audit`, `contract-audit`, `docs-spec-sync`, `editorial-quality-audit`, `automation-governance`, `terminology-consistency-audit`."
     },
     {
       "id": "term.verification",

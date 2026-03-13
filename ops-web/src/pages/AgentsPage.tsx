@@ -32,7 +32,6 @@ import ScheduleOutlinedIcon from "@mui/icons-material/ScheduleOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
-import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 
 import {
   getAgentsManifest,
@@ -4130,6 +4129,7 @@ export function AgentsPage() {
   const [status, setStatus] = React.useState<StatusFilter>("all");
   const [skill, setSkill] = React.useState("all");
   const [mcp, setMcp] = React.useState("all");
+  const [agentListTab, setAgentListTab] = React.useState<"autonomous" | "process">("autonomous");
   const [selectedAgentId, setSelectedAgentId] = React.useState<string | null>(null);
   const [selectedTabKey, setSelectedTabKey] = React.useState<AgentTabKey>("overview");
   const [selectedTaskId, setSelectedTaskId] = React.useState<string | null>(null);
@@ -4405,6 +4405,15 @@ export function AgentsPage() {
     () => agents.filter((agent) => matchesAgent(agent, { query, status, skill, mcp })),
     [agents, query, status, skill, mcp],
   );
+  const autonomousAgents = React.useMemo(
+    () => filteredAgents.filter((a) => a.agentClass === "core"),
+    [filteredAgents],
+  );
+  const processAgents = React.useMemo(
+    () => filteredAgents.filter((a) => a.agentClass !== "core"),
+    [filteredAgents],
+  );
+  const activeTabAgents = agentListTab === "autonomous" ? autonomousAgents : processAgents;
   const hostSmokeEntries = React.useMemo(
     () => Object.entries(hostAgentSmoke.hosts || {}).map(([hostId, state]) => ({
       hostId,
@@ -4439,10 +4448,6 @@ export function AgentsPage() {
     [agents, selectedAgentId],
   );
 
-  const inWork = sumBy(filteredAgents, (agent) => agent.tasks.in_work);
-  const onControl = sumBy(filteredAgents, (agent) => agent.tasks.on_control);
-  const problematic = filteredAgents.filter((agent) => agent.status !== "healthy").length;
-  const overdue = sumBy(filteredAgents, (agent) => agent.tasks.overdue);
   const resetFilters = React.useCallback(() => {
     setQuery("");
     setStatus("all");
@@ -4578,39 +4583,6 @@ export function AgentsPage() {
           </Box>
         </Stack>
 
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" },
-            gap: 1.25,
-          }}
-        >
-          <SummaryMetricCard
-            title="Агентов в выборке"
-            value={`${filteredAgents.length} / ${agents.length}`}
-            note="После применения текущих фильтров"
-            icon={<SmartToyOutlinedIcon fontSize="small" />}
-          />
-          <SummaryMetricCard
-            title="Задач в работе"
-            value={inWork}
-            note="queued + running + retrying"
-            icon={<PendingActionsOutlinedIcon fontSize="small" />}
-          />
-          <SummaryMetricCard
-            title="На контроле"
-            value={onControl}
-            note="waiting_review + blocked + waiting_external"
-            icon={<ScheduleOutlinedIcon fontSize="small" />}
-          />
-          <SummaryMetricCard
-            title="Проблемные агенты"
-            value={problematic}
-            note={`Просрочено задач: ${overdue}`}
-            icon={<WarningAmberOutlinedIcon fontSize="small" />}
-          />
-        </Box>
-
         <Paper
           variant="outlined"
           sx={{
@@ -4619,21 +4591,34 @@ export function AgentsPage() {
             borderColor: hostSmokeSeverity === "success" ? "success.light" : hostSmokeSeverity === "error" ? "error.light" : "warning.light",
           }}
         >
-          <Stack spacing={1.25}>
+          <Stack spacing={1.5}>
+            {/* Header */}
             <Stack
               direction={{ xs: "column", sm: "row" }}
               spacing={1}
               alignItems={{ xs: "flex-start", sm: "center" }}
               justifyContent="space-between"
             >
-              <Box>
-                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                  Cross-host smoke
-                </Typography>
+              <Stack spacing={0.25}>
+                <Stack direction="row" spacing={0.75} alignItems="center">
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                    Синхронизация агентов
+                  </Typography>
+                  <Tooltip
+                    title="Автоматическая проверка: все агенты присутствуют в актуальной версии во всех средах запуска (Claude Code, GitHub Copilot, Codex) и могут передавать задачи друг другу. Запускается при изменении конфигурации агентов."
+                    arrow
+                    placement="top"
+                  >
+                    <InfoOutlinedIcon sx={{ fontSize: 14, color: "text.secondary", cursor: "help" }} />
+                  </Tooltip>
+                  <Typography variant="caption" color="text.disabled" sx={{ fontFamily: "monospace", fontSize: "0.68rem" }}>
+                    cross-host smoke
+                  </Typography>
+                </Stack>
                 <Typography variant="body2" color="text.secondary">
-                  Проверка generated adapters и handoff targets для активного набора агентов.
+                  Агенты доступны во всех средах и могут передавать задачи друг другу
                 </Typography>
-              </Box>
+              </Stack>
               <Chip
                 size="small"
                 color={hostSmokeSeverity}
@@ -4641,38 +4626,40 @@ export function AgentsPage() {
               />
             </Stack>
 
-            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-              {hostSmokeEntries.map((entry) => (
-                <Chip
-                  key={entry.hostId}
-                  size="small"
-                  color={entry.ok ? "success" : "warning"}
-                  variant={entry.ok ? "filled" : "outlined"}
-                  label={`${entry.label}: ${entry.ok ? "ok" : "drift"} (${entry.agentsTotal})`}
-                />
-              ))}
-              <Chip
-                size="small"
-                color={hostAgentSmoke.handoff_validation?.ok ? "success" : "warning"}
-                variant={hostAgentSmoke.handoff_validation?.ok ? "filled" : "outlined"}
-                label={`Handoff targets: ${hostAgentSmoke.handoff_validation?.ok ? "ok" : "нужно проверить"}`}
-              />
-            </Stack>
+            {/* Environments */}
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.4, fontSize: "0.63rem" }}>
+                Среды запуска
+              </Typography>
+              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                {hostSmokeEntries.map((entry) => (
+                  <Chip
+                    key={entry.hostId}
+                    size="small"
+                    color={entry.ok ? "success" : "warning"}
+                    variant={entry.ok ? "filled" : "outlined"}
+                    label={`${entry.label}: ${entry.ok ? "ok" : "drift"} (${entry.agentsTotal})`}
+                  />
+                ))}
+                <Tooltip title="Маршруты передачи задач между агентами: один агент завершает работу и передаёт контекст следующему" arrow placement="top">
+                  <Chip
+                    size="small"
+                    color={hostAgentSmoke.handoff_validation?.ok ? "success" : "warning"}
+                    variant={hostAgentSmoke.handoff_validation?.ok ? "filled" : "outlined"}
+                    label={`Передача задач: ${hostAgentSmoke.handoff_validation?.ok ? "ok" : "нужно проверить"}`}
+                  />
+                </Tooltip>
+              </Stack>
+            </Box>
 
-            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-              {(hostAgentSmoke.active_top_level_agents || []).map((agentId) => (
-                <Chip key={agentId} size="small" variant="outlined" label={agentId} />
-              ))}
-            </Stack>
-
+            {/* Footer */}
             {hostSmokeIssues.length > 0 ? (
               <Alert severity={hostSmokeSeverity}>
                 {hostSmokeIssues.slice(0, 3).join(" | ")}
               </Alert>
             ) : (
               <Typography variant="caption" color="text.secondary">
-                Обновлено: {hostAgentSmoke.generated_at ? formatDateTime(hostAgentSmoke.generated_at) : "не зафиксировано"}. Проверка
-                синхронизирована по `Claude Code`, `GitHub Copilot` и `Codex`.
+                Обновлено: {hostAgentSmoke.generated_at ? formatDateTime(hostAgentSmoke.generated_at) : "не зафиксировано"}
               </Typography>
             )}
           </Stack>
@@ -4751,15 +4738,25 @@ export function AgentsPage() {
           </Stack>
         </Paper>
 
-        <Divider />
+        <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+          <Tabs
+            value={agentListTab}
+            onChange={(_e, v) => setAgentListTab(v as "autonomous" | "process")}
+            textColor="primary"
+            indicatorColor="primary"
+          >
+            <Tab value="autonomous" label={`Автономные агенты (${autonomousAgents.length})`} />
+            <Tab value="process" label={`Процессные агенты (${processAgents.length})`} />
+          </Tabs>
+        </Box>
 
-        {filteredAgents.length === 0 ? (
+        {activeTabAgents.length === 0 ? (
           <Alert severity="info" variant="outlined">
             Нет данных для текущего фильтра. Последняя синхронизация: {formatDateTime(manifest.updatedAt)}.
           </Alert>
         ) : (
           <Stack spacing={1}>
-            {filteredAgents.map((agent) => {
+            {activeTabAgents.map((agent) => {
               const previewSkills = agentSkillNames(agent);
               const previewRepos = agent.repositories.slice(0, 3);
               const extraRepos = Math.max(0, agent.repositories.length - previewRepos.length);

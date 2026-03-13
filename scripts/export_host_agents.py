@@ -4,36 +4,23 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import sys
 import tempfile
 from typing import Any
 
+SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+from agent_plan_metadata import load_active_agent_entries, safe_list_str, safe_str
+
 ROOT_DIR = Path(__file__).resolve().parents[1]
-DEFAULT_CATALOG_PATH = ROOT_DIR / "docs" / "agents" / "host_agnostic_agent_catalog.yaml"
+DEFAULT_REGISTRY_PATH = ROOT_DIR / "docs" / "agents" / "registry.yaml"
+DEFAULT_AGENTS_ROOT = ROOT_DIR / "docs" / "subservices" / "oap" / "agents"
 DEFAULT_MATRIX_PATH = ROOT_DIR / "docs" / "agents" / "host_capability_matrix.yaml"
 DEFAULT_CODEX_SKILLS_DIR = Path.home() / ".codex" / "skills-generated"
 
 HOST_IDS = {"claude_code", "github_copilot", "codex"}
-
-
-def safe_str(value: Any) -> str:
-    return str(value).strip() if value is not None else ""
-
-
-def safe_list_str(value: Any) -> list[str]:
-    if not isinstance(value, list):
-        return []
-    result: list[str] = []
-    seen: set[str] = set()
-    for item in value:
-        normalized = safe_str(item)
-        if not normalized:
-            continue
-        lowered = normalized.lower()
-        if lowered in seen:
-            continue
-        seen.add(lowered)
-        result.append(normalized)
-    return result
 
 
 def yaml_quote(value: str) -> str:
@@ -51,14 +38,6 @@ def load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def load_catalog(path: Path = DEFAULT_CATALOG_PATH) -> dict[str, Any]:
-    payload = load_json(path)
-    agents = payload.get("agents")
-    if not isinstance(agents, list):
-        raise ValueError(f"Invalid host catalog at {path}")
-    return payload
-
-
 def load_matrix(path: Path = DEFAULT_MATRIX_PATH) -> dict[str, Any]:
     payload = load_json(path)
     hosts = payload.get("hosts")
@@ -74,11 +53,17 @@ def find_host_matrix(host_id: str, matrix: dict[str, Any]) -> dict[str, Any]:
     raise ValueError(f"Unknown host id: {host_id}")
 
 
-def select_agents(catalog: dict[str, Any], *, host_id: str, agent_id: str | None = None) -> list[dict[str, Any]]:
+def load_agents(
+    *,
+    registry_path: Path = DEFAULT_REGISTRY_PATH,
+    agents_root: Path = DEFAULT_AGENTS_ROOT,
+) -> list[dict[str, Any]]:
+    return load_active_agent_entries(registry_path, agents_root)
+
+
+def select_agents(agents: list[dict[str, Any]], *, host_id: str, agent_id: str | None = None) -> list[dict[str, Any]]:
     selected: list[dict[str, Any]] = []
-    for item in catalog.get("agents", []):
-        if not isinstance(item, dict):
-            continue
+    for item in agents:
         if agent_id and safe_str(item.get("id")) != agent_id:
             continue
         supported_hosts = {value.lower() for value in safe_list_str(item.get("supportedHosts"))}
@@ -101,87 +86,42 @@ def claude_tools(agent: dict[str, Any]) -> list[str]:
     return tools
 
 
-def copilot_tools(agent: dict[str, Any]) -> list[str]:
-    execution_mode = safe_str(agent.get("executionMode")).lower()
-    tools: list[str] = ["read", "search"]
-    if execution_mode != "parallel_read_only":
-        tools.extend(["edit", "execute"])
-    for mcp in safe_list_str(agent.get("allowedMcp")):
-        tools.append(f"{mcp}/*")
-    if safe_list_str(agent.get("handoffTargets")):
-        tools.append("custom-agent")
-    deduped: list[str] = []
-    seen: set[str] = set()
-    for item in tools:
-        key = item.lower()
-        if key in seen:
-            continue
-        seen.add(key)
-        deduped.append(item)
-    return deduped
+def copilot_adapter(agent: dict[str, Any]) -> dict[str, Any]:
+    host_adapters = agent.get("hostAdapters")
+    if not isinstance(host_adapters, dict):
+        raise ValueError(f"Missing hostAdapters for agent `{safe_str(agent.get('id'))}`")
+    github_adapter = host_adapters.get("github_copilot")
+    if not isinstance(github_adapter, dict):
+        raise ValueError(f"Missing github_copilot adapter metadata for `{safe_str(agent.get('id'))}`")
+    return github_adapter
+
+
+def _operating_plan_path(agent: dict[str, Any]) -> str:
+    agent_id = safe_str(agent.get("id"))
+    return f"docs/subservices/oap/agents/{agent_id}/OPERATING_PLAN.md"
 
 
 def codex_prompt(agent: dict[str, Any]) -> str:
-    use_when = safe_list_str(agent.get("useWhen"))
-    avoid_when = safe_list_str(agent.get("avoidWhen"))
-    allowed_skills = ", ".join(safe_list_str(agent.get("allowedSkills"))) or "none"
-    allowed_tools = ", ".join(safe_list_str(agent.get("allowedTools"))) or "none"
-    allowed_mcp = ", ".join(safe_list_str(agent.get("allowedMcp"))) or "none"
-    output_contract = safe_str(agent.get("outputContract")) or "agent_output.v1"
+    agent_id = safe_str(agent.get("id"))
+    plan_path = _operating_plan_path(agent)
     return (
-        f"Use {safe_str(agent.get('id'))} for this task. "
-        f"Mission: {safe_str(agent.get('mission'))} "
-        f"When to use: {use_when[0] if use_when else 'See repo catalog.'} "
-        f"Avoid when: {avoid_when[0] if avoid_when else 'Not applicable.'} "
-        f"Allowed skills: {allowed_skills}. Allowed tools: {allowed_tools}. Allowed MCP: {allowed_mcp}. "
-        f"Required output contract: {output_contract}. "
-        "Follow Universal Session Backbone v1 and use dispatcher-backed delegation instead of inventing new workflows."
+        f"Use {agent_id} for this task. "
+        f"You MUST read `{plan_path}` before performing any action. "
+        f"It contains your mission, rules, contract, and workflow."
     )
 
 
 def prompt_body(agent: dict[str, Any], host_id: str) -> str:
-    handoff_targets = safe_list_str(agent.get("handoffTargets"))
-    lines = [
-        f"You are `{safe_str(agent.get('id'))}` for the OAP project.",
-        "",
-        f"Mission: {safe_str(agent.get('mission'))}",
-        "",
-        "When to use:",
-    ]
-    for item in safe_list_str(agent.get("useWhen")):
-        lines.append(f"- {item}")
-    lines.extend(["", "Avoid when:"])
-    for item in safe_list_str(agent.get("avoidWhen")):
-        lines.append(f"- {item}")
-    lines.extend(
-        [
-            "",
-            "Contract:",
-            f"- Input: {safe_str(agent.get('inputContract')) or 'task_brief.v1'}",
-            f"- Output: {safe_str(agent.get('outputContract')) or 'agent_output.v1'}",
-            "",
-            "Runtime envelope:",
-            f"- Allowed skills: {', '.join(safe_list_str(agent.get('allowedSkills'))) or 'none'}",
-            f"- Allowed tools: {', '.join(safe_list_str(agent.get('allowedTools'))) or 'none'}",
-            f"- Allowed MCP: {', '.join(safe_list_str(agent.get('allowedMcp'))) or 'none'}",
-            f"- Allowed rules: {', '.join(safe_list_str(agent.get('allowedRules'))) or 'none'}",
-            f"- Delegation targets: {', '.join(handoff_targets) or 'none'}",
-            "",
-            "Workflow invariant:",
-            "- Stay within Universal Session Backbone v1.",
-            "- Use bounded delegation only in step_3_orchestration or step_5_role_window.",
-            "- Return your result into step_6_role_exit_decision.",
-            "",
-            "Host note:",
-            f"- This adapter targets `{host_id}` and mirrors the repo-owned canonical contract.",
-            "- If delegation is needed and native host behavior is insufficient, use dispatcher-backed execution.",
-            "",
-            "Stop conditions:",
-        ]
+    agent_id = safe_str(agent.get("id"))
+    plan_path = _operating_plan_path(agent)
+    return (
+        f"You are `{agent_id}` for the OAP project.\n"
+        f"\n"
+        f"You MUST read `{plan_path}` before performing any action.\n"
+        f"It contains your mission, rules, contract, and workflow.\n"
+        f"\n"
+        f"Host adapter: `{host_id}`\n"
     )
-    for item in safe_list_str(agent.get("stopConditions")):
-        lines.append(f"- {item}")
-    return "\n".join(lines).strip() + "\n"
 
 
 def render_claude_agent(agent: dict[str, Any]) -> str:
@@ -206,16 +146,15 @@ def render_claude_agent(agent: dict[str, Any]) -> str:
 
 
 def render_copilot_agent(agent: dict[str, Any]) -> str:
+    github_adapter = copilot_adapter(agent)
     frontmatter = [
         "---",
         f"name: {safe_str(agent.get('id'))}",
-        f"description: {yaml_quote(safe_list_str(agent.get('useWhen'))[0] if safe_list_str(agent.get('useWhen')) else safe_str(agent.get('mission')))}",
+        f"description: {yaml_quote(safe_str(github_adapter.get('description')))}",
         "tools:",
-        yaml_list(copilot_tools(agent), indent=2),
+        yaml_list(safe_list_str(github_adapter.get("tools")), indent=2),
     ]
-    handoff_targets = safe_list_str(agent.get("handoffTargets"))
-    if handoff_targets:
-        frontmatter.extend(["agents:", yaml_list(handoff_targets, indent=2)])
+    frontmatter.extend(["agents:", yaml_list(safe_list_str(github_adapter.get("agents")), indent=2)])
     frontmatter.append("---")
     return "\n".join(frontmatter) + "\n" + prompt_body(agent, "github_copilot")
 
@@ -234,44 +173,23 @@ def render_codex_openai(agent: dict[str, Any]) -> str:
 
 
 def render_codex_skill(agent: dict[str, Any]) -> str:
-    display_name = safe_str(agent.get("displayName")) or safe_str(agent.get("id"))
-    lines = [
-        f"# {display_name}",
-        "",
-        f"Canonical id: `{safe_str(agent.get('id'))}`",
-        "",
-        f"Mission: {safe_str(agent.get('mission'))}",
-        "",
-        "When to use:",
-    ]
-    for item in safe_list_str(agent.get("useWhen")):
-        lines.append(f"- {item}")
-    lines.extend(["", "Avoid when:"])
-    for item in safe_list_str(agent.get("avoidWhen")):
-        lines.append(f"- {item}")
-    lines.extend(
-        [
-            "",
-            "Allowed envelope:",
-            f"- Skills: {', '.join(safe_list_str(agent.get('allowedSkills'))) or 'none'}",
-            f"- Tools: {', '.join(safe_list_str(agent.get('allowedTools'))) or 'none'}",
-            f"- MCP: {', '.join(safe_list_str(agent.get('allowedMcp'))) or 'none'}",
-            f"- Rules: {', '.join(safe_list_str(agent.get('allowedRules'))) or 'none'}",
-            "",
-            f"Output contract: `{safe_str(agent.get('outputContract')) or 'agent_output.v1'}`",
-            "",
-            "Workflow invariant:",
-            "- Follow Universal Session Backbone v1.",
-            "- Use dispatcher-backed delegation for specialist work.",
-        ]
+    agent_id = safe_str(agent.get("id"))
+    display_name = safe_str(agent.get("displayName")) or agent_id
+    plan_path = _operating_plan_path(agent)
+    return (
+        f"# {display_name}\n"
+        f"\n"
+        f"Canonical id: `{agent_id}`\n"
+        f"\n"
+        f"You MUST read `{plan_path}` before performing any action.\n"
+        f"It contains your mission, rules, contract, and workflow.\n"
     )
-    return "\n".join(lines).strip() + "\n"
 
 
 def build_output_specs(
     *,
     host_id: str,
-    catalog: dict[str, Any],
+    agents: list[dict[str, Any]],
     matrix: dict[str, Any],
     agent_id: str | None = None,
     repo_root: Path = ROOT_DIR,
@@ -280,9 +198,9 @@ def build_output_specs(
     if host_id not in HOST_IDS:
         raise ValueError(f"Unsupported host id: {host_id}")
     find_host_matrix(host_id, matrix)
-    agents = select_agents(catalog, host_id=host_id, agent_id=agent_id)
+    selected_agents = select_agents(agents, host_id=host_id, agent_id=agent_id)
     specs: list[dict[str, str]] = []
-    for agent in agents:
+    for agent in selected_agents:
         current_id = safe_str(agent.get("id"))
         if host_id == "claude_code":
             path = repo_root / ".claude" / "agents" / f"{current_id}.md"
@@ -307,11 +225,9 @@ def write_output_specs(specs: list[dict[str, str]]) -> list[str]:
     return written
 
 
-def get_active_top_level_agent_ids(catalog: dict[str, Any]) -> list[str]:
+def get_active_top_level_agent_ids(agents: list[dict[str, Any]]) -> list[str]:
     result: list[str] = []
-    for item in catalog.get("agents", []):
-        if not isinstance(item, dict):
-            continue
+    for item in agents:
         if safe_str(item.get("kind")) != "top_level":
             continue
         agent_id = safe_str(item.get("id"))
@@ -322,27 +238,26 @@ def get_active_top_level_agent_ids(catalog: dict[str, Any]) -> list[str]:
 
 def smoke_active_set(
     *,
-    catalog: dict[str, Any],
+    agents: list[dict[str, Any]],
     matrix: dict[str, Any],
     repo_root: Path = ROOT_DIR,
     codex_skills_dir: Path | None = None,
 ) -> dict[str, Any]:
-    active_agent_ids = get_active_top_level_agent_ids(catalog)
+    active_agent_ids = get_active_top_level_agent_ids(agents)
     known_agent_ids = {
         safe_str(item.get("id"))
-        for item in catalog.get("agents", [])
+        for item in agents
         if isinstance(item, dict) and safe_str(item.get("id"))
     }
     report: dict[str, Any] = {
         "ok": True,
         "active_top_level_agents": active_agent_ids,
+        "agents": agents,
         "hosts": {},
         "handoff_validation": {"ok": True, "issues": []},
     }
 
-    for agent in catalog.get("agents", []):
-        if not isinstance(agent, dict):
-            continue
+    for agent in agents:
         agent_id = safe_str(agent.get("id"))
         for target in safe_list_str(agent.get("handoffTargets")):
             if target not in known_agent_ids:
@@ -359,7 +274,7 @@ def smoke_active_set(
         for agent_id in active_agent_ids:
             specs = build_output_specs(
                 host_id=host_id,
-                catalog=catalog,
+                agents=agents,
                 matrix=matrix,
                 agent_id=agent_id,
                 repo_root=repo_root,
@@ -391,7 +306,7 @@ def smoke_active_set(
     if codex_skills_dir is None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             codex_report = smoke_active_set(
-                catalog=catalog,
+                agents=agents,
                 matrix=matrix,
                 repo_root=repo_root,
                 codex_skills_dir=Path(tmp_dir) / "skills-generated",
@@ -402,7 +317,7 @@ def smoke_active_set(
         for agent_id in active_agent_ids:
             specs = build_output_specs(
                 host_id="codex",
-                catalog=catalog,
+                agents=agents,
                 matrix=matrix,
                 agent_id=agent_id,
                 codex_skills_dir=codex_skills_dir,
@@ -442,22 +357,32 @@ def smoke_active_set(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Render or write host-specific agent adapters from the canonical OAP catalog.")
+    parser = argparse.ArgumentParser(description="Render or write host-specific agent adapters from OPERATING_PLAN frontmatter.")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     render_parser = subparsers.add_parser("render", help="Render adapter files without writing them.")
     render_parser.add_argument("--host", required=True, choices=sorted(HOST_IDS))
     render_parser.add_argument("--agent-id", default="")
+    render_parser.add_argument("--registry", default=str(DEFAULT_REGISTRY_PATH))
+    render_parser.add_argument("--agents-root", default=str(DEFAULT_AGENTS_ROOT))
 
     write_parser = subparsers.add_parser("write", help="Write adapter files to the target host directories.")
     write_parser.add_argument("--host", required=True, choices=sorted(HOST_IDS))
     write_parser.add_argument("--agent-id", default="")
+    write_parser.add_argument("--registry", default=str(DEFAULT_REGISTRY_PATH))
+    write_parser.add_argument("--agents-root", default=str(DEFAULT_AGENTS_ROOT))
     write_parser.add_argument("--repo-root", default=str(ROOT_DIR))
     write_parser.add_argument("--codex-skills-dir", default=str(DEFAULT_CODEX_SKILLS_DIR))
 
     smoke_parser = subparsers.add_parser("smoke-active-set", help="Validate generated adapters for all active top-level agents across Claude/Copilot/Codex.")
+    smoke_parser.add_argument("--registry", default=str(DEFAULT_REGISTRY_PATH))
+    smoke_parser.add_argument("--agents-root", default=str(DEFAULT_AGENTS_ROOT))
     smoke_parser.add_argument("--repo-root", default=str(ROOT_DIR))
     smoke_parser.add_argument("--codex-skills-dir", default="")
+
+    agents_parser = subparsers.add_parser("list-active-agents", help="Print normalized active agent metadata from OPERATING_PLAN frontmatter.")
+    agents_parser.add_argument("--registry", default=str(DEFAULT_REGISTRY_PATH))
+    agents_parser.add_argument("--agents-root", default=str(DEFAULT_AGENTS_ROOT))
 
     return parser
 
@@ -465,12 +390,15 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
-    catalog = load_catalog()
     matrix = load_matrix()
+    agents = load_agents(
+        registry_path=Path(getattr(args, "registry", str(DEFAULT_REGISTRY_PATH))),
+        agents_root=Path(getattr(args, "agents_root", str(DEFAULT_AGENTS_ROOT))),
+    )
     if args.command == "render":
         specs = build_output_specs(
             host_id=args.host,
-            catalog=catalog,
+            agents=agents,
             matrix=matrix,
             agent_id=safe_str(args.agent_id) or None,
         )
@@ -479,7 +407,7 @@ def main() -> int:
     if args.command == "write":
         specs = build_output_specs(
             host_id=args.host,
-            catalog=catalog,
+            agents=agents,
             matrix=matrix,
             agent_id=safe_str(args.agent_id) or None,
             repo_root=Path(args.repo_root),
@@ -491,13 +419,16 @@ def main() -> int:
     if args.command == "smoke-active-set":
         codex_dir = Path(args.codex_skills_dir) if safe_str(args.codex_skills_dir) else None
         report = smoke_active_set(
-            catalog=catalog,
+            agents=agents,
             matrix=matrix,
             repo_root=Path(args.repo_root),
             codex_skills_dir=codex_dir,
         )
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0 if report.get("ok") else 1
+    if args.command == "list-active-agents":
+        print(json.dumps({"agents": agents}, ensure_ascii=False, indent=2))
+        return 0
     parser.error("Unsupported command")
     return 2
 

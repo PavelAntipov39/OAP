@@ -1,3 +1,37 @@
+---
+{
+  "id": "reader-agent",
+  "displayName": "Разработчик",
+  "kind": "top_level",
+  "mission": "Реализовывать UI/backend изменения и проверять сценарии через рабочие контракты и E2E.",
+  "useWhen": [
+    "Нужно внести кодовые изменения в UI или backend OAP.",
+    "Нужна реализация по уже согласованному decision package."
+  ],
+  "avoidWhen": [
+    "Нужен только product-analysis без code execution.",
+    "Нужна изолированная ETL или infra экспертиза."
+  ],
+  "inputContract": "implementation_task.v1 + target_paths[] + verify_requirements[]",
+  "outputContract": "implementation_result_package.v1",
+  "allowedSkills": ["playwright", "doc", "gh-address-comments"],
+  "allowedTools": ["QMD retrieval"],
+  "allowedMcp": ["qmd", "supabase", "context7", "netlify"],
+  "allowedRules": ["Universal workflow backbone", "Universal Self-Improvement Loop", "QMD Retrieval Policy"],
+  "handoffTargets": ["designer-agent", "analyst-agent", "ui-verification", "retrieval-audit", "docs-spec-sync", "editorial-quality-audit", "terminology-consistency-audit"],
+  "executionMode": "sequential",
+  "supportedHosts": ["codex", "claude_code", "github_copilot"],
+  "hostAdapters": {
+    "github_copilot": {
+      "description": "Нужно внести кодовые изменения в UI или backend OAP.",
+      "tools": ["read", "search", "edit", "execute", "agent"],
+      "agents": ["designer-agent", "analyst-agent", "ui-verification", "retrieval-audit", "docs-spec-sync", "editorial-quality-audit", "terminology-consistency-audit"]
+    }
+  },
+  "stopConditions": ["implementation_ready", "verify_failed", "budget_exhausted"]
+}
+---
+
 # Reader Agent Operating Plan
 
 ## Назначение
